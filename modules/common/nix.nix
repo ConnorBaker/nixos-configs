@@ -6,7 +6,7 @@
     experimental-features = [
       "flakes"
       "nix-command"
-      "no-url-literals"
+      # "no-url-literals" # Somehow use is still prevalent
     ];
     fsync-metadata = false;
     http-connections = 0;

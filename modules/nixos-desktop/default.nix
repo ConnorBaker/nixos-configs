@@ -7,6 +7,7 @@
     ../common/networking.nix
     ../common/nix-cantcacheme.nix
     ../common/nix-cuda-maintainers.nix
+    ../common/nix-ld.nix
     ../common/nix.nix
     ../common/openssh.nix
     ../common/sudo.nix
