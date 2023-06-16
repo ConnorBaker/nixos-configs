@@ -23,5 +23,8 @@
       cantcacheme-signing-key = "/run/keys/cantcacheme-signing-key";
     };
   };
+  systemd.services.async-nix-post-build-hook.serviceConfig = {
+    Environment = ["XDG_CACHE_HOME=/tmp/queued-build-hook"];
+  };
 }
 
