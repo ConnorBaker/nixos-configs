@@ -6,6 +6,7 @@
     ../common/mimalloc.nix
     ../common/networking.nix
     ../common/nix-cantcacheme.nix
+    ../common/nix-cantcacheme-upload.nix
     ../common/nix-cuda-maintainers.nix
     ../common/nix-ld.nix
     ../common/nix.nix

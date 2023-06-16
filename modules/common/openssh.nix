@@ -1,6 +1,6 @@
 {
   services.openssh = {
-    allowSFTP = false;
+    allowSFTP = true;
     enable = true;
     settings.PasswordAuthentication = false;
   };
