@@ -32,7 +32,7 @@
         openssh.authorizedKeys.keys = [
           "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJXpenPZWADrxK4+6nFmPspmYPPniI3m+3PxAfjbslg+ connorbaker@Connors-MacBook-Pro.local"
         ];
-        packages = with pkgs; [bat exa gh git htop jq nixpkgs-review ripgrep vim];
+        packages = with pkgs; [bat black exa gh git htop jq python3 nil nixpkgs-review ripgrep ruff vim];
       };
     };
   };
