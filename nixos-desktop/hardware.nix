@@ -4,13 +4,20 @@
   modulesPath,
   ...
 }: {
-  imports = [
-    "${modulesPath}/installer/scan/not-detected.nix"
-  ];
+  imports = ["${modulesPath}/installer/scan/not-detected.nix"];
 
   boot = {
     initrd = {
-      availableKernelModules = ["vmd" "xhci_pci" "ahci" "thunderbolt" "nvme" "usbhid" "uas" "sd_mod"];
+      availableKernelModules = [
+        "ahci"
+        "nvme"
+        "sd_mod"
+        "thunderbolt"
+        "uas"
+        "usbhid"
+        "vmd"
+        "xhci_pci"
+      ];
       kernelModules = ["dm-snapshot"];
     };
     kernelModules = ["kvm-intel"];
