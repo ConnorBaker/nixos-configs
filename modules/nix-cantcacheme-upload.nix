@@ -24,4 +24,3 @@
   };
   systemd.services.async-nix-post-build-hook.environment.XDG_CACHE_HOME = "/tmp/async-nix-post-build-hook";
 }
-
