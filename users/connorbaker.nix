@@ -18,21 +18,38 @@
       openssh.authorizedKeys.keys = [
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJXpenPZWADrxK4+6nFmPspmYPPniI3m+3PxAfjbslg+ connorbaker@Connors-MacBook-Pro.local"
       ];
-      packages = with pkgs; [
-        bat
-        black
-        exa
-        gh
-        git
-        htop
-        jq
-        nil
-        nixpkgs-review
-        python3
-        ripgrep
-        ruff
-        vim
-      ];
+      packages = with pkgs;
+      # Rust unix tools
+        [
+          bat
+          exa
+          ripgrep
+        ]
+        # Python
+        ++ [
+          black
+          python3
+          ruff
+        ]
+        # Misc tools
+        ++ [
+          gh
+          git
+          htop
+          jq
+          vim
+        ]
+        # Nix
+        ++ [
+          nil
+          nixpkgs-review
+        ]
+        # Sops tools
+        ++ [
+          age
+          sops
+          ssh-to-age
+        ];
     };
   };
 }

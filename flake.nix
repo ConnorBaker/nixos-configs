@@ -15,6 +15,14 @@
       };
       url = "github:nix-community/queued-build-hook";
     };
+
+    sops-nix = {
+      inputs = {
+        nixpkgs-stable.follows = "";
+        nixpkgs.follows = "nixpkgs";
+      };
+      url = "github:Mic92/sops-nix";
+    };
   };
 
   outputs = inputs:
@@ -27,6 +35,7 @@
         system = "x86_64-linux";
         modules = [
           inputs.queued-build-hook.nixosModules.queued-build-hook
+          inputs.sops-nix.nixosModules.sops
           ./nixos-desktop
         ];
       };
