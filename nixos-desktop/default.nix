@@ -4,15 +4,16 @@
 
     # Configure Nix
     ../modules/nix/nix.nix
-    ../modules/nix/cuda.nix
-    ../modules/nix/cantcacheme.nix
-    ../modules/nix/cantcacheme-upload.nix
+    ../modules/nix/cantcacheme/pull.nix
+    ../modules/nix/cantcacheme/push.nix
 
     # Configure system
     ../modules/boot.nix
     ../modules/cpu-hardware.nix
     ../modules/networking.nix
     ../modules/headless.nix
+    ../modules/cuda.nix
+    ../modules/nvidia.nix
     ../modules/users.nix
     ../modules/mimalloc.nix
     ../modules/zram.nix

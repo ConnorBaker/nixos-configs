@@ -1,6 +1,6 @@
-{
+{lib, ...}: {
   environment = {
-    noXlibs = true;
+    noXlibs = lib.mkDefault true;
     variables.BROWSER = "echo";
   };
   fonts.fontconfig.enable = false;

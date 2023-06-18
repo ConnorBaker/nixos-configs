@@ -24,7 +24,7 @@
     };
   };
   sops = {
-    defaultSopsFile = ../../secrets/cantcacheme.yaml;
+    defaultSopsFile = ../../../secrets/cantcacheme.yaml;
     age.sshKeyPaths = ["/home/connorbaker/.ssh/id_ed25519"];
     secrets = let
       config.restartUnits = ["async-nix-post-build-hook.service"];
