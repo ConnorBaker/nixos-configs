@@ -36,7 +36,8 @@
     };
   };
   systemd.services.async-nix-post-build-hook = {
-    environment.XDG_CACHE_HOME = "/tmp/async-nix-post-build-hook";
+    environment.HOME = "/var/lib/async-nix-post-build-hook";
+    serviceConfig.StateDirectory = "async-nix-post-build-hook";
     unitConfig.After = ["sops-nix.service"];
   };
 }
