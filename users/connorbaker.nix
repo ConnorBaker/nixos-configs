@@ -37,6 +37,7 @@
           git
           htop
           jq
+          nvitop
           vim
         ]
         # Nix

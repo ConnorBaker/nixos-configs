@@ -15,7 +15,7 @@
       http-connections = 0;
       keep-derivations = true;
       keep-outputs = true;
-      max-jobs = "auto";
+      max-jobs = 8;
       max-substitution-jobs = 1024;
       system-features = [
         "benchmark"
