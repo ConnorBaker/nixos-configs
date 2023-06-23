@@ -42,6 +42,7 @@
         ]
         # Nix
         ++ [
+          alejandra
           nil
           nixpkgs-review
         ]
