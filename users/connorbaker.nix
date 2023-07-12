@@ -28,8 +28,13 @@
         # Python
         ++ [
           black
-          python3
+          (python3.withPackages (ps: with ps; [pydantic requests typing-extensions]))
           ruff
+        ]
+        # C/C++
+        ++ [
+          cmake
+          dotnet-runtime # for CMake LSP in VS Code
         ]
         # Misc tools
         ++ [
