@@ -49,6 +49,7 @@
         ++ [
           alejandra
           nil
+          nix-output-monitor
           nixpkgs-review
         ]
         # Sops tools
