@@ -13,7 +13,9 @@
         nixpkgs.follows = "";
         treefmt-nix.follows = "";
       };
-      url = "github:nix-community/queued-build-hook";
+      # TODO(@connorbaker): Switch back to upstream when
+      # https://github.com/nix-community/queued-build-hook/pull/22 is merged.
+      url = "github:connorbaker/queued-build-hook/patch-1";
     };
 
     sops-nix = {
