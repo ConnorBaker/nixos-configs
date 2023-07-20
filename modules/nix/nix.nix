@@ -3,7 +3,7 @@
     buildMachines = [
       {
         hostName = "52.249.197.56";
-        maxJobs = 2;
+        maxJobs = 1;
         protocol = "ssh-ng";
         # base64 -w0 - <<< "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL84WOm0Lij8ctWc0bcfx42F/ZTYO5/DD/OXzAtLBzSA"
         publicHostKey = "c3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSUw4NFdPbTBMaWo4Y3RXYzBiY2Z4NDJGL1pUWU81L0REL09YekF0TEJ6U0EK";
@@ -40,7 +40,7 @@
       http-connections = 0;
       keep-derivations = true;
       keep-outputs = true;
-      max-jobs = 2;
+      max-jobs = 1;
       max-substitution-jobs = 1024;
       # NOTE: Disabled because this requires Nix >= 2.17.
       # require-drop-supplementary-groups = true;

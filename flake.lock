@@ -173,16 +173,15 @@
         "treefmt-nix": []
       },
       "locked": {
-        "lastModified": 1689878578,
-        "narHash": "sha256-ThX+hVXG86hd+r3V/FAKhMEpGbI17F8nAYBDBnHRMyE=",
-        "owner": "connorbaker",
+        "lastModified": 1689880278,
+        "narHash": "sha256-EoTC3Xlz8V3daASpoc/ekKj0ysa3l80A+jhcTb8XzRs=",
+        "owner": "nix-community",
         "repo": "queued-build-hook",
-        "rev": "31517fe0906b722055283004de21489e220e35ad",
+        "rev": "81f46a75b5eb7d1c7bd5c63be66fe936d61da11d",
         "type": "github"
       },
       "original": {
-        "owner": "connorbaker",
-        "ref": "patch-1",
+        "owner": "nix-community",
         "repo": "queued-build-hook",
         "type": "github"
       }
