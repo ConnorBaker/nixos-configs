@@ -23,7 +23,11 @@
         system = "x86_64-linux";
       }
     ];
-    settings.trusted-users = ["connorbaker"];
+    distributedBuilds = true;
+    settings = {
+      builders-use-substitutes = true;
+      trusted-users = ["connorbaker"];
+    };
   };
   programs = {
     git.config = lib.attrsets.optionalAttrs config.programs.git.enable {
