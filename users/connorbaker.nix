@@ -67,6 +67,7 @@
         ]
         # Misc tools
         ++ [
+          azure-cli
           gh
           git
           htop
