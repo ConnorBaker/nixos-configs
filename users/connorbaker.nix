@@ -25,10 +25,15 @@
     ];
     settings.trusted-users = ["connorbaker"];
   };
-  programs.git.config = lib.attrsets.optionalAttrs config.programs.git.enable {
-    init.defaultBranch = "main";
-    user.name = "Connor Baker";
-    user.email = "connor.baker@tweag.io";
+  programs = {
+    git.config = lib.attrsets.optionalAttrs config.programs.git.enable {
+      init.defaultBranch = "main";
+      user.name = "Connor Baker";
+      user.email = "connor.baker@tweag.io";
+    };
+    # NOTE: Use mkOptionDefault to ensure our value is added to the list of
+    # values, rather than replacing the list of values.
+    nix-ld.libraries = lib.mkOptionDefault [pkgs.icu.out];
   };
   users.users = {
     connorbaker = {
