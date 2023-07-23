@@ -5,6 +5,7 @@
     settings = {
       accept-flake-config = true;
       auto-allocate-uids = true;
+      auto-optimise-store = true;
       allow-import-from-derivation = false;
       cores = 0;
       experimental-features = [

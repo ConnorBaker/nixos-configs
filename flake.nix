@@ -1,5 +1,10 @@
 {
   inputs = {
+    disko = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:nix-community/disko";
+    };
+
     flake-parts = {
       inputs.nixpkgs-lib.follows = "nixpkgs";
       url = "github:hercules-ci/flake-parts";
@@ -36,19 +41,36 @@
       perSystem = {pkgs, ...}: {
         formatter = pkgs.alejandra;
       };
-      flake.nixosConfigurations.nixos-desktop = withSystem "x86_64-linux" ({inputs', ...}: let
-        inherit (inputs.nixpkgs.lib) nixosSystem;
-        inherit (inputs.queued-build-hook.nixosModules) queued-build-hook;
-        inherit (inputs.sops-nix.nixosModules) sops;
-        nix-ld-rs.programs.nix-ld.package = inputs'.nix-ld-rs.packages.nix-ld-rs;
-      in
-        nixosSystem {
-          modules = [
-            queued-build-hook
-            sops
-            nix-ld-rs
-            ./nixos-desktop
-          ];
-        });
+      flake.nixosConfigurations = {
+        nixos-desktop = withSystem "x86_64-linux" ({inputs', ...}: let
+          inherit (inputs.nixpkgs.lib) nixosSystem;
+          inherit (inputs.queued-build-hook.nixosModules) queued-build-hook;
+          inherit (inputs.sops-nix.nixosModules) sops;
+          nix-ld-rs.programs.nix-ld.package = inputs'.nix-ld-rs.packages.nix-ld-rs;
+        in
+          nixosSystem {
+            modules = [
+              queued-build-hook
+              sops
+              nix-ld-rs
+              ./devices/nixos-desktop
+            ];
+          });
+        
+        hetzner-ext = withSystem "x86_64-linux" ({inputs', ...}: let
+          inherit (inputs.disko.nixosModules) disko;
+          inherit (inputs.nixpkgs.lib) nixosSystem;
+          inherit (inputs.sops-nix.nixosModules) sops;
+          nix-ld-rs.programs.nix-ld.package = inputs'.nix-ld-rs.packages.nix-ld-rs;
+        in
+          nixosSystem {
+            modules = [
+              disko
+              sops
+              nix-ld-rs
+              ./devices/hetzner-ext
+            ];
+          });
+      };
     });
 }
