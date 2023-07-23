@@ -1,9 +1,7 @@
 {
   imports = [
-    ./hardware.nix
-
-    # Disko
     ./disks.nix
+    ./hardware.nix
 
     # Configure Nix
     ../../modules/nix/nix.nix
