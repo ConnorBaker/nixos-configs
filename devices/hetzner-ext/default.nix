@@ -52,7 +52,7 @@
     };
     firewall.logRefusedConnections = false;
     hostName = "hetzner-ext";
-    interfaces."eth0".ipv6.addresses = [
+    interfaces.eth0.ipv6.addresses = [
       {
         address = "2a01:4f8:10a:eae::2";
         prefixLength = 64;
@@ -64,14 +64,13 @@
       "2a00:1098:2c::1"
       "2a00:1098:2b::1"
     ];
+    networkmanager.enable = false;
     # Network (Hetzner uses static IP assignments, and we don't use DHCP here)
     useDHCP = false;
   };
   services.openssh.settings.PermitRootLogin = lib.mkForce "prohibit-password";
-  users.users.root = {
-    openssh.authorizedKeys = {
-      inherit (config.users.users.connorbaker.openssh.authorizedKeys) keys;
-    };
+  users.users.root.openssh.authorizedKeys = {
+    inherit (config.users.users.connorbaker.openssh.authorizedKeys) keys;
   };
   system.stateVersion = "23.05";
 }

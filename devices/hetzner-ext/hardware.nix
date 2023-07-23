@@ -24,8 +24,19 @@
     extraModulePackages = [];
   };
 
-  swapDevices = [];
+  fileSystems = {
+    "/" = {
+      device = "/dev/disk/by-partlabel/disk-main-root";
+      fsType = "ext4";
+    };
+    "/boot" = {
+      device = "/dev/disk/by-partlabel/disk-main-ESP";
+      fsType = "vfat";
+    };
+  };
+
+  hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   powerManagement.cpuFreqGovernor = lib.mkDefault "powersave";
-  hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
+  swapDevices = [];
 }
