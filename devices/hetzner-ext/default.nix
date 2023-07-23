@@ -1,4 +1,8 @@
 {
+  config,
+  lib,
+  ...
+}: {
   imports = [
     ./disks.nix
     ./hardware.nix
@@ -62,6 +66,12 @@
     ];
     # Network (Hetzner uses static IP assignments, and we don't use DHCP here)
     useDHCP = false;
+  };
+  services.openssh.permitRootLogin = lib.mkForce "prohibit-password";
+  users.users.root = {
+    openssh.authorizedKeys = {
+      inherit (config.users.users.connorbaker.openssh.authorizedKeys) keys;
+    };
   };
   system.stateVersion = "23.05";
 }
