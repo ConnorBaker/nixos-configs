@@ -67,7 +67,7 @@
     # Network (Hetzner uses static IP assignments, and we don't use DHCP here)
     useDHCP = false;
   };
-  services.openssh.permitRootLogin = lib.mkForce "prohibit-password";
+  services.openssh.settings.PermitRootLogin = lib.mkForce "prohibit-password";
   users.users.root = {
     openssh.authorizedKeys = {
       inherit (config.users.users.connorbaker.openssh.authorizedKeys) keys;
