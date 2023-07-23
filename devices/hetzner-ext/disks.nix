@@ -37,18 +37,14 @@
 # }
 {
   disko.devices.disk.main = {
-    type = "disk";
     device = "/dev/disk/by-id/ata-ST16000NM003G-2KH113_ZL2AE5N5";
+    type = "disk";
     content = {
       type = "gpt";
       partitions = {
-        boot = {
-          size = "1M";
-          type = "EF02"; # for grub MBR
-        };
         ESP = {
-          size = "512M";
           type = "EF00";
+          size = "100M";
           content = {
             type = "filesystem";
             format = "vfat";
