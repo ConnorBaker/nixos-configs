@@ -24,16 +24,16 @@
     extraModulePackages = [];
   };
 
-  fileSystems = {
-    "/" = {
-      device = "/dev/disk/by-partlabel/disk-main-root";
-      fsType = "ext4";
-    };
-    "/boot" = {
-      device = "/dev/disk/by-partlabel/disk-main-ESP";
-      fsType = "vfat";
-    };
-  };
+  # fileSystems = {
+  #   "/" = {
+  #     device = "/dev/disk/by-partlabel/disk-main-root";
+  #     fsType = "ext4";
+  #   };
+  #   "/boot" = {
+  #     device = "/dev/disk/by-partlabel/disk-main-ESP";
+  #     fsType = "vfat";
+  #   };
+  # };
 
   hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
