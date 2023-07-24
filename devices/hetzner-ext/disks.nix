@@ -63,10 +63,11 @@
             type = "filesystem";
           };
         };
-        "/" = {
+        root = {
           size = "100%";
           content = {
             format = "ext4";
+            mountpoint = "/";
             type = "filesystem";
           };
         };
