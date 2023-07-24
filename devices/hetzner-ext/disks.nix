@@ -22,7 +22,18 @@
           size = "100%";
           content = {
             type = "btrfs";
-            extraArgs = ["-f"];
+            extraArgs = [
+              "--force"
+              "--label"
+              "nixos"
+              "--data"
+              "raid1"
+              "--metadata"
+              "raid1"
+              "/dev/disk/by-id/ata-ST16000NM003G-2KH113_ZL2BTF3N"
+              "/dev/disk/by-id/ata-ST16000NM003G-2KH113_ZL2CABRF"
+              "/dev/disk/by-id/ata-ST16000NM003G-2KH113_ZL2CAW73"
+            ];
             subvolumes = {
               # Subvolume name is different from mountpoint
               "/rootfs" = {
