@@ -25,10 +25,7 @@
   };
 
   fileSystems = {
-    "/" = {
-      device = "/dev/disk/by-partlabel/disk-main-root";
-      fsType = "ext4";
-    };
+    "/".device = "/dev/disk/by-partlabel/disk-main-root";
     "/boot" = {
       device = "/dev/disk/by-partlabel/disk-main-ESP";
       fsType = "vfat";
