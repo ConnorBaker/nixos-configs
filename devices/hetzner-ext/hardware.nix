@@ -10,7 +10,6 @@
     initrd.availableKernelModules = [
       # TODO(@connorbaker): These are mostly copied from the desktop.
       "ahci"
-      "nvme"
       "sd_mod"
       "uas"
       "vmd"
@@ -19,7 +18,7 @@
   };
 
   fileSystems = {
-    "/".device = "/dev/disk/by-partlabel/disk-main-root";
+    "/".device = "/dev/disk/by-partlabel/disk-main-nixos";
     "/boot".device = "/dev/disk/by-partlabel/disk-main-ESP";
   };
 

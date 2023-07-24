@@ -31,6 +31,11 @@
     # Users
     ../../users/connorbaker.nix
   ];
+
+  boot = {
+    initrd.kernelModules = ["nvme"];
+    loader.systemd-boot.enable = true;
+  };
   networking.hostName = "nixos-desktop";
   system.stateVersion = "23.05";
 }

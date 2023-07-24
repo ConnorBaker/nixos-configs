@@ -33,15 +33,10 @@
     ../../users/connorbaker.nix
   ];
 
-  boot.loader = {
-    grub = {
-      copyKernels = true;
-      efiSupport = false;
-      enable = true;
-    };
-    # TODO(@connorbaker): This shouldn't be set in the default config.
-    # This should be a per-device setting.
-    systemd-boot.enable = lib.mkForce false;
+  boot.loader.grub = {
+    copyKernels = true;
+    efiSupport = false;
+    enable = true;
   };
 
   networking = {
