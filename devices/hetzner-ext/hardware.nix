@@ -30,7 +30,7 @@
       fsType = "ext4";
     };
     "/boot" = {
-      device = "/dev/disk/by-partlabel/disk-main-boot";
+      device = "/dev/disk/by-partlabel/disk-main-ESP";
       fsType = "vfat";
     };
   };
