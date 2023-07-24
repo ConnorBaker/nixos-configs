@@ -1,8 +1,8 @@
 {
-  services.beesd.filesystems = {
+  services.beesd.filesystems.root = {
     extraOptions = ["--loadavg-target" "5.0"];
     hashTableSizeMB = 16384;
-    spec = "LABEL=root";
+    spec = "LABEL=nixos";
     verbosity = "crit";
   };
 }

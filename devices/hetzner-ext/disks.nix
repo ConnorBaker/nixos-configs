@@ -20,7 +20,7 @@
             type = "filesystem";
           };
         };
-        root = {
+        nixos = {
           size = "100%";
           content = {
             type = "btrfs";
@@ -38,7 +38,7 @@
             ];
             subvolumes = {
               # Subvolume name is different from mountpoint
-              "/rootfs" = {
+              "/nixos" = {
                 mountOptions = ["compress=zstd"];
                 mountpoint = "/";
               };
