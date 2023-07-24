@@ -35,7 +35,7 @@
   boot.loader = {
     grub = {
       copyKernels = true;
-      devices = ["/dev/disk/by-id/ata-ST16000NM003G-2KH113_ZL2AE5N5"];
+      # devices = ["/dev/disk/by-id/ata-ST16000NM003G-2KH113_ZL2AE5N5"];
       efiSupport = false;
       enable = true;
       version = 2;
