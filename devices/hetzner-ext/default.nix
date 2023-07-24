@@ -32,18 +32,16 @@
     ../../users/connorbaker.nix
   ];
 
-  # boot.loader = {
-  #   grub = {
-  #     copyKernels = true;
-  #     devices = ["/dev/disk/by-id/ata-ST16000NM003G-2KH113_ZL2AE5N5"];
-  #     efiInstallAsRemovable = true;
-  #     efiSupport = true;
-  #     enable = true;
-  #     fsIdentifier = "uuid";
-  #     version = 2;
-  #   };
-  #   systemd-boot.enable = lib.mkForce false;
-  # };
+  boot.loader = {
+    grub = {
+      copyKernels = true;
+      devices = ["/dev/disk/by-id/ata-ST16000NM003G-2KH113_ZL2AE5N5"];
+      efiSupport = false;
+      enable = true;
+      version = 2;
+    };
+    systemd-boot.enable = lib.mkForce false;
+  };
 
   networking = {
     defaultGateway6 = {

@@ -42,9 +42,13 @@
     content = {
       type = "gpt";
       partitions = {
+        boot = {
+          size = "1M";
+          type = "EF02"; # for grub MBR
+        };
         ESP = {
+          size = "512M";
           type = "EF00";
-          size = "100M";
           content = {
             type = "filesystem";
             format = "vfat";

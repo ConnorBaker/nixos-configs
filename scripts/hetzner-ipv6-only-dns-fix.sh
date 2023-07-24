@@ -26,6 +26,3 @@ EOF
 systemctl daemon-reload
 systemctl restart systemd-resolved.service
 systemctl restart systemd-networkd.service
-
-# Fixup for Nix install -- the installer needs sudo.
-apt install -y sudo
