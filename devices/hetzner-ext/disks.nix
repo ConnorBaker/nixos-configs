@@ -1,6 +1,8 @@
 {
   disko.devices.disk.main = {
-    device = "/dev/disk/by-id/ata-ST16000NM003G-2KH113_ZL2AE5N5";
+    # NOTE: We can use short names for the devices since we mount them by
+    # the label we create.
+    device = "/dev/sda";
     type = "disk";
     content = {
       type = "gpt";
@@ -30,13 +32,14 @@
               "raid1"
               "--metadata"
               "raid1"
-              "/dev/disk/by-id/ata-ST16000NM003G-2KH113_ZL2BTF3N"
-              "/dev/disk/by-id/ata-ST16000NM003G-2KH113_ZL2CABRF"
-              "/dev/disk/by-id/ata-ST16000NM003G-2KH113_ZL2CAW73"
+              "/dev/sdb"
+              "/dev/sdc"
+              "/dev/sdd"
             ];
             subvolumes = {
               # Subvolume name is different from mountpoint
               "/rootfs" = {
+                mountOptions = ["compress=zstd"];
                 mountpoint = "/";
               };
               # Mountpoints inferred from subvolume name

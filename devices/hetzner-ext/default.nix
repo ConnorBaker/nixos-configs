@@ -21,6 +21,7 @@
     ../../modules/sudo.nix
 
     # Configure services
+    ../../modules/services/bees.nix
     ../../modules/services/openssh.nix
 
     # Configure programs
@@ -38,6 +39,8 @@
       efiSupport = false;
       enable = true;
     };
+    # TODO(@connorbaker): This shouldn't be set in the default config.
+    # This should be a per-device setting.
     systemd-boot.enable = lib.mkForce false;
   };
 
