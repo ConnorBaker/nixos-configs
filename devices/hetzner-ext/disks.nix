@@ -47,9 +47,10 @@
   });
   zfsDiskConfigs = lib.genAttrs diskIds (diskId: let
     # NOTE: This naming scheme puts us just under the limit, I believe.
+    inherit (lib.lists) tail;
     inherit (lib.strings) concatStringsSep splitString;
     diskIdComponents = splitString "-" diskId;
-    label = concatStringsSep "-" (diskIdComponents ++ ["zfs"]);
+    label = concatStringsSep "-" (tail diskIdComponents ++ ["zfs"]);
   in {
     device = "/dev/disk/by-id/${diskId}";
     type = "disk";
