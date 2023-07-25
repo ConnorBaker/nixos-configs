@@ -11,7 +11,9 @@
   #
   # disk-ata-ST16000NM003G-2KH113_ZL2AE5
   #
-  # Notice the truncated name! This is why we must specify the label ourselves.
+  # Notice the truncated name! This is why we must specify the label ourselves. Since there is
+  # only one boot/ESP partition, we can label them directly. However, because we have multiple ZFS
+  # partitions, we take the last two components of the ID and use them as the label.
   diskIds = [
     "ata-ST16000NM003G-2KH113_ZL2AE5N5"
     "ata-ST16000NM003G-2KH113_ZL2BTF3N"
@@ -26,12 +28,12 @@
       type = "gpt";
       partitions = {
         boot = {
-          label = "${diskId}-boot";
+          label = "boot";
           size = "1M";
           type = "EF02"; # for grub MBR
         };
         ESP = {
-          label = "${diskId}-ESP";
+          label = "ESP";
           size = "512M";
           type = "EF00";
           content = {
@@ -43,14 +45,19 @@
       };
     };
   });
-  zfsDiskConfigs = lib.genAttrs diskIds (diskId: {
+  zfsDiskConfigs = lib.genAttrs diskIds (diskId: let
+    # NOTE: This naming scheme puts us just under the limit, I believe.
+    inherit (lib.strings) concatStringsSep splitString;
+    diskIdComponents = splitString "-" diskId;
+    label = concatStringsSep "-" (diskIdComponents ++ ["zfs"]);
+  in {
     device = "/dev/disk/by-id/${diskId}";
     type = "disk";
     content = {
       type = "gpt";
       partitions = {
         zfs = {
-          label = "${diskId}-zfs";
+          inherit label;
           size = "100%";
           content = {
             type = "zfs";
