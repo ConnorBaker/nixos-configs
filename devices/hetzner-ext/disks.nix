@@ -1,38 +1,41 @@
 {lib, ...}: let
-  disks = [
-    "/dev/disk/by-id/ata-ST16000NM003G-2KH113_ZL2AE5N5"
-    "/dev/disk/by-id/ata-ST16000NM003G-2KH113_ZL2BTF3N"
-    "/dev/disk/by-id/ata-ST16000NM003G-2KH113_ZL2CABRF"
-    "/dev/disk/by-id/ata-ST16000NM003G-2KH113_ZL2CAW73"
+  # TODO(@connorbaker): Did using the full path name as the key cause failures?
+  # Error:
+  # mkfs.vfat: unable to open /dev/disk/by-partlabel/disk-_dev_disk_by-id_ata-ST16000NM003G-2KH113_ZL2AE5N5-ESP: No such file or directory
+  # Contents of /dev/disk/by-partlabel:
+  # disk-_dev_disk_by-id_ata-ST16000NM00
+  # Notice the truncated name.
+  diskIds = [
+    "ata-ST16000NM003G-2KH113_ZL2AE5N5"
+    "ata-ST16000NM003G-2KH113_ZL2BTF3N"
+    "ata-ST16000NM003G-2KH113_ZL2CABRF"
+    "ata-ST16000NM003G-2KH113_ZL2CAW73"
   ];
   # Choose the first disk as the disk to store the boot partition.
-  mainDisk = builtins.elemAt disks 0;
-  mainDiskConfig = {
-    ${mainDisk} = {
-      device = mainDisk;
-      type = "disk";
-      content = {
-        type = "gpt";
-        partitions = {
-          boot = {
-            size = "1M";
-            type = "EF02"; # for grub MBR
-          };
-          ESP = {
-            size = "512M";
-            type = "EF00";
-            content = {
-              format = "vfat";
-              mountpoint = "/boot";
-              type = "filesystem";
-            };
+  bootDiskConfig = lib.genAttrs [builtins.head diskIds] (diskId: {
+    device = "/dev/disk/by-id/${diskId}";
+    type = "disk";
+    content = {
+      type = "gpt";
+      partitions = {
+        boot = {
+          size = "1M";
+          type = "EF02"; # for grub MBR
+        };
+        ESP = {
+          size = "512M";
+          type = "EF00";
+          content = {
+            format = "vfat";
+            mountpoint = "/boot";
+            type = "filesystem";
           };
         };
       };
     };
-  };
-  zfsDiskConfigs = lib.genAttrs disks (disk: {
-    device = disk;
+  });
+  zfsDiskConfigs = lib.genAttrs diskIds (diskId: {
+    device = "/dev/disk/by-id/${diskId}";
     type = "disk";
     content = {
       type = "gpt";
@@ -49,7 +52,7 @@
   });
 in {
   disko.devices = {
-    disk = lib.recursiveUpdate mainDiskConfig zfsDiskConfigs;
+    disk = lib.recursiveUpdate bootDiskConfig zfsDiskConfigs;
     zpool = {
       zroot = {
         # Setup
