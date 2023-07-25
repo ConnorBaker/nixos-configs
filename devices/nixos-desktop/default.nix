@@ -1,4 +1,4 @@
-{
+{pkgs, ...}: {
   imports = [
     ./hardware.nix
 
@@ -34,6 +34,7 @@
 
   boot = {
     initrd.kernelModules = ["nvme"];
+    kernelPackages = pkgs.linuxPackages_latest;
     loader.systemd-boot.enable = true;
   };
   networking.hostName = "nixos-desktop";

@@ -17,10 +17,7 @@
     kernelModules = ["btrfs" "kvm-intel"];
   };
 
-  fileSystems = {
-    "/".device = "/dev/disk/by-partlabel/disk-main-nixos";
-    "/boot".device = "/dev/disk/by-partlabel/disk-main-ESP";
-  };
+  # NOTE: Disko takes care of the filesystem for us; no need to specify boot or root.
 
   hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";

@@ -33,10 +33,14 @@
     ../../users/connorbaker.nix
   ];
 
-  boot.loader.grub = {
-    copyKernels = true;
-    efiSupport = false;
-    enable = true;
+  boot = {
+    kernelPackages = config.boot.zfs.package.latestCompatibleLinuxPackages;
+    kernelParams = ["nohibernate"];
+    loader.grub = {
+      copyKernels = true;
+      efiSupport = false;
+      enable = true;
+    };
   };
 
   networking = {
@@ -45,6 +49,7 @@
       interface = "eth0";
     };
     firewall.logRefusedConnections = false;
+    hostId = "00000000";
     hostName = "hetzner-ext";
     interfaces.eth0.ipv6.addresses = [
       {

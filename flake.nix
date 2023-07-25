@@ -56,7 +56,7 @@
               ./devices/nixos-desktop
             ];
           });
-        
+
         hetzner-ext = withSystem "x86_64-linux" ({inputs', ...}: let
           inherit (inputs.disko.nixosModules) disko;
           inherit (inputs.nixpkgs.lib) nixosSystem;

@@ -7,5 +7,8 @@ nix run github:numtide/nixos-anywhere -- root@2a01:4f8:10a:eae::2 -i /home/conno
 TODO:
 
 - `hetzner-ext`
-  - [ ] LUKS encryption
-  - [ ] SMB service
+  - [ ] Switch to ZFS and ZFS-encrypted disks
+  - [ ] Jellyfin
+    - Expose only over WireGuard?
+  - [ ] Make custom NixOS-iso available via torrent?
+    - Exponse only over WireGuard?
