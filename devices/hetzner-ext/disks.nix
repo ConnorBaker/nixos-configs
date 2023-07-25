@@ -12,7 +12,7 @@
     "ata-ST16000NM003G-2KH113_ZL2CAW73"
   ];
   # Choose the first disk as the disk to store the boot partition.
-  bootDiskConfig = lib.genAttrs [builtins.head diskIds] (diskId: {
+  bootDiskConfig = lib.genAttrs [(builtins.head diskIds)] (diskId: {
     device = "/dev/disk/by-id/${diskId}";
     type = "disk";
     content = {
