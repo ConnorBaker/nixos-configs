@@ -14,7 +14,7 @@
       "uas"
       "vmd"
     ];
-    kernelModules = ["btrfs" "kvm-intel"];
+    kernelModules = ["kvm-intel"];
   };
 
   # NOTE: Disko takes care of the filesystem for us; no need to specify boot or root.

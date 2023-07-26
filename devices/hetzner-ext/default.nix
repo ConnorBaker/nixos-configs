@@ -21,7 +21,6 @@
     ../../modules/sudo.nix
 
     # Configure services
-    ../../modules/services/bees.nix
     ../../modules/services/openssh.nix
 
     # Configure programs
@@ -34,6 +33,7 @@
   ];
 
   boot = {
+    initrd.supportedFilesystems = ["zfs"];
     kernelPackages = config.boot.zfs.package.latestCompatibleLinuxPackages;
     kernelParams = ["nohibernate"];
     loader.grub = {
@@ -41,6 +41,7 @@
       efiSupport = false;
       enable = true;
     };
+    supportedFilesystems = ["zfs"];
   };
 
   networking = {
@@ -67,7 +68,13 @@
     # Network (Hetzner uses static IP assignments, and we don't use DHCP here)
     useDHCP = false;
   };
-  services.openssh.settings.PermitRootLogin = lib.mkForce "prohibit-password";
+  services = {
+    openssh.settings.PermitRootLogin = lib.mkForce "prohibit-password";
+    zfs = {
+      autoScrub.enable = true;
+      trim.enable = true;
+    };
+  };
   users.users.root.openssh.authorizedKeys = {
     inherit (config.users.users.connorbaker.openssh.authorizedKeys) keys;
   };

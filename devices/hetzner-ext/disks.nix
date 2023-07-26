@@ -69,10 +69,23 @@ in {
         # Setup
         type = "zpool";
         mode = "mirror"; # ZFS Mode, string
-        # options = {}; # Options for the ZFS pool attrset of strings
+        options = {
+          # Sector size (logical/physical): 512 bytes / 4096 bytes
+          ashift = "12";
+          autotrim = "on";
+        };
         rootFsOptions = {
+          atime = "off";
           compression = "zstd";
+          dnodesize = "auto";
+          normalization = "formD";
+          utf8only = "on";
+          xattr = "sa";
+          # TODO(@connorbaker): sharesmb option?
           "com.sun:auto-snapshot" = "false";
+          # TODO(@connorbaker): Check ZFS features:
+          # - https://openzfs.github.io/openzfs-docs/man/7/zpool-features.7.html#FEATURES
+          # TODO(@connorbaker): Check DRAID instead of RAIDZ or mirror.
         };
         mountpoint = "/";
         # mountOptions = {}; # Options for the root filesystem attrset of strings
@@ -80,6 +93,9 @@ in {
 
         # Datasets
         datasets = {
+          # TODO(@connorbaker): Create dataset torrent mirroring
+          # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#bit-torrent
+          # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#sequential-workloads
           # zfs_fs = {
           #   type = "zfs_fs";
           #   mountpoint = "/zfs_fs";
