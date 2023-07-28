@@ -10,6 +10,11 @@
       url = "github:hercules-ci/flake-parts";
     };
 
+    nix = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:NixOS/nix";
+    };
+
     nix-ld-rs = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nix-community/nix-ld-rs";
@@ -17,20 +22,10 @@
 
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    queued-build-hook = {
-      inputs = {
-        devshell.follows = "";
-        nixpkgs.follows = "";
-        treefmt-nix.follows = "";
-      };
-      url = "github:nix-community/queued-build-hook";
-    };
+    queued-build-hook.url = "github:nix-community/queued-build-hook";
 
     sops-nix = {
-      inputs = {
-        nixpkgs-stable.follows = "";
-        nixpkgs.follows = "nixpkgs";
-      };
+      inputs.nixpkgs.follows = "nixpkgs";
       url = "github:Mic92/sops-nix";
     };
   };
@@ -42,32 +37,24 @@
         formatter = pkgs.alejandra;
       };
       flake.nixosConfigurations = {
-        nixos-desktop = withSystem "x86_64-linux" ({inputs', ...}: let
-          inherit (inputs.nixpkgs.lib) nixosSystem;
-          inherit (inputs.queued-build-hook.nixosModules) queued-build-hook;
-          inherit (inputs.sops-nix.nixosModules) sops;
-          nix-ld-rs.programs.nix-ld.package = inputs'.nix-ld-rs.packages.nix-ld-rs;
-        in
-          nixosSystem {
+        nixos-desktop = withSystem "x86_64-linux" ({inputs', ...}:
+          inputs.nixpkgs.lib.nixosSystem {
             modules = [
-              queued-build-hook
-              sops
-              nix-ld-rs
+              inputs.queued-build-hook.nixosModules.queued-build-hook
+              inputs.sops-nix.nixosModules.sops
+              {programs.nix-ld.package = inputs'.nix-ld-rs.packages.nix-ld-rs;}
+              {nix.package = inputs'.nix.packages.nix;}
               ./devices/nixos-desktop
             ];
           });
 
-        hetzner-ext = withSystem "x86_64-linux" ({inputs', ...}: let
-          inherit (inputs.disko.nixosModules) disko;
-          inherit (inputs.nixpkgs.lib) nixosSystem;
-          inherit (inputs.sops-nix.nixosModules) sops;
-          nix-ld-rs.programs.nix-ld.package = inputs'.nix-ld-rs.packages.nix-ld-rs;
-        in
-          nixosSystem {
+        hetzner-ext = withSystem "x86_64-linux" ({inputs', ...}:
+          inputs.nixpkgs.lib.nixosSystem {
             modules = [
-              disko
-              sops
-              nix-ld-rs
+              inputs.disko.nixosModules.disko
+              inputs.sops-nix.nixosModules.sops
+              {programs.nix-ld.package = inputs'.nix-ld-rs.packages.nix-ld-rs;}
+              {nix.package = inputs'.nix.packages.nix;}
               ./devices/hetzner-ext
             ];
           });

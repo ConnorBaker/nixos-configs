@@ -22,6 +22,8 @@
     # Configure services
     ../../modules/services/openssh.nix
     ../../modules/services/tailscale.nix
+    ../../modules/services/monitoring.nix
+    ./monitoring.nix
 
     # Configure programs
     ../../modules/programs/git.nix
@@ -30,6 +32,7 @@
 
     # Users
     ../../users/connorbaker.nix
+    ./packages.nix
   ];
 
   boot = {

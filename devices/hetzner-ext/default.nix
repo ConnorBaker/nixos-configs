@@ -32,6 +32,8 @@
     ../../users/connorbaker.nix
   ];
 
+  # TODO(@connorbaker): Freezes when using ZFS?
+  # https://github.com/numtide/srvos/blob/ce0426c357c077edec3aacde8e9649f30f1be659/nixos/common/zfs.nix#L13-L16
   boot = {
     initrd.supportedFilesystems = ["zfs"];
     kernelPackages = config.boot.zfs.package.latestCompatibleLinuxPackages;
@@ -42,6 +44,7 @@
       enable = true;
     };
     supportedFilesystems = ["zfs"];
+    zfs.forceImportRoot = false;
   };
 
   networking = {
@@ -65,6 +68,7 @@
       "2a00:1098:2b::1"
     ];
     networkmanager.enable = false;
+    useNetworkd = false;
     # Network (Hetzner uses static IP assignments, and we don't use DHCP here)
     useDHCP = false;
   };

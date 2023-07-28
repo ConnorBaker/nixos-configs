@@ -1,7 +1,11 @@
 keys:
   - &nixos-desktop age1azuwgsgd2vhgkcuqagxefjt4peh9hz9ddmpcxd8p763qrefd8ddqas32ef
 creation_rules:
-  - path_regex: secrets/[^/]+\.yaml$
+  - path_regex: modules/nix/cantcacheme/secrets/[^/]+\.yaml$
+    key_groups:
+    - age:
+      - *nixos-desktop
+  - path_regex: devices/nixos-desktop/secrets/[^/]+\.yaml$
     key_groups:
     - age:
       - *nixos-desktop

@@ -1,4 +1,4 @@
-{lib, ...}: {
+{config, ...}: {
   nix = {
     daemonCPUSchedPolicy = "batch";
     daemonIOSchedPriority = 7;
@@ -42,13 +42,6 @@
     };
   };
 
-  nixpkgs.overlays = [
-    # Need newer version of Nix supporting max-substitution-jobs
-    (_: prev: {
-      nix =
-        if lib.strings.versionAtLeast prev.nix.version "2.16"
-        then prev.nix
-        else prev.nixVersions.nix_2_16;
-    })
-  ];
+  # Use whatever version of Nix is chosen by nix.
+  nixpkgs.overlays = [(_: _: {nix = config.nix.package;})];
 }

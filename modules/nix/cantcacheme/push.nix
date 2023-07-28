@@ -23,21 +23,24 @@
       CANTCACHEME_S3_ENDPOINT = config.sops.secrets."cantcacheme/s3-endpoint".path;
     };
   };
-  sops = {
-    defaultSopsFile = ../../../secrets/cantcacheme.yaml;
-    age.sshKeyPaths = ["/home/connorbaker/.ssh/id_ed25519"];
-    secrets = let
-      config.restartUnits = ["async-nix-post-build-hook.service"];
-    in {
-      "cantcacheme/access-key" = config;
-      "cantcacheme/s3-endpoint" = config;
-      "cantcacheme/secret-access-key" = config;
-      "cantcacheme/signing-key" = config;
-    };
-  };
+  sops.secrets =
+    lib.attrsets.genAttrs [
+      "cantcacheme/access-key"
+      "cantcacheme/s3-endpoint"
+      "cantcacheme/secret-access-key"
+      "cantcacheme/signing-key"
+    ] (lib.trivial.const {
+      restartUnits = [
+        "async-nix-post-build-hook.service"
+        "async-nix-post-build-hook.socket"
+      ];
+      sopsFile = ./secrets/cantcacheme.yaml;
+    });
   systemd.services.async-nix-post-build-hook = {
     environment.HOME = "/var/lib/async-nix-post-build-hook";
     serviceConfig.StateDirectory = "async-nix-post-build-hook";
+    # Because the hook runs as root, there's no need for the following line.
+    # serviceConfig.SupplementaryGroups = [config.users.groups.keys.name];
     unitConfig.After = ["sops-nix.service"];
   };
 }

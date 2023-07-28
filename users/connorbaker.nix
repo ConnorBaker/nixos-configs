@@ -29,6 +29,7 @@
   #     trusted-users = ["connorbaker"];
   #   };
   # };
+  # TODO: services.openssh.authorizedKeysFiles
   programs = {
     git.config = lib.attrsets.optionalAttrs config.programs.git.enable {
       init.defaultBranch = "main";
@@ -41,55 +42,21 @@
     nix-ld.libraries = lib.mkOptionDefault [pkgs.icu.out];
   };
   users.users = {
+    root.openssh.authorizedKeys = {
+      inherit (config.users.users.connorbaker.openssh.authorizedKeys) keys keyFiles;
+    };
     connorbaker = {
       description = "Connor Baker's user account";
       extraGroups = ["wheel"];
       isNormalUser = true;
-      openssh.authorizedKeys.keys = [
-        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJXpenPZWADrxK4+6nFmPspmYPPniI3m+3PxAfjbslg+ connorbaker@Connors-MacBook-Pro.local"
-        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJLd6kNEt/f89JGImBViXake15Y3VQ6AuKR/IBr1etpt connorbaker@nixos-desktop"
-      ];
-      packages = with pkgs;
-      # Rust unix tools
-        [
-          bat
-          exa
-          ripgrep
-        ]
-        # Python
-        ++ [
-          black
-          (python3.withPackages (ps: with ps; [pydantic requests typing-extensions]))
-          ruff
-        ]
-        # C/C++
-        ++ [
-          cmake
-          dotnet-runtime # for CMake LSP in VS Code
-        ]
-        # Misc tools
-        ++ [
-          azure-cli
-          gh
-          git
-          htop
-          jq
-          nvitop
-          vim
-        ]
-        # Nix
-        ++ [
-          alejandra
-          nil
-          nix-output-monitor
-          nixpkgs-review
-        ]
-        # Sops tools
-        ++ [
-          age
-          sops
-          ssh-to-age
+      openssh.authorizedKeys = {
+        keyFiles = [
+          ../devices/nixos-desktop/keys/id_ed25519.pub
         ];
+        keys = [
+          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJXpenPZWADrxK4+6nFmPspmYPPniI3m+3PxAfjbslg+ connorbaker@Connors-MacBook-Pro.local"
+        ];
+      };
     };
   };
 }
