@@ -10,6 +10,11 @@
       url = "github:hercules-ci/flake-parts";
     };
 
+    nil = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:oxalica/nil";
+    };
+
     nix = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:NixOS/nix";
@@ -42,8 +47,13 @@
             modules = [
               inputs.queued-build-hook.nixosModules.queued-build-hook
               inputs.sops-nix.nixosModules.sops
-              {programs.nix-ld.package = inputs'.nix-ld-rs.packages.nix-ld-rs;}
-              {nix.package = inputs'.nix.packages.nix;}
+              {
+                nixpkgs.overlays = [
+                  (_: _: {inherit (inputs'.nix.packages) nix;})
+                  (_: _: {inherit (inputs'.nil.packages) nil;})
+                  (_: _: {inherit (inputs'.nix-ld-rs.packages) nix-ld-rs;})
+                ];
+              }
               ./devices/nixos-desktop
             ];
           });
@@ -53,8 +63,12 @@
             modules = [
               inputs.disko.nixosModules.disko
               inputs.sops-nix.nixosModules.sops
-              {programs.nix-ld.package = inputs'.nix-ld-rs.packages.nix-ld-rs;}
-              {nix.package = inputs'.nix.packages.nix;}
+              {
+                nixpkgs.overlays = [
+                  (_: _: {inherit (inputs'.nix.packages) nix;})
+                  (_: _: {inherit (inputs'.nix-ld-rs.packages) nix-ld-rs;})
+                ];
+              }
               ./devices/hetzner-ext
             ];
           });

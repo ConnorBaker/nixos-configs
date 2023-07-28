@@ -1,4 +1,4 @@
-{config, ...}: {
+{
   nix = {
     daemonCPUSchedPolicy = "batch";
     daemonIOSchedPriority = 7;
@@ -41,7 +41,4 @@
       # use-xdg-base-directories = true;
     };
   };
-
-  # Use whatever version of Nix is chosen by nix.
-  nixpkgs.overlays = [(_: _: {nix = config.nix.package;})];
 }

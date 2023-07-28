@@ -21,7 +21,8 @@
     ];
     # Use networkd instead of the pile of shell scripts
     useNetworkd = lib.mkDefault true;
-    useDHCP = lib.mkDefault false;
+    # TODO(@connorbaker): Disabling useDHCP breaks the network and prevents access for the desktop.
+    # useDHCP = lib.mkDefault false;
   };
 
   systemd = {
