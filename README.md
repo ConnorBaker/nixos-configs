@@ -30,13 +30,11 @@ Edit the files in secrets with `sops secrets/<whatever>.yaml`.
 Deploy `hetzner-ext` with:
 
 ```bash
-nix run github:ConnorBaker/nixos-anywhere/feat/ssh-ng -- \
+nix run github:numtide/nixos-anywhere -- \
   root@2a01:4f9:6a:1692::2 \
   -i /home/connorbaker/.ssh/id_ed25519 \
   --flake .#hetzner-ext \
-  --option "--extra-substituters" "https://cantcache.me" \
-  --option "--extra-trusted-substituters" "https://cantcache.me" \
-  --option "--extra-trusted-public-keys" "cantcache.me:Y+FHAKfx7S0pBkBMKpNMQtGKpILAfhmqUSnr5oNwNMs="
+  --debug
 ```
 
 TODO:
@@ -46,4 +44,4 @@ TODO:
   - [ ] Jellyfin
     - Expose only over WireGuard?
   - [ ] Make custom NixOS-iso available via torrent?
-    - Exponse only over WireGuard?
+    - Expose only over WireGuard?
