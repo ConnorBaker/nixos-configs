@@ -34,8 +34,7 @@ ssh hetzner "bash -s" < scripts/hetzner-ipv6-only-dns-fix.sh
 nix run github:numtide/nixos-anywhere -- \
   root@2a01:4f9:6a:1692::2 \
   -i /home/connorbaker/.ssh/id_ed25519 \
-  --flake .#hetzner-ext \
-  --debug
+  --flake .#hetzner-ext
 ```
 
 TODO:

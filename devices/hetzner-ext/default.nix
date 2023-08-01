@@ -1,14 +1,10 @@
 {
   boot = {
-    initrd = {
-      availableKernelModules = [
-        "ahci"
-        "sd_mod"
-        "xhci_pci"
-      ];
-      compressor = "zstd";
-      compressorArgs = ["-19"];
-    };
+    initrd.availableKernelModules = [
+      "ahci"
+      "sd_mod"
+      "xhci_pci"
+    ];
     kernelModules = ["kvm-intel"];
     kernelParams = ["nohibernate"];
     loader.grub = {
@@ -125,15 +121,26 @@
   systemd = {
     network = {
       enable = true;
-      networks."eth0".extraConfig = ''
-        [Match]
-        Name = eth0
-        [Network]
-        # Add your own assigned ipv6 subnet here here!
-        Address = 2a01:4f9:6a:1692::2/64
-        Gateway = fe80::1
-        DNS = 2a01:4f9:c010:3f02::1
-      '';
+      networks = {
+        "eth0".extraConfig = ''
+          [Match]
+          Name = eth0
+          [Network]
+          # Add your own assigned ipv6 subnet here here!
+          Address = 2a01:4f9:6a:1692::2/64
+          Gateway = fe80::1
+          DNS = 2a01:4f9:c010:3f02::1
+        '';
+        "eno1".extraConfig = ''
+          [Match]
+          Name = eno1
+          [Network]
+          # Add your own assigned ipv6 subnet here here!
+          Address = 2a01:4f9:6a:1692::2/64
+          Gateway = fe80::1
+          DNS = 2a01:4f9:c010:3f02::1
+        '';
+      };
       wait-online = {
         anyInterface = true;
         timeout = 30;

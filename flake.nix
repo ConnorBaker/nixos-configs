@@ -25,7 +25,8 @@
       url = "github:nix-community/nix-ld-rs";
     };
 
-    nixpkgs.url = "github:ConnorBaker/nixpkgs/feat/nvidia-dcgm-prometheus-exporter-module";
+    nixpkgs.url = "github:NixOS/nixpkgs/release-23.05";
+    # nixpkgs.url = "github:ConnorBaker/nixpkgs/feat/nvidia-dcgm-prometheus-exporter-module";
 
     queued-build-hook = {
       inputs = {
