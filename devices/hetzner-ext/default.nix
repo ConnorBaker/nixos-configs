@@ -4,7 +4,7 @@
   ...
 }: {
   imports = [
-    ./disks.nix
+    ./ext4.nix
     ./hardware.nix
 
     # Configure Nix
@@ -13,7 +13,7 @@
     # Configure system
     ../../modules/boot.nix
     ../../modules/cpu-hardware.nix
-    ../../modules/networking.nix
+    # ../../modules/networking.nix
     ../../modules/headless.nix
     ../../modules/users.nix
     ../../modules/mimalloc.nix
@@ -32,55 +32,43 @@
     ../../users/connorbaker.nix
   ];
 
-  # TODO(@connorbaker): Freezes when using ZFS?
-  # https://github.com/numtide/srvos/blob/ce0426c357c077edec3aacde8e9649f30f1be659/nixos/common/zfs.nix#L13-L16
-  boot = {
-    initrd.supportedFilesystems = ["zfs"];
-    kernelPackages = config.boot.zfs.package.latestCompatibleLinuxPackages;
-    kernelParams = ["nohibernate"];
-    loader.grub = {
-      copyKernels = true;
-      efiSupport = false;
-      enable = true;
-    };
-    supportedFilesystems = ["zfs"];
-    zfs.forceImportRoot = false;
-  };
-
   networking = {
-    defaultGateway6 = {
-      address = "fe80::1";
-      interface = "eth0";
-    };
-    firewall.logRefusedConnections = false;
-    hostId = "00000000";
     hostName = "hetzner-ext";
-    interfaces.eth0.ipv6.addresses = [
-      {
-        address = "2a01:4f8:10a:eae::2";
-        prefixLength = 64;
-      }
-    ];
-    nameservers = [
-      # Kasper Dupont's Public NAT64 service: https://nat64.net
-      "2a01:4f9:c010:3f02::1"
-      "2a00:1098:2c::1"
-      "2a00:1098:2b::1"
-    ];
-    networkmanager.enable = false;
-    useNetworkd = false;
-    # Network (Hetzner uses static IP assignments, and we don't use DHCP here)
     useDHCP = false;
+    useNetworkd = true;
+    dhcpcd.enable = false;
   };
-  services = {
-    openssh.settings.PermitRootLogin = lib.mkForce "prohibit-password";
-    zfs = {
-      autoScrub.enable = true;
-      trim.enable = true;
-    };
-  };
+  services.openssh.settings.PermitRootLogin = lib.mkForce "prohibit-password";
   users.users.root.openssh.authorizedKeys = {
     inherit (config.users.users.connorbaker.openssh.authorizedKeys) keys;
+  };
+  systemd.network = {
+    enable = true;
+    wait-online = {
+      anyInterface = true;
+      timeout = 30;
+    };
+    networks."20-wired" = {
+      matchConfig = {
+        Name = "eno* eth*";
+        MACAddress = "24:4b:fe:b8:5f:d9";
+      };
+      networkConfig = {
+        Address = ["2a01:4f9:6a:1692::2/64"];
+        Gateway = ["fe80::1"];
+        DHCP = "yes";
+        DNSSEC = "allow-downgrade";
+        DNSOverTLS = "opportunistic";
+        DNS = [
+          # Kasper Dupont's Public NAT64 service: https://nat64.net
+          "2a01:4f9:c010:3f02::1"
+          "2a00:1098:2c::1"
+          "2a00:1098:2b::1"
+        ];
+      };
+      # TODO(@connorbaker): DHCP static leases?
+      # https://github.com/NixOS/nixpkgs/blob/96d403ee2479f2070050353b94808209f1352edb/nixos/tests/systemd-networkd-dhcpserver-static-leases.nix#L30-L35
+    };
   };
   system.stateVersion = "23.05";
 }

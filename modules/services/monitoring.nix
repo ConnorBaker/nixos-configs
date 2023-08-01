@@ -65,7 +65,7 @@ in {
     nginx = {
       enable = true;
       enableReload = true;
-      
+
       package = pkgs.nginxQuic;
       recommendedBrotliSettings = true;
       recommendedGzipSettings = true;
@@ -82,13 +82,14 @@ in {
         kTLS = true;
         quic = true;
         locations."/grafana/" = {
-          proxyPass = "https://${toString grafanaHttpAddr}:${toString grafanaHttpPort}/";
+          proxyPass = "${grafanaProtocol}://${toString grafanaHttpAddr}:${toString grafanaHttpPort}/";
           proxyWebsockets = true;
         };
       };
     };
     prometheus = {
       enable = true;
+      enableReload = true;
       port = 9090;
       scrapeConfigs = let
         inherit (config.services.prometheus.exporters) node;

@@ -22,7 +22,7 @@
       keep-derivations = true;
       keep-outputs = true;
       max-jobs = 1;
-      max-substitution-jobs = 1024;
+      # max-substitution-jobs = 256;
       # NOTE: Disabled because this requires Nix >= 2.17.
       # require-drop-supplementary-groups = true;
       # NOTE: Disabled because nixpkgs-review requires impure evaluation.

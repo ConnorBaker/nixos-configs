@@ -4,6 +4,7 @@
     nvidia = {
       nvidiaPersistenced = true;
       package = config.boot.kernelPackages.nvidiaPackages.latest;
+      powerManagement.enable = true;
     };
     opengl.enable = true;
   };

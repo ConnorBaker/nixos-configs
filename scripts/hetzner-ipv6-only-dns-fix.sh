@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Run with ssh root@<server> "bash -s" < scripts/hetzner-ipv6-only-dns-fix.sh
+
 set -euxo pipefail
 export LC_ALL=C
 

@@ -8,11 +8,9 @@
 
   boot = {
     initrd.availableKernelModules = [
-      # TODO(@connorbaker): These are mostly copied from the desktop.
       "ahci"
       "sd_mod"
-      "uas"
-      "vmd"
+      "xhci_pci"
     ];
     kernelModules = ["kvm-intel"];
   };

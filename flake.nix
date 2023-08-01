@@ -12,12 +12,12 @@
 
     nil = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:oxalica/nil";
+      url = "github:oxalica/nil/2023-05-09";
     };
 
     nix = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:NixOS/nix";
+      url = "github:NixOS/nix/2.15.1";
     };
 
     nix-ld-rs = {
@@ -25,12 +25,22 @@
       url = "github:nix-community/nix-ld-rs";
     };
 
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:ConnorBaker/nixpkgs/feat/nvidia-dcgm-prometheus-exporter-module";
 
-    queued-build-hook.url = "github:nix-community/queued-build-hook";
+    queued-build-hook = {
+      inputs = {
+        devshell.follows = "";
+        nixpkgs.follows = "";
+        treefmt-nix.follows = "";
+      };
+      url = "github:nix-community/queued-build-hook";
+    };
 
     sops-nix = {
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs = {
+        nixpkgs-stable.follows = "";
+        nixpkgs.follows = "nixpkgs";
+      };
       url = "github:Mic92/sops-nix";
     };
   };

@@ -3,7 +3,13 @@ TODO:
 - Switch to nix provided by github:nixos/nix
 - Deploy SSH keys to machines
 - Migrate to use of flake modules
--
+- https://github.com/Mic92/sops-nix/issues/340
+- https://samleathers.com/posts/2022-02-03-my-new-network-and-deploy-rs.html
+- https://samleathers.com/posts/2022-02-11-my-new-network-and-sops.html
+- https://github.com/numtide/nixos-anywhere/pull/34
+- https://github.com/numtide/nixos-anywhere/issues/63
+- https://github.com/numtide/nixos-anywhere/issues/141
+- https://github.com/numtide/nixos-anywhere/issues/161
 
 ## `nixos-desktop`
 
@@ -24,7 +30,13 @@ Edit the files in secrets with `sops secrets/<whatever>.yaml`.
 Deploy `hetzner-ext` with:
 
 ```bash
-nix run github:numtide/nixos-anywhere -- root@2a01:4f8:10a:eae::2 -i /home/connorbaker/.ssh/id_ed25519 --flake .#hetzner-ext
+nix run github:ConnorBaker/nixos-anywhere/feat/ssh-ng -- \
+  root@2a01:4f9:6a:1692::2 \
+  -i /home/connorbaker/.ssh/id_ed25519 \
+  --flake .#hetzner-ext \
+  --option "--extra-substituters" "https://cantcache.me" \
+  --option "--extra-trusted-substituters" "https://cantcache.me" \
+  --option "--extra-trusted-public-keys" "cantcache.me:Y+FHAKfx7S0pBkBMKpNMQtGKpILAfhmqUSnr5oNwNMs="
 ```
 
 TODO:
