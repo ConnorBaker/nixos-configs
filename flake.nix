@@ -73,11 +73,6 @@
           inputs.nixpkgs.lib.nixosSystem {
             modules = [
               inputs.disko.nixosModules.disko
-              {
-                nixpkgs.overlays = [
-                  (_: _: {inherit (inputs'.nix.packages) nix;})
-                ];
-              }
               ./devices/hetzner-ext
             ];
           });

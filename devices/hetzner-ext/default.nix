@@ -6,13 +6,10 @@
       "xhci_pci"
     ];
     kernelModules = ["kvm-intel"];
-    kernelParams = ["nohibernate"];
     loader.grub = {
       copyKernels = true;
-      efiSupport = false;
       enable = true;
     };
-    tmp.cleanOnBoot = true;
   };
 
   disko.devices.disk.main = let
@@ -50,13 +47,6 @@
     };
   };
 
-  environment = {
-    noXlibs = true;
-    variables.BROWSER = "echo";
-  };
-
-  fonts.fontconfig.enable = false;
-
   hardware = {
     cpu = {
       amd.updateMicrocode = true;
@@ -93,6 +83,7 @@
   networking = {
     hostName = "hetzner-ext";
     hostId = "deadbee5";
+    useNetworkd = true;
     usePredictableInterfaceNames = false;
   };
 
@@ -114,42 +105,34 @@
     };
   };
 
-  sound.enable = false;
-
   system.stateVersion = "23.05";
 
-  systemd = {
-    network = {
-      enable = true;
-      networks = {
-        "eth0".extraConfig = ''
-          [Match]
-          Name = eth0
-          [Network]
-          # Add your own assigned ipv6 subnet here here!
-          Address = 2a01:4f9:6a:1692::2/64
-          Gateway = fe80::1
-          DNS = 2a01:4f9:c010:3f02::1
-        '';
-        "eno1".extraConfig = ''
-          [Match]
-          Name = eno1
-          [Network]
-          # Add your own assigned ipv6 subnet here here!
-          Address = 2a01:4f9:6a:1692::2/64
-          Gateway = fe80::1
-          DNS = 2a01:4f9:c010:3f02::1
-        '';
-      };
-      wait-online = {
-        anyInterface = true;
-        timeout = 30;
-      };
+  systemd.network = {
+    enable = true;
+    networks = {
+      "eth0".extraConfig = ''
+        [Match]
+        Name = eth0
+        [Network]
+        # Add your own assigned ipv6 subnet here here!
+        Address = 2a01:4f9:6a:1692::2/64
+        Gateway = fe80::1
+        DNS = 2a01:4f9:c010:3f02::1
+      '';
+      "eno1".extraConfig = ''
+        [Match]
+        Name = eno1
+        [Network]
+        # Add your own assigned ipv6 subnet here here!
+        Address = 2a01:4f9:6a:1692::2/64
+        Gateway = fe80::1
+        DNS = 2a01:4f9:c010:3f02::1
+      '';
     };
-    sleep.extraConfig = ''
-      AllowHibernation=no
-      AllowSuspend=no
-    '';
+    wait-online = {
+      anyInterface = true;
+      timeout = 30;
+    };
   };
 
   time.timeZone = "UTC";
@@ -170,11 +153,5 @@
         inherit keys;
       };
     };
-  };
-
-  zramSwap = {
-    algorithm = "zstd";
-    enable = true;
-    memoryPercent = 200;
   };
 }
