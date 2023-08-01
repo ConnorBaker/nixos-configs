@@ -94,15 +94,12 @@
     hostPlatform = "x86_64-linux";
   };
 
-  powerManagement.cpuFreqGovernor = "powersave";
-
   networking = {
-    dhcpcd.enable = false;
     hostName = "hetzner-ext";
     hostId = "deadbee5";
-    useDHCP = false;
-    useNetworkd = true;
   };
+
+  powerManagement.cpuFreqGovernor = "powersave";
 
   security.sudo = {
     execWheelOnly = true;
@@ -135,9 +132,6 @@
         networkConfig = {
           Address = ["2a01:4f9:6a:1692::2/64"];
           Gateway = ["fe80::1"];
-          DHCP = "yes";
-          DNSSEC = "allow-downgrade";
-          DNSOverTLS = "opportunistic";
           DNS = [
             # Kasper Dupont's Public NAT64 service: https://nat64.net
             "2a01:4f9:c010:3f02::1"
