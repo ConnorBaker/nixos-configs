@@ -97,6 +97,7 @@
   networking = {
     hostName = "hetzner-ext";
     hostId = "deadbee5";
+    usePredictableInterfaceNames = false;
   };
 
   powerManagement.cpuFreqGovernor = "powersave";
@@ -124,24 +125,15 @@
   systemd = {
     network = {
       enable = true;
-      networks."20-wired" = {
-        matchConfig = {
-          Name = "eno* eth*";
-          MACAddress = "24:4b:fe:b8:5f:d9";
-        };
-        networkConfig = {
-          Address = ["2a01:4f9:6a:1692::2/64"];
-          Gateway = ["fe80::1"];
-          DNS = [
-            # Kasper Dupont's Public NAT64 service: https://nat64.net
-            "2a01:4f9:c010:3f02::1"
-            "2a00:1098:2c::1"
-            "2a00:1098:2b::1"
-          ];
-        };
-        # TODO(@connorbaker): DHCP static leases?
-        # https://github.com/NixOS/nixpkgs/blob/96d403ee2479f2070050353b94808209f1352edb/nixos/tests/systemd-networkd-dhcpserver-static-leases.nix#L30-L35
-      };
+      networks."eth0".extraConfig = ''
+        [Match]
+        Name = eth0
+        [Network]
+        # Add your own assigned ipv6 subnet here here!
+        Address = 2a01:4f9:6a:1692::2/64
+        Gateway = fe80::1
+        DNS = 2a01:4f9:c010:3f02::1
+      '';
       wait-online = {
         anyInterface = true;
         timeout = 30;
