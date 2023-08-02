@@ -15,10 +15,10 @@
       enable = true;
     };
     supportedFilesystems = ["zfs"];
-    zfs = {
-      enableUnstable = true;
-      forceImportRoot = false;
-    };
+    # zfs = {
+    #   enableUnstable = true;
+    #   forceImportRoot = false;
+    # };
   };
 
   disko.devices = {
@@ -58,14 +58,14 @@
     zpool.zroot = {
       type = "zpool";
       rootFsOptions = {
-        acltype = "posixacl";
-        normalization = "formD";
-        xattr = "sa";
+        # acltype = "posixacl";
+        # normalization = "formD";
+        # xattr = "sa";
         "com.sun:auto-snapshot" = "false";
       };
       options = {
         ashift = "12";
-        autotrim = "on";
+        # autotrim = "on";
       };
       mountpoint = "/";
       datasets = {};
@@ -128,10 +128,10 @@
         X11Forwarding = false;
       };
     };
-    zfs = {
-      autoScrub.enable = true;
-      trim.enable = true;
-    };
+    # zfs = {
+    #   autoScrub.enable = true;
+    #   trim.enable = true;
+    # };
   };
 
   system.stateVersion = "23.05";
