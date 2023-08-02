@@ -10,6 +10,7 @@
       supportedFilesystems = ["zfs"];
     };
     kernelModules = ["kvm-intel"];
+    kernelParams = ["nohibernate"];
     loader.grub = {
       copyKernels = true;
       enable = true;
@@ -45,7 +46,7 @@
               type = "filesystem";
             };
           };
-          zroot = {
+          zfs = {
             size = "100%";
             content = {
               type = "zfs";
@@ -68,6 +69,7 @@
         # autotrim = "on";
       };
       mountpoint = "/";
+      postCreateHook = "zfs snapshot zroot@blank";
       datasets = {};
     };
   };
