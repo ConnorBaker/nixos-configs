@@ -23,34 +23,56 @@
   };
 
   disko.devices = {
-    disk.main = let
-      interface = "ata";
-      model = "ST12000NM0017";
-      serial = "2A1111_ZJV05SVK";
-    in {
-      device = "/dev/disk/by-id/${interface}-${model}-${serial}";
-      type = "disk";
-      content = {
-        type = "gpt";
-        partitions = {
-          boot = {
-            size = "1M";
-            type = "EF02"; # for grub MBR
-          };
-          ESP = {
-            size = "512M";
-            type = "EF00";
-            content = {
-              format = "vfat";
-              mountpoint = "/boot";
-              type = "filesystem";
+    disk = {
+      main = let
+        interface = "ata";
+        model = "ST12000NM0017";
+        serial = "2A1111_ZJV05SVK";
+      in {
+        device = "/dev/disk/by-id/${interface}-${model}-${serial}";
+        type = "disk";
+        content = {
+          type = "gpt";
+          partitions = {
+            boot = {
+              size = "1M";
+              type = "EF02"; # for grub MBR
+            };
+            ESP = {
+              size = "512M";
+              type = "EF00";
+              content = {
+                format = "vfat";
+                mountpoint = "/boot";
+                type = "filesystem";
+              };
+            };
+            zfs = {
+              size = "100%";
+              content = {
+                type = "zfs";
+                pool = "zroot";
+              };
             };
           };
-          zfs = {
-            size = "100%";
-            content = {
-              type = "zfs";
-              pool = "zroot";
+        };
+      };
+      data = let
+        interface = "ata";
+        model = "ST12000NM003G";
+        serial = "2MT113_ZL2GNTPA";
+      in {
+        device = "/dev/disk/by-id/${interface}-${model}-${serial}";
+        type = "disk";
+        content = {
+          type = "gpt";
+          partitions = {
+            zfs = {
+              size = "100%";
+              content = {
+                type = "zfs";
+                pool = "zroot";
+              };
             };
           };
         };
