@@ -58,16 +58,9 @@
     };
     zpool.zroot = {
       type = "zpool";
-      rootFsOptions = {
-        # acltype = "posixacl";
-        # normalization = "formD";
-        # xattr = "sa";
-        "com.sun:auto-snapshot" = "false";
-      };
-      options = {
-        ashift = "12";
-        # autotrim = "on";
-      };
+      mode = "mirror";
+      rootFsOptions."com.sun:auto-snapshot" = "false";
+      options.ashift = "12";
       mountpoint = "/";
       postCreateHook = "zfs snapshot zroot@blank";
       datasets = {};
