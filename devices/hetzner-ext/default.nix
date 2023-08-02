@@ -1,25 +1,19 @@
-{lib, ...}: {
+{config, ...}: {
   boot = {
-    initrd = {
-      availableKernelModules = [
-        "ahci"
-        "sd_mod"
-        "xhci_pci"
-      ];
-      # TODO(@connorbaker): Really? We specify it twice?
-      supportedFilesystems = ["zfs"];
-    };
+    initrd.availableKernelModules = [
+      "ahci"
+      "sd_mod"
+      "xhci_pci"
+    ];
     kernelModules = ["kvm-intel"];
+    kernelPackages = config.boot.zfs.package.latestCompatibleLinuxPackages;
     kernelParams = ["nohibernate"];
     loader.grub = {
       copyKernels = true;
       enable = true;
     };
-    supportedFilesystems = ["zfs"];
-    # zfs = {
-    #   enableUnstable = true;
-    #   forceImportRoot = false;
-    # };
+    supportedFilesystems = ["vfat" "zfs"];
+    zfs.forceImportRoot = false;
   };
 
   disko.devices = {
@@ -66,13 +60,11 @@
         type = "disk";
         content = {
           type = "gpt";
-          partitions = {
-            zfs = {
-              size = "100%";
-              content = {
-                type = "zfs";
-                pool = "zroot";
-              };
+          partitions.zfs = {
+            size = "100%";
+            content = {
+              type = "zfs";
+              pool = "zroot";
             };
           };
         };
@@ -84,8 +76,17 @@
       rootFsOptions."com.sun:auto-snapshot" = "false";
       options.ashift = "12";
       mountpoint = "/";
-      postCreateHook = "zfs snapshot zroot@blank";
-      datasets = {};
+      datasets = {
+        home = {
+          type = "zfs_fs";
+          mountpoint = "/home";
+        };
+        nix = {
+          type = "zfs_fs";
+          mountpoint = "/nix";
+          options.atime = "off";
+        };
+      };
     };
   };
 
@@ -145,10 +146,10 @@
         X11Forwarding = false;
       };
     };
-    # zfs = {
-    #   autoScrub.enable = true;
-    #   trim.enable = true;
-    # };
+    zfs = {
+      autoScrub.enable = true;
+      trim.enable = true;
+    };
   };
 
   system.stateVersion = "23.05";
