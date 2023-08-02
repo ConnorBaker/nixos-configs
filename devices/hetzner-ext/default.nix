@@ -1,49 +1,74 @@
-{
+{lib, ...}: {
   boot = {
-    initrd.availableKernelModules = [
-      "ahci"
-      "sd_mod"
-      "xhci_pci"
-    ];
+    initrd = {
+      availableKernelModules = [
+        "ahci"
+        "sd_mod"
+        "xhci_pci"
+      ];
+      # TODO(@connorbaker): Really? We specify it twice?
+      supportedFilesystems = ["zfs"];
+    };
     kernelModules = ["kvm-intel"];
     loader.grub = {
       copyKernels = true;
       enable = true;
     };
+    supportedFilesystems = ["zfs"];
+    zfs = {
+      enableUnstable = true;
+      forceImportRoot = false;
+    };
   };
 
-  disko.devices.disk.main = let
-    interface = "ata";
-    model = "ST12000NM0017";
-    serial = "2A1111_ZJV05SVK";
-  in {
-    device = "/dev/disk/by-id/${interface}-${model}-${serial}";
-    type = "disk";
-    content = {
-      type = "gpt";
-      partitions = {
-        boot = {
-          size = "1M";
-          type = "EF02"; # for grub MBR
-        };
-        ESP = {
-          size = "512M";
-          type = "EF00";
-          content = {
-            format = "vfat";
-            mountpoint = "/boot";
-            type = "filesystem";
+  disko.devices = {
+    disk.main = let
+      interface = "ata";
+      model = "ST12000NM0017";
+      serial = "2A1111_ZJV05SVK";
+    in {
+      device = "/dev/disk/by-id/${interface}-${model}-${serial}";
+      type = "disk";
+      content = {
+        type = "gpt";
+        partitions = {
+          boot = {
+            size = "1M";
+            type = "EF02"; # for grub MBR
           };
-        };
-        root = {
-          size = "100%";
-          content = {
-            format = "ext4";
-            mountpoint = "/";
-            type = "filesystem";
+          ESP = {
+            size = "512M";
+            type = "EF00";
+            content = {
+              format = "vfat";
+              mountpoint = "/boot";
+              type = "filesystem";
+            };
+          };
+          zroot = {
+            size = "100%";
+            content = {
+              type = "zfs";
+              pool = "zroot";
+            };
           };
         };
       };
+    };
+    zpool.zroot = {
+      type = "zpool";
+      rootFsOptions = {
+        acltype = "posixacl";
+        normalization = "formD";
+        xattr = "sa";
+        "com.sun:auto-snapshot" = "false";
+      };
+      options = {
+        ashift = "12";
+        autotrim = "on";
+      };
+      mountpoint = "/";
+      datasets = {};
     };
   };
 
@@ -92,14 +117,20 @@
     wheelNeedsPassword = false;
   };
 
-  services.openssh = {
-    allowSFTP = true;
-    enable = true;
-    settings = {
-      KbdInteractiveAuthentication = false;
-      PasswordAuthentication = false;
-      PermitRootLogin = "prohibit-password";
-      X11Forwarding = false;
+  services = {
+    openssh = {
+      allowSFTP = true;
+      enable = true;
+      settings = {
+        KbdInteractiveAuthentication = false;
+        PasswordAuthentication = false;
+        PermitRootLogin = "prohibit-password";
+        X11Forwarding = false;
+      };
+    };
+    zfs = {
+      autoScrub.enable = true;
+      trim.enable = true;
     };
   };
 
