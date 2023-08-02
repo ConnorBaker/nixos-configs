@@ -82,7 +82,6 @@
     hostName = "hetzner-ext";
     hostId = "deadbee5";
     useNetworkd = true;
-    usePredictableInterfaceNames = false;
   };
 
   powerManagement.cpuFreqGovernor = "powersave";
@@ -107,14 +106,21 @@
 
   systemd.network = {
     enable = true;
-    networks."eth0".extraConfig = ''
+    networks."eno1".extraConfig = ''
       [Match]
-      Name = eth0
+      Name=en* eth*
+
       [Network]
-      # Add your own assigned ipv6 subnet here here!
-      Address = 2a01:4f9:6a:1692::2/64
-      Gateway = fe80::1
-      DNS = 2a01:4f9:c010:3f02::1
+      Address=2a01:4f9:6a:1692::2/64
+      DHCP=no
+      DNS=2a01:4f9:c010:3f02::1
+      Gateway=fe80::1
+      IPv6PrivacyExtensions=kernel
+
+      [Resolve]
+      DNS=2a01:4f9:c010:3f02::1 2a01:4ff:ff00::add:1 2a01:4ff:ff00::add:2
+      FallbackDNS=185.12.64.1 185.12.64.2 2a01:4ff:ff00::add:1 2a01:4ff:ff00::add:2
+      LLMNR=no
     '';
     wait-online = {
       anyInterface = true;
