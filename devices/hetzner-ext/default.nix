@@ -79,7 +79,6 @@
   };
 
   networking = {
-    firewall.enable = false;
     hostName = "hetzner-ext";
     hostId = "deadbee5";
     useDHCP = false;
