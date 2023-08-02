@@ -79,8 +79,10 @@
   };
 
   networking = {
+    firewall.enable = false;
     hostName = "hetzner-ext";
     hostId = "deadbee5";
+    useDHCP = false;
     useNetworkd = true;
   };
 
@@ -118,17 +120,12 @@
       IPv6PrivacyExtensions=kernel
 
       [Resolve]
-      DNS=2a01:4f9:c010:3f02::1 2a01:4ff:ff00::add:1 2a01:4ff:ff00::add:2
+      DNS=2a01:4f9:c010:3f02::1
       FallbackDNS=185.12.64.1 185.12.64.2 2a01:4ff:ff00::add:1 2a01:4ff:ff00::add:2
       LLMNR=no
     '';
-    wait-online = {
-      anyInterface = true;
-      timeout = 30;
-    };
+    wait-online.anyInterface = true;
   };
-
-  time.timeZone = "UTC";
 
   users.users = let
     keys = [
