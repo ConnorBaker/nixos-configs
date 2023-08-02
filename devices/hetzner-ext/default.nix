@@ -114,6 +114,11 @@
       dns = ["2a01:4f9:c010:3f02::1"];
       gateway = ["fe80::1"];
       name = "eno1";
+      networkConfig = {
+        LLMNR = false;
+        DNSOverTLS = "opportunistic";
+        DNSSEC = "allow-downgrade";
+      };
     };
     wait-online.anyInterface = true;
   };
