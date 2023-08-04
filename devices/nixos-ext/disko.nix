@@ -1,8 +1,4 @@
-{
-  config,
-  lib,
-  ...
-}: let
+{lib, ...}: let
   disks = {
     boot1 = {
       interface = "nvme";
