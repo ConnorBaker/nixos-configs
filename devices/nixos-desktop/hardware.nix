@@ -6,17 +6,13 @@
       availableKernelModules = [
         "ahci"
         "nvme"
-        "sd_mod"
         "thunderbolt"
-        "uas"
-        "usbhid"
         "vmd"
         "xhci_pci"
       ];
       kernelModules = ["dm-snapshot"];
     };
     kernelModules = ["kvm-intel"];
-    extraModulePackages = [];
   };
 
   fileSystems = {
@@ -30,7 +26,6 @@
     };
   };
 
-  swapDevices = [];
   nixpkgs.hostPlatform = "x86_64-linux";
   powerManagement.cpuFreqGovernor = "powersave";
 }

@@ -1,6 +1,7 @@
 {pkgs, ...}: {
   imports = [
     ./hardware.nix
+    ./disko.nix
 
     # Configure Nix
     ../../modules/nix/nix.nix

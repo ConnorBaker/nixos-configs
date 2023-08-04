@@ -28,20 +28,10 @@
     nixpkgs.url = "github:NixOS/nixpkgs/release-23.05";
     # nixpkgs.url = "github:ConnorBaker/nixpkgs/feat/nvidia-dcgm-prometheus-exporter-module";
 
-    queued-build-hook = {
-      inputs = {
-        devshell.follows = "";
-        nixpkgs.follows = "";
-        treefmt-nix.follows = "";
-      };
-      url = "github:nix-community/queued-build-hook";
-    };
+    queued-build-hook.url = "github:nix-community/queued-build-hook";
 
     sops-nix = {
-      inputs = {
-        nixpkgs-stable.follows = "";
-        nixpkgs.follows = "nixpkgs";
-      };
+      inputs.nixpkgs.follows = "nixpkgs";
       url = "github:Mic92/sops-nix";
     };
   };

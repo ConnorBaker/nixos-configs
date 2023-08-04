@@ -111,6 +111,15 @@
       xattr = "sa";
       "com.sun:auto-snapshot" = "false";
     };
+    # TODO(@connorbaker): How do mountpoint and options.mountpoint differ?
+    datasets.reserved = {
+      type = "zfs_fs";
+      options = {
+        canmount = "off";
+        mountpoint = "none";
+        reservation = "200G";
+      };
+    };
   };
 in {
   boot = {
@@ -125,9 +134,21 @@ in {
     zpool = {
       bpool = lib.recursiveUpdate zfsPoolCommonConfig {
         mountpoint = "/boot";
+        options = {
+          # cachefile = "/etc/zfs/zpool.cache";
+          # compatibility = "grub2";
+          # "feature@livelist" = "enabled";
+          # "feature@zpools_checkpoint" = "enabled";
+        };
         rootFsOptions = {
           canmount = "off";
           devices = "off";
+        };
+
+        datasets.boot = {
+          type = "zfs_fs";
+          # TODO(@connorbaker): Is the default mountpoint the name of the dataset?
+          mountpoint = "/boot";
         };
       };
       rpool = lib.recursiveUpdate zfsPoolCommonConfig {
@@ -144,21 +165,26 @@ in {
           # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#bit-torrent
           # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#sequential-workloads
           # TODO(@connorbaker): Nested datasets? Need to replicate the end of step 5 here: https://openzfs.github.io/openzfs-docs/Getting%20Started/NixOS/Root%20on%20ZFS.html.
-          root = {
+          system.type = "zfs_fs";
+          "system/nix" = {
             type = "zfs_fs";
-            mountpoint = "/";
-            options = {
-              canmount = "off";
-              devices = "off";
-            };
+            mountpoint = "/nix";
+          };
+          "system/root" = {
+            type = "zfs_fs";
+            mountpoint = "/root";
+          };
+          "system/var" = {
+            type = "zfs_fs";
+            mountpoint = "/var";
           };
 
+          users.type = "zfs_fs";
+          "users/home" = {
+            type = "zfs_fs";
+            mountpoint = "/home";
+          };
 
-          # zfs_fs = {
-          #   type = "zfs_fs";
-          #   mountpoint = "/zfs_fs";
-          #   options."com.sun:auto-snapshot" = "true";
-          # };
           # encrypted = {
           #   type = "zfs_fs";
           #   options = {

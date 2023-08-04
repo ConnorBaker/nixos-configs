@@ -22,8 +22,8 @@
     # Configure services
     ../../modules/services/openssh.nix
     ../../modules/services/tailscale.nix
-    ../../modules/services/monitoring.nix
-    ./monitoring.nix
+    # ../../modules/services/monitoring.nix
+    # ./monitoring.nix
 
     # Configure programs
     ../../modules/programs/git.nix
@@ -36,7 +36,6 @@
   ];
 
   boot = {
-    initrd.kernelModules = ["nvme"];
     kernelPackages = pkgs.linuxPackages_latest;
     loader.systemd-boot.enable = true;
   };
