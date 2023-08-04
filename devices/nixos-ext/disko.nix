@@ -145,11 +145,12 @@ in {
           devices = "off";
         };
 
-        datasets.boot = {
-          type = "zfs_fs";
-          # TODO(@connorbaker): Is the default mountpoint the name of the dataset?
-          mountpoint = "/boot";
-        };
+        # TODO(@connorbaker): Conflicts with mountpoint of the root filesystem.
+        # datasets.boot = {
+        #   type = "zfs_fs";
+        #   # TODO(@connorbaker): Is the default mountpoint the name of the dataset?
+        #   mountpoint = "/boot";
+        # };
       };
       rpool = lib.recursiveUpdate zfsPoolCommonConfig {
         # TODO(@connorbaker): sharesmb option?
