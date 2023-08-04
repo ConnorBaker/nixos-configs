@@ -10,6 +10,18 @@
       modelSerialSeparator = "_";
       serial = "S73WNJ0W608017P";
       contentConfigs = [
+        {
+          type = "gpt";
+          partitions.ESP = {
+            size = "1G";
+            type = "EF00"; # EFI System
+            content = {
+              format = "vfat";
+              mountpoint = "/boot/efi";
+              type = "filesystem";
+            };
+          };
+        }
         osDiskContentConfig
         dataDiskContentConfig
       ];
@@ -43,23 +55,12 @@
   # Configuration for our boot
   osDiskContentConfig = {
     type = "gpt";
-    partitions = {
-      ESP = {
-        size = "1G";
-        type = "EF00"; # EFI System
-        content = {
-          format = "vfat";
-          mountpoint = "/boot/efi";
-          type = "filesystem";
-        };
-      };
-      bpool = {
-        size = "5G";
-        type = "BE00"; # Solaris Boot
-        content = {
-          type = "zfs";
-          pool = "bpool";
-        };
+    partitions.bpool = {
+      size = "5G";
+      type = "BE00"; # Solaris Boot
+      content = {
+        type = "zfs";
+        pool = "bpool";
       };
     };
   };
