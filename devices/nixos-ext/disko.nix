@@ -109,14 +109,14 @@
       "com.sun:auto-snapshot" = "false";
     };
     # TODO(@connorbaker): How do mountpoint and options.mountpoint differ?
-    datasets.reserved = {
-      type = "zfs_fs";
-      options = {
-        canmount = "off";
-        mountpoint = "none";
-        reservation = "200G";
-      };
-    };
+    # datasets.reserved = {
+    #   type = "zfs_fs";
+    #   options = {
+    #     canmount = "off";
+    #     mountpoint = "none";
+    #     reservation = "200G";
+    #   };
+    # };
   };
 in {
   boot = {
