@@ -1,6 +1,5 @@
 TODO:
 
-- sops broke and is not decrypting secrets using the keys in `/home/connorbaker`
 - `nixos-ext` install ended with
 
     ```bash
