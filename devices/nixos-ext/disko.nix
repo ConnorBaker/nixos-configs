@@ -109,6 +109,9 @@ in {
   boot = {
     initrd.supportedFilesystems = ["zfs"];
     kernelParams = ["nohibernate"];
+    # NOTE: Must copy kernels to /boot which isn't on ZFS so systemd-boot can
+    # read them.
+    loader.generationsDir.copyKernels = true;
     supportedFilesystems = ["zfs"];
     zfs.forceImportRoot = false;
   };
