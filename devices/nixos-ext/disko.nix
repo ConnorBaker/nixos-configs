@@ -190,10 +190,10 @@ in {
             # Performance patches
             ++ [
               # btree: Implement faster binary search algorithm
-              # (fetchpatch {
-              #   hash = "";
-              #   url = "https://github.com/ryao/zfs/commit/bbe335089844f05c46cb30a9ee4061117c6c683f.patch";
-              # })
+              (fetchpatch {
+                hash = "";
+                url = "https://github.com/ryao/zfs/commit/bbe335089844f05c46cb30a9ee4061117c6c683f.patch";
+              })
               # Use __attribute__((malloc)) on memory allocation functions
               # (fetchpatch {
               #   hash = "";
