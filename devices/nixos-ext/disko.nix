@@ -111,6 +111,7 @@ in {
     # TODO(@connorbaker): Sadly, cannot be avoided right now. Needed because the nixos-anywhere
     # installer doesn't successfully unmount/export nested datasets.
     # zfs.forceImportRoot = false;
+    zfs.enableUnstable = true;
   };
 
   disko.devices = {
@@ -181,56 +182,50 @@ in {
 
   nixpkgs.overlays = [
     (_: prev: {
-      zfs = let
-        inherit (prev) fetchpatch zfs;
-      in
-        zfs.overrideAttrs (oldAttrs: {
-          patches =
-            (oldAttrs.patches or [])
-            # Performance patches
-            ++ [
-              # btree: Implement faster binary search algorithm
-              (fetchpatch {
-                hash = "";
-                url = "https://github.com/ryao/zfs/commit/bbe335089844f05c46cb30a9ee4061117c6c683f.patch";
-              })
-              # Use __attribute__((malloc)) on memory allocation functions
-              # (fetchpatch {
-              #   hash = "";
-              #   url = "https://github.com/ryao/zfs/commit/53044a6157ac62b91fb27f2bb775ef1b92e3e850.patch";
-              # })
-            ]
-            #  Patch set for ZSTD 1.5.5
-            ++ [
-              # All-in-one patch set.
-              # Substituted commit hashes for master on both branches.
-              # To regenerate, replace with the new commit hashes.
-              # (fetchpatch {
-              #   hash = "";
-              #   url = "https://github.com/openzfs/zfs/compare/5bdfff5cfc8baff48b3b59a577e7ef756a011024...b5a2a40945ab2a722d042eab35709d78ea12ef04.patch";
-              # })
-              # merge zstd 1.5.4
-              # (fetchpatch {
-              #   hash = "";
-              #   url = "https://github.com/openzfs/zfs/commit/9dfb0b28b1c3839d749bff5cab8ac2d1c6ddfd08.patch";
-              # })
-              # disable debug bloat
-              # (fetchpatch {
-              #   hash = "";
-              #   url = "https://github.com/openzfs/zfs/commit/ce546b6d2f0e326a1c1dcc1f727fa02b51289946.patch";
-              # })
-              # update zstd to 1.5.5
-              # (fetchpatch {
-              #   hash = "";
-              #   url = "https://github.com/openzfs/zfs/commit/04c89e8bd1af169d2d2b492fed189a4a7765dd2f.patch";
-              # })
-              # fixes broken aarch64 inline assembly for gcc 13.1
-              # (fetchpatch {
-              #   hash = "";
-              #   url = "https://github.com/openzfs/zfs/commit/b5a2a40945ab2a722d042eab35709d78ea12ef04.patch";
-              # })
-            ];
-        });
+      zfs = prev.zfsUnstable.overrideAttrs (oldAttrs: {
+        pname = "zfs";
+        version = "2.2.0-rc3";
+        src = prev.fetchFromGitHub {
+          owner = "openzfs";
+          repo = "zfs";
+          rev = "zfs-2.2.0-rc3";
+          hash = "sha256-7Kql1lbDxrrKXG9XjeDQAShpY5RUYHVTiMATzGNHvfo=";
+        };
+        # NOTE: We can ignore previous patches because the only existing patch is included in the
+        # 2.2.0 release.
+        # https://github.com/NixOS/nixpkgs/blob/18036c0be90f4e308ae3ebcab0e14aae0336fe42/pkgs/os-specific/linux/zfs/generic.nix#L57-L63
+        patches =
+          #  Patch set for ZSTD 1.5.5
+          [
+            # All-in-one patch set.
+            # Substituted commit hashes for master on both branches.
+            # To regenerate, replace with the new commit hashes.
+            # (fetchpatch {
+            #   hash = "";
+            #   url = "https://github.com/openzfs/zfs/compare/5bdfff5cfc8baff48b3b59a577e7ef756a011024...b5a2a40945ab2a722d042eab35709d78ea12ef04.patch";
+            # })
+            # merge zstd 1.5.4
+            # (fetchpatch {
+            #   hash = "";
+            #   url = "https://github.com/openzfs/zfs/commit/9dfb0b28b1c3839d749bff5cab8ac2d1c6ddfd08.patch";
+            # })
+            # disable debug bloat
+            # (fetchpatch {
+            #   hash = "";
+            #   url = "https://github.com/openzfs/zfs/commit/ce546b6d2f0e326a1c1dcc1f727fa02b51289946.patch";
+            # })
+            # update zstd to 1.5.5
+            # (fetchpatch {
+            #   hash = "";
+            #   url = "https://github.com/openzfs/zfs/commit/04c89e8bd1af169d2d2b492fed189a4a7765dd2f.patch";
+            # })
+            # fixes broken aarch64 inline assembly for gcc 13.1
+            # (fetchpatch {
+            #   hash = "";
+            #   url = "https://github.com/openzfs/zfs/commit/b5a2a40945ab2a722d042eab35709d78ea12ef04.patch";
+            # })
+          ];
+      });
     })
   ];
 
