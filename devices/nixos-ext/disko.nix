@@ -87,6 +87,7 @@
       atime = "off";
       canmount = "off";
       compression = "zstd";
+      # TODO(@connorbaker): Switch to blake3 after ZFS 2.2.
       checksum = "sha512";
       dnodesize = "auto";
       normalization = "formD";
@@ -114,7 +115,7 @@ in {
     };
     kernelParams = ["nohibernate"];
     supportedFilesystems = ["zfs"];
-    # TODO(@connorbaker): Sadly, cannot be avoided right now. Needed because the nixos-anywhere
+    # NOTE: Sadly, cannot be avoided right now. Needed because the nixos-anywhere
     # installer doesn't successfully unmount/export nested datasets.
     # zfs.forceImportRoot = false;
     zfs.enableUnstable = true;
