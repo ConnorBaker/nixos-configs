@@ -109,9 +109,6 @@ in {
   boot = {
     initrd.supportedFilesystems = ["zfs"];
     kernelParams = ["nohibernate"];
-    # NOTE: Must copy kernels to /boot which isn't on ZFS so systemd-boot can
-    # read them.
-    loader.generationsDir.copyKernels = true;
     supportedFilesystems = ["zfs"];
     zfs = {
       devNodes = "/dev/disk/by-partlabel"; # Use our names
@@ -121,7 +118,6 @@ in {
     };
   };
 
-  # TODO(@connorbaker): RAID 1 for boot?
   disko.devices = {
     disk = lib.mapAttrs mkDisk disks;
     zpool.rpool = lib.recursiveUpdate zfsPoolCommonConfig {
