@@ -30,6 +30,7 @@
   #   };
   # };
   # TODO: services.openssh.authorizedKeysFiles
+  nix.settings.trusted-users = ["connorbaker"];
   programs = {
     git.config = lib.attrsets.optionalAttrs config.programs.git.enable {
       init.defaultBranch = "main";
