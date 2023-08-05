@@ -101,6 +101,7 @@
     rootFsOptions = {
       acltype = "posixacl";
       atime = "off";
+      canmount = "off";
       compression = "zstd";
       checksum = "sha512";
       dnodesize = "auto";
@@ -130,57 +131,54 @@ in {
     disk = lib.mapAttrs mkDisk disks;
     zpool = {
       bpool = lib.recursiveUpdate zfsPoolCommonConfig {
-        # mountpoint = "/boot";
         options = {
-          # cachefile = "/etc/zfs/zpool.cache";
-          # compatibility = "grub2";
-          # "feature@livelist" = "enabled";
-          # "feature@zpools_checkpoint" = "enabled";
-        };
-        rootFsOptions = {
-          canmount = "off";
-          devices = "off";
-        };
-
-        # TODO(@connorbaker): Conflicts with mountpoint of the root filesystem.
-        datasets.boot = {
-          type = "zfs_fs";
-          # TODO(@connorbaker): Is the default mountpoint the name of the dataset?
           mountpoint = "/boot";
+          compatibility = "grub2";
+        };
+        rootFsOptions.devices = "off";
+        datasets = {
+          nixos = {
+            type = "zfs_fs";
+            mountpoint = null;
+          };
+          "nixos/root" = {
+            type = "zfs_fs";
+            mountpoint = "/boot";
+          };
         };
       };
       rpool = lib.recursiveUpdate zfsPoolCommonConfig {
         # TODO(@connorbaker): sharesmb option?
         # TODO(@connorbaker): Check ZFS features:
         # - https://openzfs.github.io/openzfs-docs/man/7/zpool-features.7.html#FEATURES
-        mountpoint = "/";
+        options.mountpoint = "/";
         # mountOptions = {}; # Options for the root filesystem attrset of strings
         # postCreateHook = "zfs snapshot rpool@blank";
 
-        # Datasets
         datasets = {
           # TODO(@connorbaker): Create dataset torrent mirroring
           # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#bit-torrent
           # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#sequential-workloads
           # TODO(@connorbaker): Nested datasets? Need to replicate the end of step 5 here: https://openzfs.github.io/openzfs-docs/Getting%20Started/NixOS/Root%20on%20ZFS.html.
-          system.type = "zfs_fs";
-          "system/nix" = {
+          "nixos/root" = {
             type = "zfs_fs";
-            mountpoint = "/nix";
+            mountpoint = "/";
           };
-          "system/root" = {
+          "nixos/home" = {
             type = "zfs_fs";
-            mountpoint = "/root";
+            mountpoint = "/home";
           };
-          "system/var" = {
+          "nixos/var" = {
             type = "zfs_fs";
             mountpoint = "/var";
           };
-
-          users.type = "zfs_fs";
-          "users/home" = {
+          "nixos/var/lib" = {
             type = "zfs_fs";
-            mountpoint = "/home";
+            mountpoint = "/var/lib";
+          };
+          "nixos/var/log" = {
+            type = "zfs_fs";
+            mountpoint = "/var/log";
           };
 
           # encrypted = {
