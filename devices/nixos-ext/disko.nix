@@ -105,7 +105,13 @@
   };
 in {
   boot = {
-    initrd.supportedFilesystems = ["zfs"];
+    initrd = {
+      # NOTE: Return to the initial snapshot.
+      postDeviceCommands = lib.mkAfter ''
+        zfs rollback -r rpool@blank
+      '';
+      supportedFilesystems = ["zfs"];
+    };
     kernelParams = ["nohibernate"];
     supportedFilesystems = ["zfs"];
     # TODO(@connorbaker): Sadly, cannot be avoided right now. Needed because the nixos-anywhere
@@ -116,6 +122,7 @@ in {
 
   disko.devices = {
     disk = lib.mapAttrs mkDisk disks;
+    nodev."/tmp".fsType = "tmpfs";
     zpool.rpool = lib.recursiveUpdate zfsPoolCommonConfig {
       # TODO(@connorbaker): sharesmb option?
       # TODO(@connorbaker): Check ZFS features:
@@ -126,16 +133,16 @@ in {
       mountpoint = "/";
       # NOTE: As such, we have to use rootFsOptions.mountpoint as well.
       rootFsOptions.mountpoint = "/";
-      # postCreateHook = "zfs snapshot rpool@blank";
+
+      # NOTE: We use this to create the initial snapshot.
+      postCreateHook = ''
+        zfs snapshot rpool@blank
+      '';
 
       datasets = {
         # TODO(@connorbaker): Create dataset torrent mirroring
         # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#bit-torrent
         # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#sequential-workloads
-        # root = {
-        #   type = "zfs_fs";
-        #   mountpoint = "/";
-        # };
         nix = {
           type = "zfs_fs";
           mountpoint = "/nix";
@@ -185,34 +192,13 @@ in {
       zfs = prev.zfsUnstable.overrideAttrs (oldAttrs: {
         patches =
           (oldAttrs.patches or [])
-          #  Patch set for ZSTD 1.5.5
+          # Patch set for ZSTD 1.5.5. Requires ZFS 2.2+.
+          # Substituted commit hashes for master on both branches.
+          # To regenerate, replace with the new commit hashes.
           ++ [
-            # All-in-one patch set.
-            # Substituted commit hashes for master on both branches.
-            # To regenerate, replace with the new commit hashes.
-            (prev.fetchpatch {
-              hash = "";
-              url = "https://github.com/openzfs/zfs/compare/5bdfff5cfc8baff48b3b59a577e7ef756a011024...b5a2a40945ab2a722d042eab35709d78ea12ef04.patch";
-            })
-            # merge zstd 1.5.4
-            # (fetchpatch {
-            #   hash = "";
-            #   url = "https://github.com/openzfs/zfs/commit/9dfb0b28b1c3839d749bff5cab8ac2d1c6ddfd08.patch";
-            # })
-            # disable debug bloat
-            # (fetchpatch {
-            #   hash = "";
-            #   url = "https://github.com/openzfs/zfs/commit/ce546b6d2f0e326a1c1dcc1f727fa02b51289946.patch";
-            # })
-            # update zstd to 1.5.5
-            # (fetchpatch {
-            #   hash = "";
-            #   url = "https://github.com/openzfs/zfs/commit/04c89e8bd1af169d2d2b492fed189a4a7765dd2f.patch";
-            # })
-            # fixes broken aarch64 inline assembly for gcc 13.1
-            # (fetchpatch {
-            #   hash = "";
-            #   url = "https://github.com/openzfs/zfs/commit/b5a2a40945ab2a722d042eab35709d78ea12ef04.patch";
+            # (prev.fetchpatch {
+            #   hash = "sha256-HDzc3i/iTEf/PnBJIRj9u4xtkn3yREqIHYBl7ZyuVcI=";
+            #   url = "https://github.com/openzfs/zfs/compare/5bdfff5cfc8baff48b3b59a577e7ef756a011024...b5a2a40945ab2a722d042eab35709d78ea12ef04.patch";
             # })
           ];
       });
