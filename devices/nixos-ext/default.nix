@@ -1,4 +1,4 @@
-{pkgs, ...}: {
+{
   imports = [
     ./hardware.nix
     ./disko.nix

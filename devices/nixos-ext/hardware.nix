@@ -1,8 +1,4 @@
-{
-  lib,
-  modulesPath,
-  ...
-}: {
+{modulesPath, ...}: {
   imports = ["${modulesPath}/installer/scan/not-detected.nix"];
 
   boot = {
@@ -22,6 +18,6 @@
     };
   };
 
-  nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
-  powerManagement.cpuFreqGovernor = lib.mkDefault "powersave";
+  nixpkgs.hostPlatform = "x86_64-linux";
+  powerManagement.cpuFreqGovernor = "powersave";
 }

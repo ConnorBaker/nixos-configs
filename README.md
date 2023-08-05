@@ -1,22 +1,7 @@
 TODO:
 
-- `nixos-ext` install ended with
-
-    ```bash
-    File system "/boot" is not a FAT EFI System Partition (ESP) file system.
-    Traceback (most recent call last):
-      File "/nix/store/72h237wzm4rkrxdn8iyz4jx0kj57lprb-systemd-boot", line 341, in <module>
-        main()
-      File "/nix/store/72h237wzm4rkrxdn8iyz4jx0kj57lprb-systemd-boot", line 258, in main
-        subprocess.check_call(["/nix/store/rpagyb9792jx4f2hlqz9q0ld3frlzxq5-systemd-253.6/bin/bootctl", "--esp-path=/boot"] + bootctl_flags + ["install"])
-      File "/nix/store/a5k7x5mn7i7rcji4n99mwiqhmgjdzxmk-python3-3.10.12/lib/python3.10/subprocess.py", line 369, in check_call
-        raise CalledProcessError(retcode, cmd)
-    subprocess.CalledProcessError: Command '['/nix/store/rpagyb9792jx4f2hlqz9q0ld3frlzxq5-systemd-253.6/bin/bootctl', '--esp-path=/boot', '--no-variables', 'install']' returned non-zero exit status 1.
-    installation finished!
-    cannot unmount '/mnt/boot': pool or dataset is busy
-    cannot unmount '/mnt/rpool': no such pool or dataset
-    ```
-
+- `nixos-ext` fails to boot.
+  - This is due to `nixos-anywhere` not recursively unmounting nested datasets.
 - Deploy SSH keys to machines
 - Migrate to use of flake modules
 - <https://github.com/Mic92/sops-nix/issues/340>

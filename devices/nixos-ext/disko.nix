@@ -114,7 +114,7 @@ in {
     loader.generationsDir.copyKernels = true;
     supportedFilesystems = ["zfs"];
     zfs = {
-      devNodes = "/dev/disk/by-partlabel";
+      devNodes = "/dev/disk/by-partlabel"; # Use our names
       forceImportRoot = false;
     };
   };
@@ -125,7 +125,7 @@ in {
       # TODO(@connorbaker): sharesmb option?
       # TODO(@connorbaker): Check ZFS features:
       # - https://openzfs.github.io/openzfs-docs/man/7/zpool-features.7.html#FEATURES
-      rootFsOptions.mountpoint = "/";
+      # rootFsOptions.mountpoint = "/";
       # postCreateHook = "zfs snapshot rpool@blank";
 
       datasets = {
@@ -148,14 +148,14 @@ in {
           type = "zfs_fs";
           mountpoint = "/var";
         };
-        "nixos/var/lib" = {
-          type = "zfs_fs";
-          mountpoint = "/var/lib";
-        };
-        "nixos/var/log" = {
-          type = "zfs_fs";
-          mountpoint = "/var/log";
-        };
+        # "nixos/var/lib" = {
+        #   type = "zfs_fs";
+        #   mountpoint = "/var/lib";
+        # };
+        # "nixos/var/log" = {
+        #   type = "zfs_fs";
+        #   mountpoint = "/var/log";
+        # };
 
         # encrypted = {
         #   type = "zfs_fs";
