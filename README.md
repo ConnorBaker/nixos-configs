@@ -2,6 +2,7 @@ TODO:
 
 - `nixos-ext` fails to boot.
   - This is due to `nixos-anywhere` not recursively unmounting nested datasets.
+  - Get errors like `cannot unmount '/mnt/rpool/nixos': no such pool or dataset`.
 - Deploy SSH keys to machines
 - Migrate to use of flake modules
 - <https://github.com/Mic92/sops-nix/issues/340>

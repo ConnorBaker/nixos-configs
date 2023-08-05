@@ -132,19 +132,19 @@ in {
         # TODO(@connorbaker): Create dataset torrent mirroring
         # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#bit-torrent
         # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#sequential-workloads
-        "nixos/root" = {
-          type = "zfs_fs";
-          mountpoint = "/";
-        };
-        "nixos/nix" = {
+        # root = {
+        #   type = "zfs_fs";
+        #   mountpoint = "/";
+        # };
+        nix = {
           type = "zfs_fs";
           mountpoint = "/nix";
         };
-        "nixos/home" = {
+        home = {
           type = "zfs_fs";
           mountpoint = "/home";
         };
-        "nixos/var" = {
+        var = {
           type = "zfs_fs";
           mountpoint = "/var";
         };
