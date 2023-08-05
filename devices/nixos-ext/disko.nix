@@ -15,10 +15,7 @@
       model = "Samsung_SSD_990_PRO_2TB";
       modelSerialSeparator = "_";
       serial = "S73WNJ0W608883V";
-      contentConfigs = [
-        bootDiskContentConfig
-        dataDiskContentConfig
-      ];
+      contentConfigs = [dataDiskContentConfig];
     };
     data1 = {
       interface = "nvme";
@@ -43,8 +40,9 @@
       size = "1G";
       type = "EF00"; # EFI System
       content = {
-        name = "boot";
-        type = "mdraid";
+        format = "vfat";
+        mountpoint = "/boot";
+        type = "filesystem";
       };
     };
   };
@@ -126,16 +124,6 @@ in {
   # TODO(@connorbaker): RAID 1 for boot?
   disko.devices = {
     disk = lib.mapAttrs mkDisk disks;
-    mdadm.boot = {
-      type = "mdadm";
-      level = 1;
-      metadata = "1.2";
-      content = {
-        type = "filesystem";
-        format = "vfat";
-        mountpoint = "/boot";
-      };
-    };
     zpool.rpool = lib.recursiveUpdate zfsPoolCommonConfig {
       # TODO(@connorbaker): sharesmb option?
       # TODO(@connorbaker): Check ZFS features:
