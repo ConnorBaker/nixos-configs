@@ -124,11 +124,13 @@ in {
       # TODO(@connorbaker): sharesmb option?
       # TODO(@connorbaker): Check ZFS features:
       # - https://openzfs.github.io/openzfs-docs/man/7/zpool-features.7.html#FEATURES
+
+      # NOTE: This mountpoint doesn't pass the option to zpool create -- it's for NixOS'
+      # fileSystems attribute set.
+      mountpoint = "/";
+      # NOTE: As such, we have to use rootFsOptions.mountpoint as well.
       rootFsOptions.mountpoint = "/";
       # postCreateHook = "zfs snapshot rpool@blank";
-
-      # NOTE: This mountpoint doesn't pass the option to zpool create.
-      # mountpoint = "/"; # TODO: How does this differ from rootFsOptions.mountpoint?
 
       datasets = {
         # TODO(@connorbaker): Create dataset torrent mirroring
