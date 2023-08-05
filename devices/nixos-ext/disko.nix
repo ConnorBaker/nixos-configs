@@ -113,7 +113,10 @@ in {
     # read them.
     loader.generationsDir.copyKernels = true;
     supportedFilesystems = ["zfs"];
-    zfs.forceImportRoot = false;
+    zfs = {
+      devNodes = "/dev/disk/by-partlabel";
+      forceImportRoot = false;
+    };
   };
 
   disko.devices = {
