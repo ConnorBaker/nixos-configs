@@ -118,7 +118,6 @@ in {
     # NOTE: Sadly, cannot be avoided right now. Needed because the nixos-anywhere
     # installer doesn't successfully unmount/export nested datasets.
     # zfs.forceImportRoot = false;
-    zfs.enableUnstable = true;
   };
 
   disko.devices = {
@@ -152,9 +151,9 @@ in {
           type = "zfs_fs";
           mountpoint = "/home";
         };
-        var = {
+        persist = {
           type = "zfs_fs";
-          mountpoint = "/var";
+          mountpoint = "/persist";
         };
         # "nixos/var/lib" = {
         #   type = "zfs_fs";
@@ -186,6 +185,21 @@ in {
     };
   };
 
+  fileSystems."/persist".neededForBoot = true;
+
+  environment.persistence."/persist" = {
+    directories = [
+      "/var/log"
+      "/var/lib"
+    ];
+    files = [
+      "/etc/ssh/ssh_host_ed25519_key"
+      "/etc/ssh/ssh_host_ed25519_key.pub"
+      "/etc/ssh/ssh_host_rsa_key"
+      "/etc/ssh/ssh_host_rsa_key.pub"
+    ];
+  };
+
   networking.hostId = "deadbee5";
 
   nixpkgs.overlays = [
@@ -207,12 +221,15 @@ in {
   ];
 
   services = {
-    # The following is from:
+    # The following is adapted from:
     # https://github.com/numtide/srvos/blob/ce0426c357c077edec3aacde8e9649f30f1be659/nixos/common/zfs.nix#L13-L16
     # ZFS has its own scheduler.
-    udev.extraRules = ''
-      ACTION=="add|change", KERNEL=="sd[a-z]*[0-9]*|mmcblk[0-9]*p[0-9]*|nvme[0-9]*n[0-9]*p[0-9]*", ENV{ID_FS_TYPE}=="zfs_member", ATTR{../queue/scheduler}="none"
-    '';
+    udev.extraRules = lib.strings.concatStringsSep ", " [
+      "ACTION==\"add|change\""
+      "KERNEL==\"sd[a-z]*[0-9]*|mmcblk[0-9]*p[0-9]*|nvme[0-9]*n[0-9]*p[0-9]*\""
+      "ENV{ID_FS_TYPE}==\"zfs_member\""
+      "ATTR{../queue/scheduler}=\"none\""
+    ];
     zfs = {
       autoScrub.enable = true;
       trim.enable = true;

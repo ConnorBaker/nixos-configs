@@ -10,6 +10,8 @@
       url = "github:hercules-ci/flake-parts";
     };
 
+    impermanence.url = "github:nix-community/impermanence";
+
     nil = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:oxalica/nil/2023-05-09";
@@ -64,6 +66,7 @@
             modules = [
               inputs.sops-nix.nixosModules.sops
               inputs.disko.nixosModules.disko
+              inputs.impermanence.nixosModules.impermanence
               {
                 nixpkgs.overlays = [
                   (_: _: {inherit (inputs'.nix.packages) nix;})
