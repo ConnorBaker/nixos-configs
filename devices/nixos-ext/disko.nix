@@ -79,7 +79,7 @@
 
   zfsPoolCommonConfig = {
     type = "zpool";
-    mode = "mirror";
+    mode = "raidz2";
     options = {
       ashift = "12";
       autotrim = "on";
