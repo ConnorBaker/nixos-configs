@@ -124,9 +124,11 @@ in {
       # TODO(@connorbaker): sharesmb option?
       # TODO(@connorbaker): Check ZFS features:
       # - https://openzfs.github.io/openzfs-docs/man/7/zpool-features.7.html#FEATURES
-      # rootFsOptions.mountpoint = "/";
+      rootFsOptions.mountpoint = "/";
       # postCreateHook = "zfs snapshot rpool@blank";
-      mountpoint = "/"; # TODO: How does this differ from rootFsOptions.mountpoint?
+
+      # NOTE: This mountpoint doesn't pass the option to zpool create.
+      # mountpoint = "/"; # TODO: How does this differ from rootFsOptions.mountpoint?
 
       datasets = {
         # TODO(@connorbaker): Create dataset torrent mirroring
