@@ -131,12 +131,13 @@ in {
     disk = lib.mapAttrs mkDisk disks;
     zpool = {
       bpool = lib.recursiveUpdate zfsPoolCommonConfig {
-        # TODO(@connorbaker): what is this passed as to zpool create?
-        mountpoint = "/boot";
         # passed as pool options: zpool create -o
         options.compatibility = "grub2";
         # passed as dataset options: zfs create -O
-        rootFsOptions.devices = "off";
+        rootFsOptions = {
+          devices = "off";
+          mountpoint = "/boot";
+        };
         datasets = {
           nixos = {
             type = "zfs_fs";
