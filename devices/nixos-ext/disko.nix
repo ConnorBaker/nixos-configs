@@ -130,7 +130,7 @@ in {
     disk = lib.mapAttrs mkDisk disks;
     zpool = {
       bpool = lib.recursiveUpdate zfsPoolCommonConfig {
-        mountpoint = "/boot";
+        # mountpoint = "/boot";
         options = {
           # cachefile = "/etc/zfs/zpool.cache";
           # compatibility = "grub2";
@@ -143,11 +143,11 @@ in {
         };
 
         # TODO(@connorbaker): Conflicts with mountpoint of the root filesystem.
-        # datasets.boot = {
-        #   type = "zfs_fs";
-        #   # TODO(@connorbaker): Is the default mountpoint the name of the dataset?
-        #   mountpoint = "/boot";
-        # };
+        datasets.boot = {
+          type = "zfs_fs";
+          # TODO(@connorbaker): Is the default mountpoint the name of the dataset?
+          mountpoint = "/boot";
+        };
       };
       rpool = lib.recursiveUpdate zfsPoolCommonConfig {
         # TODO(@connorbaker): sharesmb option?
