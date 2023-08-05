@@ -139,6 +139,11 @@ in {
           # NOTE: When declared one level up, "/boot" will conflict with the mountpoint of the
           # bpool dataset. However, when defined here, there's no conflict.
           mountpoint = "/boot";
+
+          # Override the shared defaults for grub compatibility.
+          checksum = "sha256";
+          compression = "lz4";
+          dnodesize = "legacy";
         };
         datasets = {
           nixos = {
