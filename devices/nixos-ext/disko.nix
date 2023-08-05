@@ -115,10 +115,13 @@ in {
     supportedFilesystems = ["zfs"];
     zfs = {
       devNodes = "/dev/disk/by-partlabel"; # Use our names
-      forceImportRoot = false;
+      # TODO(@connorbaker): Sadly, cannot be avoided right now. Needed because the nixos-anywhere
+      # installer doesn't successfully unmount/export nested datasets.
+      forceImportRoot = true;
     };
   };
 
+  # TODO(@connorbaker): RAID 1 for boot?
   disko.devices = {
     disk = lib.mapAttrs mkDisk disks;
     zpool.rpool = lib.recursiveUpdate zfsPoolCommonConfig {
@@ -127,7 +130,7 @@ in {
       # - https://openzfs.github.io/openzfs-docs/man/7/zpool-features.7.html#FEATURES
       # rootFsOptions.mountpoint = "/";
       # postCreateHook = "zfs snapshot rpool@blank";
-      mountpoint = "/";
+      mountpoint = "/"; # TODO: How does this differ from rootFsOptions.mountpoint?
 
       datasets = {
         # TODO(@connorbaker): Create dataset torrent mirroring

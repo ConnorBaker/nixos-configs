@@ -1,24 +1,24 @@
 TODO:
 
-- `nixos-ext` fails to boot.
+- [x] `nixos-ext` fails to boot.
   - This is due to `nixos-anywhere` not recursively unmounting nested datasets.
-  - Get errors like `cannot unmount '/mnt/rpool/nixos': no such pool or dataset`.
-- Deploy SSH keys to machines
-- Migrate to use of flake modules
-- <https://github.com/Mic92/sops-nix/issues/340>
-- <https://samleathers.com/posts/2022-02-03-my-new-network-and-deploy-rs.html>
-- <https://samleathers.com/posts/2022-02-11-my-new-network-and-sops.html>
-- <https://github.com/numtide/nixos-anywhere/pull/34>
-- <https://github.com/numtide/nixos-anywhere/issues/63>
-- <https://github.com/numtide/nixos-anywhere/issues/141>
-- <https://github.com/numtide/nixos-anywhere/issues/161>
+  - At the moment, no way to get around `boot.zfs.forceImportRoot = true;`.
+- [ ] Deploy SSH keys to machines
+- [ ] Migrate to use of flake modules
+- [ ] <https://github.com/Mic92/sops-nix/issues/340>
+- [ ] <https://samleathers.com/posts/2022-02-03-my-new-network-and-deploy-rs.html>
+- [ ] <https://samleathers.com/posts/2022-02-11-my-new-network-and-sops.html>
+- [ ] <https://github.com/numtide/nixos-anywhere/pull/34>
+- [ ] <https://github.com/numtide/nixos-anywhere/issues/63>
+- [ ] <https://github.com/numtide/nixos-anywhere/issues/141>
+- [ ] <https://github.com/numtide/nixos-anywhere/issues/161>
 
 ## `nixos-desktop`
 
 - [ ] Move to disko
 - [ ] Instructions for using `sops`
 
-Generate the secrete age key using `ssh-to-age`:
+Generate the secret age key using `ssh-to-age`:
 
 ```bash
 mkdir -p ~/.config/sops/age
