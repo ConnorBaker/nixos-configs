@@ -40,5 +40,6 @@
     loader.systemd-boot.enable = true;
   };
   networking.hostName = "nixos-desktop";
+  sops.age.sshKeyPaths = ["/home/connorbaker/.ssh/id_ed25519"];
   system.stateVersion = "23.05";
 }
