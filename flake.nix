@@ -17,7 +17,7 @@
 
     nix = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:NixOS/nix/2.15.1";
+      url = "github:NixOS/nix/2.17.0";
     };
 
     nix-ld-rs = {
@@ -46,8 +46,8 @@
         nixos-desktop = withSystem "x86_64-linux" ({inputs', ...}:
           inputs.nixpkgs.lib.nixosSystem {
             modules = [
-              inputs.queued-build-hook.nixosModules.queued-build-hook
               inputs.sops-nix.nixosModules.sops
+              inputs.queued-build-hook.nixosModules.queued-build-hook
               {
                 nixpkgs.overlays = [
                   (_: _: {inherit (inputs'.nix.packages) nix;})
@@ -62,8 +62,8 @@
         nixos-ext = withSystem "x86_64-linux" ({inputs', ...}:
           inputs.nixpkgs.lib.nixosSystem {
             modules = [
-              inputs.disko.nixosModules.disko
               inputs.sops-nix.nixosModules.sops
+              inputs.disko.nixosModules.disko
               {
                 nixpkgs.overlays = [
                   (_: _: {inherit (inputs'.nix.packages) nix;})

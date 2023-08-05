@@ -1,4 +1,13 @@
-{pkgs, ...}: {
+{
+  lib,
+  pkgs,
+  ...
+}: {
+  # NOTE: Use mkOptionDefault to ensure our value is added to the list of
+  # values, rather than replacing the list of values.
+  # Required for various dot-net tools.
+  programs.nix-ld.libraries = lib.mkOptionDefault [pkgs.icu.out];
+
   users.users.connorbaker.packages = with pkgs;
   # Rust unix tools
     [

@@ -22,9 +22,8 @@
       keep-derivations = true;
       keep-outputs = true;
       max-jobs = 1;
-      # max-substitution-jobs = 256;
-      # NOTE: Disabled because this requires Nix >= 2.17.
-      # require-drop-supplementary-groups = true;
+      max-substitution-jobs = 256; # Nix >= 2.16
+      require-drop-supplementary-groups = true; # Nix >= 2.17
       # NOTE: Disabled because nixpkgs-review requires impure evaluation.
       # restrict-eval = true;
       system-features = [
@@ -37,8 +36,7 @@
       use-cgroups = true;
       # NOTE: Disabled because it makes every nix command print:
       # warning: Nix search path entry '/etc/nixos/configuration.nix' does not exist, ignoring
-      # TODO(@connorbaker): File a bug report?
-      # use-xdg-base-directories = true;
+      use-xdg-base-directories = true;
     };
   };
 }
