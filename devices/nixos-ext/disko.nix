@@ -1,37 +1,35 @@
 {lib, ...}: let
-  disks = {
-    boot1 = {
-      interface = "nvme";
-      model = "Samsung_SSD_990_PRO_2TB";
-      modelSerialSeparator = "_";
+  samsung990Pro2TBDisks = let
+    interface = "nvme";
+    model = "Samsung_SSD_990_PRO_2TB";
+    modelSerialSeparator = "_";
+  in {
+    boot = {
+      inherit interface model modelSerialSeparator;
       serial = "S73WNJ0W608017P";
       contentConfigs = [
         bootDiskContentConfig
         dataDiskContentConfig
       ];
     };
-    boot2 = {
-      interface = "nvme";
-      model = "Samsung_SSD_990_PRO_2TB";
-      modelSerialSeparator = "_";
+    data1 = {
+      inherit interface model modelSerialSeparator;
       serial = "S73WNJ0W608883V";
       contentConfigs = [dataDiskContentConfig];
     };
-    data1 = {
-      interface = "nvme";
-      model = "Samsung_SSD_990_PRO_2TB";
-      modelSerialSeparator = "_";
+    data2 = {
+      inherit interface model modelSerialSeparator;
       serial = "S73WNJ0W608886J";
       contentConfigs = [dataDiskContentConfig];
     };
-    data2 = {
-      interface = "nvme";
-      model = "Samsung_SSD_990_PRO_2TB";
-      modelSerialSeparator = "_";
+    data3 = {
+      inherit interface model modelSerialSeparator;
       serial = "S73WNJ0W608887H";
       contentConfigs = [dataDiskContentConfig];
     };
   };
+
+  disks = samsung990Pro2TBDisks;
 
   # Configuration for our boot
   bootDiskContentConfig = {
@@ -110,12 +108,9 @@ in {
     initrd.supportedFilesystems = ["zfs"];
     kernelParams = ["nohibernate"];
     supportedFilesystems = ["zfs"];
-    zfs = {
-      devNodes = "/dev/disk/by-partlabel"; # Use our names
-      # TODO(@connorbaker): Sadly, cannot be avoided right now. Needed because the nixos-anywhere
-      # installer doesn't successfully unmount/export nested datasets.
-      forceImportRoot = true;
-    };
+    # TODO(@connorbaker): Sadly, cannot be avoided right now. Needed because the nixos-anywhere
+    # installer doesn't successfully unmount/export nested datasets.
+    # zfs.forceImportRoot = false;
   };
 
   disko.devices = {
@@ -239,10 +234,16 @@ in {
     })
   ];
 
-  # TODO(@connorbaker): Freezes when using ZFS?
-  # https://github.com/numtide/srvos/blob/ce0426c357c077edec3aacde8e9649f30f1be659/nixos/common/zfs.nix#L13-L16
-  services.zfs = {
-    autoScrub.enable = true;
-    trim.enable = true;
+  services = {
+    # The following is from:
+    # https://github.com/numtide/srvos/blob/ce0426c357c077edec3aacde8e9649f30f1be659/nixos/common/zfs.nix#L13-L16
+    # ZFS has its own scheduler.
+    udev.extraRules = ''
+      ACTION=="add|change", KERNEL=="sd[a-z]*[0-9]*|mmcblk[0-9]*p[0-9]*|nvme[0-9]*n[0-9]*p[0-9]*", ENV{ID_FS_TYPE}=="zfs_member", ATTR{../queue/scheduler}="none"
+    '';
+    zfs = {
+      autoScrub.enable = true;
+      trim.enable = true;
+    };
   };
 }
