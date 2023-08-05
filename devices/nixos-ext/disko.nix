@@ -131,10 +131,11 @@ in {
     disk = lib.mapAttrs mkDisk disks;
     zpool = {
       bpool = lib.recursiveUpdate zfsPoolCommonConfig {
-        options = {
-          mountpoint = "/boot";
-          compatibility = "grub2";
-        };
+        # TODO(@connorbaker): what is this passed as to zpool create?
+        mountpoint = "/boot";
+        # passed as pool options: zpool create -o
+        options.compatibility = "grub2";
+        # passed as dataset options: zfs create -O
         rootFsOptions.devices = "off";
         datasets = {
           nixos = {
@@ -151,8 +152,7 @@ in {
         # TODO(@connorbaker): sharesmb option?
         # TODO(@connorbaker): Check ZFS features:
         # - https://openzfs.github.io/openzfs-docs/man/7/zpool-features.7.html#FEATURES
-        options.mountpoint = "/";
-        # mountOptions = {}; # Options for the root filesystem attrset of strings
+        rootFsOptions.mountpoint = "/";
         # postCreateHook = "zfs snapshot rpool@blank";
 
         datasets = {
