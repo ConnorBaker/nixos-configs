@@ -6,19 +6,7 @@
       modelSerialSeparator = "_";
       serial = "S73WNJ0W608017P";
       contentConfigs = [
-        {
-          type = "gpt";
-          partitions.ESP = {
-            size = "1G";
-            type = "EF00"; # EFI System
-            content = {
-              format = "vfat";
-              mountpoint = "/boot/efi";
-              type = "filesystem";
-            };
-          };
-        }
-        osDiskContentConfig
+        bootDiskContentConfig
         dataDiskContentConfig
       ];
     };
@@ -27,10 +15,7 @@
       model = "Samsung_SSD_990_PRO_2TB";
       modelSerialSeparator = "_";
       serial = "S73WNJ0W608883V";
-      contentConfigs = [
-        osDiskContentConfig
-        dataDiskContentConfig
-      ];
+      contentConfigs = [dataDiskContentConfig];
     };
     data1 = {
       interface = "nvme";
@@ -49,14 +34,15 @@
   };
 
   # Configuration for our boot
-  osDiskContentConfig = {
+  bootDiskContentConfig = {
     type = "gpt";
-    partitions.bpool = {
-      size = "5G";
-      type = "BE00"; # Solaris Boot
+    partitions.ESP = {
+      size = "1G";
+      type = "EF00"; # EFI System
       content = {
-        type = "zfs";
-        pool = "bpool";
+        format = "vfat";
+        mountpoint = "/boot";
+        type = "filesystem";
       };
     };
   };
@@ -129,84 +115,59 @@ in {
 
   disko.devices = {
     disk = lib.mapAttrs mkDisk disks;
-    zpool = {
-      bpool = lib.recursiveUpdate zfsPoolCommonConfig {
-        # passed as pool options: zpool create -o
-        options.compatibility = "grub2";
-        # passed as dataset options: zfs create -O
-        rootFsOptions = {
-          devices = "off";
-          # NOTE: When declared one level up, "/boot" will conflict with the mountpoint of the
-          # bpool dataset. However, when defined here, there's no conflict.
-          mountpoint = "/boot";
+    zpool.rpool = lib.recursiveUpdate zfsPoolCommonConfig {
+      # TODO(@connorbaker): sharesmb option?
+      # TODO(@connorbaker): Check ZFS features:
+      # - https://openzfs.github.io/openzfs-docs/man/7/zpool-features.7.html#FEATURES
+      rootFsOptions.mountpoint = "/";
+      # postCreateHook = "zfs snapshot rpool@blank";
 
-          # Override the shared defaults for grub compatibility.
-          checksum = "sha256";
-          compression = "lz4";
-          dnodesize = "legacy";
+      datasets = {
+        # TODO(@connorbaker): Create dataset torrent mirroring
+        # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#bit-torrent
+        # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#sequential-workloads
+        "nixos/root" = {
+          type = "zfs_fs";
+          mountpoint = "/";
         };
-        datasets = {
-          nixos = {
-            type = "zfs_fs";
-            mountpoint = null;
-          };
-          "nixos/root" = {
-            type = "zfs_fs";
-            mountpoint = "/boot";
-          };
+        "nixos/nix" = {
+          type = "zfs_fs";
+          mountpoint = "/nix";
         };
-      };
-      rpool = lib.recursiveUpdate zfsPoolCommonConfig {
-        # TODO(@connorbaker): sharesmb option?
-        # TODO(@connorbaker): Check ZFS features:
-        # - https://openzfs.github.io/openzfs-docs/man/7/zpool-features.7.html#FEATURES
-        rootFsOptions.mountpoint = "/";
-        # postCreateHook = "zfs snapshot rpool@blank";
+        "nixos/home" = {
+          type = "zfs_fs";
+          mountpoint = "/home";
+        };
+        "nixos/var" = {
+          type = "zfs_fs";
+          mountpoint = "/var";
+        };
+        "nixos/var/lib" = {
+          type = "zfs_fs";
+          mountpoint = "/var/lib";
+        };
+        "nixos/var/log" = {
+          type = "zfs_fs";
+          mountpoint = "/var/log";
+        };
 
-        datasets = {
-          # TODO(@connorbaker): Create dataset torrent mirroring
-          # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#bit-torrent
-          # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#sequential-workloads
-          # TODO(@connorbaker): Nested datasets? Need to replicate the end of step 5 here: https://openzfs.github.io/openzfs-docs/Getting%20Started/NixOS/Root%20on%20ZFS.html.
-          "nixos/root" = {
-            type = "zfs_fs";
-            mountpoint = "/";
-          };
-          "nixos/home" = {
-            type = "zfs_fs";
-            mountpoint = "/home";
-          };
-          "nixos/var" = {
-            type = "zfs_fs";
-            mountpoint = "/var";
-          };
-          "nixos/var/lib" = {
-            type = "zfs_fs";
-            mountpoint = "/var/lib";
-          };
-          "nixos/var/log" = {
-            type = "zfs_fs";
-            mountpoint = "/var/log";
-          };
-
-          # encrypted = {
-          #   type = "zfs_fs";
-          #   options = {
-          #     mountpoint = "none";
-          #     encryption = "aes-256-gcm";
-          #     keyformat = "passphrase";
-          #     keylocation = "file:///tmp/secret.key";
-          #   };
-          #   # use this to read the key during boot
-          #   # postCreateHook = ''
-          #   #   zfs set keylocation="prompt" "rpool/$name";
-          #   # '';
-          # };
-          # "encrypted/test" = {
-          #   type = "zfs_fs";
-          #   mountpoint = "/zfs_crypted";
-          # };
-        };
+        # encrypted = {
+        #   type = "zfs_fs";
+        #   options = {
+        #     mountpoint = "none";
+        #     encryption = "aes-256-gcm";
+        #     keyformat = "passphrase";
+        #     keylocation = "file:///tmp/secret.key";
+        #   };
+        #   # use this to read the key during boot
+        #   # postCreateHook = ''
+        #   #   zfs set keylocation="prompt" "rpool/$name";
+        #   # '';
+        # };
+        # "encrypted/test" = {
+        #   type = "zfs_fs";
+        #   mountpoint = "/zfs_crypted";
+        # };
       };
     };
   };

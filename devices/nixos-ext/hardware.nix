@@ -16,7 +16,10 @@
       "xhci_pci"
     ];
     kernelModules = ["kvm-amd"];
-    loader.systemd-boot.enable = true;
+    loader = {
+      efi.canTouchEfiVariables = true;
+      systemd-boot.enable = true;
+    };
   };
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
