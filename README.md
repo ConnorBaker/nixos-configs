@@ -13,6 +13,10 @@ TODO:
 - [ ] <https://github.com/numtide/nixos-anywhere/issues/141>
 - [ ] <https://github.com/numtide/nixos-anywhere/issues/161>
 
+> **INFO**
+>
+> When using `--build-on-remote`, make sure the remote account is one which Nix trusts. In the NixOS installer, this means `root` instead of `nixos`.
+
 ## `nixos-desktop`
 
 - [ ] Move to disko
@@ -56,6 +60,5 @@ Deploy `nixos-ext` with:
 nix run github:numtide/nixos-anywhere -- \
   root@192.168.1.195  \
   -i /home/connorbaker/.ssh/id_ed25519  \
-  --build-on-remote \
   --flake .#nixos-ext
 ```
