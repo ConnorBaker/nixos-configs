@@ -127,6 +127,7 @@ in {
       # - https://openzfs.github.io/openzfs-docs/man/7/zpool-features.7.html#FEATURES
       # rootFsOptions.mountpoint = "/";
       # postCreateHook = "zfs snapshot rpool@blank";
+      mountpoint = "/";
 
       datasets = {
         # TODO(@connorbaker): Create dataset torrent mirroring
