@@ -136,6 +136,8 @@ in {
         # passed as dataset options: zfs create -O
         rootFsOptions = {
           devices = "off";
+          # NOTE: When declared one level up, "/boot" will conflict with the mountpoint of the
+          # bpool dataset. However, when defined here, there's no conflict.
           mountpoint = "/boot";
         };
         datasets = {
