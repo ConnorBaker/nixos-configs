@@ -183,27 +183,17 @@ in {
   nixpkgs.overlays = [
     (_: prev: {
       zfs = prev.zfsUnstable.overrideAttrs (oldAttrs: {
-        pname = "zfs";
-        version = "2.2.0-rc3";
-        src = prev.fetchFromGitHub {
-          owner = "openzfs";
-          repo = "zfs";
-          rev = "zfs-2.2.0-rc3";
-          hash = "sha256-7Kql1lbDxrrKXG9XjeDQAShpY5RUYHVTiMATzGNHvfo=";
-        };
-        # NOTE: We can ignore previous patches because the only existing patch is included in the
-        # 2.2.0 release.
-        # https://github.com/NixOS/nixpkgs/blob/18036c0be90f4e308ae3ebcab0e14aae0336fe42/pkgs/os-specific/linux/zfs/generic.nix#L57-L63
         patches =
+          (oldAttrs.patches or [])
           #  Patch set for ZSTD 1.5.5
-          [
+          ++ [
             # All-in-one patch set.
             # Substituted commit hashes for master on both branches.
             # To regenerate, replace with the new commit hashes.
-            # (fetchpatch {
-            #   hash = "";
-            #   url = "https://github.com/openzfs/zfs/compare/5bdfff5cfc8baff48b3b59a577e7ef756a011024...b5a2a40945ab2a722d042eab35709d78ea12ef04.patch";
-            # })
+            (prev.fetchpatch {
+              hash = "";
+              url = "https://github.com/openzfs/zfs/compare/5bdfff5cfc8baff48b3b59a577e7ef756a011024...b5a2a40945ab2a722d042eab35709d78ea12ef04.patch";
+            })
             # merge zstd 1.5.4
             # (fetchpatch {
             #   hash = "";
