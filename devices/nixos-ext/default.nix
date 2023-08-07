@@ -1,7 +1,15 @@
 {
   imports = [
     ./hardware.nix
-    ./disko.nix
+
+    # Disks and formatting
+    ./disko
+
+    # ZFS-relevant changes to boot, networking, services, etc.
+    ./zfs.nix
+
+    # Changes for impermanence
+    ./impermanence.nix
 
     # Configure Nix
     ../../modules/nix/nix.nix

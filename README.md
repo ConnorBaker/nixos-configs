@@ -1,8 +1,5 @@
 TODO:
 
-- [x] `nixos-ext` fails to boot.
-  - This is due to `nixos-anywhere` not recursively unmounting nested datasets.
-  - At the moment, no way to get around `boot.zfs.forceImportRoot = true;`.
 - [ ] Deploy SSH keys to machines
 - [ ] Migrate to use of flake modules
 - [ ] <https://github.com/Mic92/sops-nix/issues/340>
@@ -13,9 +10,9 @@ TODO:
 - [ ] <https://github.com/numtide/nixos-anywhere/issues/141>
 - [ ] <https://github.com/numtide/nixos-anywhere/issues/161>
 
-> **INFO**
+> **WARNING**
 >
-> When using `--build-on-remote`, make sure the remote account is one which Nix trusts. In the NixOS installer, this means `root` instead of `nixos`.
+> When using the `--build-on-remote` flag with `nixos-anywhere`, make sure the remote account is one which Nix trusts. In the NixOS installer, this means `root` instead of `nixos`.
 
 ## `nixos-desktop`
 

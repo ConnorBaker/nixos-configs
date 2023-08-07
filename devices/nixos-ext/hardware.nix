@@ -5,9 +5,7 @@
     initrd.availableKernelModules = [
       "ahci"
       "nvme"
-      "sd_mod"
       "thunderbolt"
-      "uas"
       "usbhid"
       "xhci_pci"
     ];
