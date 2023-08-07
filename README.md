@@ -51,12 +51,17 @@ TODO:
 
 ## `nixos-ext`
 
+> **WARNING**
+>
+> Because `nixos-ext` uses `/persist` for all things to be persisted, it's important that the directory provided to `--extra-files` has a structure like `/persist/etc/ssh/` (for example) instead of `/etc/ssh/`.
+
 Deploy `nixos-ext` with:
 
 ```bash
 nix run github:numtide/nixos-anywhere/9df79870b04667f2d16f1a78a1ab87d124403fb7 -- \
-  root@192.168.1.195  \
-  -i /home/connorbaker/.ssh/id_ed25519  \
-  --flake .#nixos-ext
-  --extra-files <path to root dir to copy>
+  connorbaker@192.168.1.195 \
+  -i ~/.ssh/id_ed25519 \
+  --flake .#nixos-ext \
+  --build-on-remote \
+  --extra-files /Volumes/nixos-ext
 ```
