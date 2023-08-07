@@ -34,7 +34,7 @@ Deploy `hetzner-ext` with:
 
 ```bash
 ssh hetzner "bash -s" < scripts/hetzner-ipv6-only-dns-fix.sh
-nix run github:numtide/nixos-anywhere -- \
+nix run github:numtide/nixos-anywhere/9df79870b04667f2d16f1a78a1ab87d124403fb7 -- \
   root@2a01:4f9:6a:1692::2 \
   -i /home/connorbaker/.ssh/id_ed25519 \
   --flake .#hetzner-ext
@@ -54,7 +54,7 @@ TODO:
 Deploy `nixos-ext` with:
 
 ```bash
-nix run github:numtide/nixos-anywhere -- \
+nix run github:numtide/nixos-anywhere/9df79870b04667f2d16f1a78a1ab87d124403fb7 -- \
   root@192.168.1.195  \
   -i /home/connorbaker/.ssh/id_ed25519  \
   --flake .#nixos-ext
