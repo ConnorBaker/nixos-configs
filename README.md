@@ -58,4 +58,5 @@ nix run github:numtide/nixos-anywhere/9df79870b04667f2d16f1a78a1ab87d124403fb7 -
   root@192.168.1.195  \
   -i /home/connorbaker/.ssh/id_ed25519  \
   --flake .#nixos-ext
+  --extra-files <path to root dir to copy>
 ```
