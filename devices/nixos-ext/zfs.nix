@@ -4,6 +4,7 @@
       # NOTE: Return to the initial snapshot.
       postDeviceCommands = lib.mkAfter ''
         zfs rollback -r rpool@blank
+        zfs rollback -r dpool@blank
       '';
       supportedFilesystems = ["zfs"];
     };

@@ -26,60 +26,102 @@
     #   };
     # };
   };
+
+  rpool = lib.recursiveUpdate zfsPoolCommonConfig {
+    # TODO(@connorbaker): sharesmb option?
+
+    # NOTE: This mountpoint doesn't pass the option to zpool create -- it's for NixOS'
+    # fileSystems attribute set.
+    mountpoint = "/";
+    # NOTE: As such, we have to use rootFsOptions.mountpoint as well.
+    rootFsOptions.mountpoint = "/";
+
+    # NOTE: We use this to create the initial snapshot.
+    postCreateHook = ''
+      zfs snapshot rpool@blank
+    '';
+
+    datasets = {
+      nix = {
+        type = "zfs_fs";
+        mountpoint = "/nix";
+      };
+
+      home = {
+        type = "zfs_fs";
+        mountpoint = "/home";
+      };
+
+      # Persist hosts things like /etc/ssh/ssh_host_* keys, /var/lib and /var/log.
+      persist = {
+        type = "zfs_fs";
+        mountpoint = "/persist";
+      };
+
+      # encrypted = {
+      #   type = "zfs_fs";
+      #   options = {
+      #     mountpoint = "none";
+      #     encryption = "aes-256-gcm";
+      #     keyformat = "passphrase";
+      #     keylocation = "file:///tmp/secret.key";
+      #   };
+      #   # use this to read the key during boot
+      #   # postCreateHook = ''
+      #   #   zfs set keylocation="prompt" "rpool/$name";
+      #   # '';
+      # };
+      # "encrypted/test" = {
+      #   type = "zfs_fs";
+      #   mountpoint = "/zfs_crypted";
+      # };
+    };
+  };
+
+  dpool = lib.recursiveUpdate zfsPoolCommonConfig {
+    # TODO(@connorbaker): sharesmb option?
+
+    # NOTE: This mountpoint doesn't pass the option to zpool create -- it's for NixOS'
+    # fileSystems attribute set.
+    mountpoint = "/data";
+    # NOTE: As such, we have to use rootFsOptions.mountpoint as well.
+    rootFsOptions.mountpoint = "/data";
+
+    # NOTE: We use this to create the initial snapshot.
+    postCreateHook = ''
+      zfs snapshot dpool@blank
+    '';
+
+    datasets = {
+      # TODO(@connorbaker): Create dataset torrent mirroring
+      # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#bit-torrent
+      # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#sequential-workloads
+      photos = {
+        type = "zfs_fs";
+        mountpoint = "/data/photos";
+      };
+
+      # encrypted = {
+      #   type = "zfs_fs";
+      #   options = {
+      #     mountpoint = "none";
+      #     encryption = "aes-256-gcm";
+      #     keyformat = "passphrase";
+      #     keylocation = "file:///tmp/secret.key";
+      #   };
+      #   # use this to read the key during boot
+      #   # postCreateHook = ''
+      #   #   zfs set keylocation="prompt" "rpool/$name";
+      #   # '';
+      # };
+      # "encrypted/test" = {
+      #   type = "zfs_fs";
+      #   mountpoint = "/zfs_crypted";
+      # };
+    };
+  };
 in {
   disko.devices.zpool = {
-    rpool = lib.recursiveUpdate zfsPoolCommonConfig {
-      # TODO(@connorbaker): sharesmb option?
-
-      # NOTE: This mountpoint doesn't pass the option to zpool create -- it's for NixOS'
-      # fileSystems attribute set.
-      mountpoint = "/";
-      # NOTE: As such, we have to use rootFsOptions.mountpoint as well.
-      rootFsOptions.mountpoint = "/";
-
-      # NOTE: We use this to create the initial snapshot.
-      postCreateHook = ''
-        zfs snapshot rpool@blank
-      '';
-
-      datasets = {
-        # TODO(@connorbaker): Create dataset torrent mirroring
-        # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#bit-torrent
-        # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#sequential-workloads
-        nix = {
-          type = "zfs_fs";
-          mountpoint = "/nix";
-        };
-
-        home = {
-          type = "zfs_fs";
-          mountpoint = "/home";
-        };
-
-        # Persist hosts things like /etc/ssh/ssh_host_* keys, /var/lib and /var/log.
-        persist = {
-          type = "zfs_fs";
-          mountpoint = "/persist";
-        };
-
-        # encrypted = {
-        #   type = "zfs_fs";
-        #   options = {
-        #     mountpoint = "none";
-        #     encryption = "aes-256-gcm";
-        #     keyformat = "passphrase";
-        #     keylocation = "file:///tmp/secret.key";
-        #   };
-        #   # use this to read the key during boot
-        #   # postCreateHook = ''
-        #   #   zfs set keylocation="prompt" "rpool/$name";
-        #   # '';
-        # };
-        # "encrypted/test" = {
-        #   type = "zfs_fs";
-        #   mountpoint = "/zfs_crypted";
-        # };
-      };
-    };
+    inherit rpool dpool;
   };
 }

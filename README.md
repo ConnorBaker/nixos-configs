@@ -63,5 +63,5 @@ nix run github:numtide/nixos-anywhere/9df79870b04667f2d16f1a78a1ab87d124403fb7 -
   -i ~/.ssh/id_ed25519 \
   --flake .#nixos-ext \
   --build-on-remote \
-  --extra-files /Volumes/nixos-ext
+  --extra-files /Volumes/nixos-ext/
 ```
