@@ -13,7 +13,6 @@
       enable = true;
     };
     supportedFilesystems = ["vfat" "zfs"];
-    zfs.forceImportRoot = false;
   };
 
   disko.devices = {
