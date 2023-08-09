@@ -42,34 +42,34 @@
   };
 
   samsung990Pro2TBDisks = let
-    interface = "nvme";
-    model = "Samsung_SSD_990_PRO_2TB";
-    modelSerialSeparator = "_";
-  in {
-    boot = {
-      inherit interface model modelSerialSeparator;
-      serial = "S73WNJ0W608017P";
-      contentConfigs = [
-        bootConfig
-        rpoolConfig
-      ];
+    common = {
+      interface = "nvme";
+      model = "Samsung_SSD_990_PRO_2TB";
+      modelSerialSeparator = "_";
     };
-    data1 = {
-      inherit interface model modelSerialSeparator;
-      serial = "S73WNJ0W608883V";
-      contentConfigs = [rpoolConfig];
+    disks = {
+      rpool-boot = {
+        serial = "S73WNJ0W608017P";
+        contentConfigs = [
+          bootConfig
+          rpoolConfig
+        ];
+      };
+      rpool-data1 = {
+        serial = "S73WNJ0W608883V";
+        contentConfigs = [rpoolConfig];
+      };
+      rpool-data2 = {
+        serial = "S73WNJ0W608886J";
+        contentConfigs = [rpoolConfig];
+      };
+      rpool-data3 = {
+        serial = "S73WNJ0W608887H";
+        contentConfigs = [rpoolConfig];
+      };
     };
-    data2 = {
-      inherit interface model modelSerialSeparator;
-      serial = "S73WNJ0W608886J";
-      contentConfigs = [rpoolConfig];
-    };
-    data3 = {
-      inherit interface model modelSerialSeparator;
-      serial = "S73WNJ0W608887H";
-      contentConfigs = [rpoolConfig];
-    };
-  };
+  in
+    lib.mapAttrs (lib.const (lib.recursiveUpdate common)) disks;
 
   disks = samsung990Pro2TBDisks;
 in {
