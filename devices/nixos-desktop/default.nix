@@ -4,8 +4,8 @@
 
     # Configure Nix
     ../../modules/nix/nix.nix
-    ../../modules/nix/cantcacheme/pull.nix
-    ../../modules/nix/cantcacheme/push.nix
+    # ../../modules/nix/cantcacheme/pull.nix
+    # ../../modules/nix/cantcacheme/push.nix
 
     # Configure system
     ../../modules/boot.nix
