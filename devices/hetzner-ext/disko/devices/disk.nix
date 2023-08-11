@@ -17,19 +17,13 @@
   # Configuration for our boot
   bootConfig = {
     type = "gpt";
-    partitions = {
-      boot = {
-        size = "1M";
-        type = "EF02"; # for grub MBR
-      };
-      ESP = {
-        size = "1G";
-        type = "EF00"; # EFI System
-        content = {
-          format = "vfat";
-          mountpoint = "/boot";
-          type = "filesystem";
-        };
+    partitions.ESP = {
+      size = "1G";
+      type = "EF00"; # EFI System
+      content = {
+        format = "vfat";
+        mountpoint = "/boot";
+        type = "filesystem";
       };
     };
   };

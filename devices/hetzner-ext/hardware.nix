@@ -5,12 +5,13 @@
     initrd.availableKernelModules = [
       "ahci"
       "sd_mod"
+      "usbhid"
       "xhci_pci"
     ];
     kernelModules = ["kvm-intel"];
-    loader.grub = {
-      copyKernels = true;
-      enable = true;
+    loader = {
+      efi.canTouchEfiVariables = true;
+      systemd-boot.enable = true;
     };
   };
 
