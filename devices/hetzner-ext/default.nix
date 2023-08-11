@@ -41,6 +41,7 @@
   };
 
   networking = {
+    firewall.enable = false;
     hostName = "hetzner-ext";
     useDHCP = false;
     useNetworkd = true;
