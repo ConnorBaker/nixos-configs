@@ -79,7 +79,14 @@
         hetzner-ext = withSystem "x86_64-linux" ({inputs', ...}:
           inputs.nixpkgs.lib.nixosSystem {
             modules = [
+              inputs.sops-nix.nixosModules.sops
               inputs.disko.nixosModules.disko
+              inputs.impermanence.nixosModules.impermanence
+              {
+                nixpkgs.overlays = [
+                  (_: _: {inherit (inputs'.nix.packages) nix;})
+                ];
+              }
               ./devices/hetzner-ext
             ];
           });
