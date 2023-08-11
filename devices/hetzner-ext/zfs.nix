@@ -4,15 +4,14 @@
       # NOTE: Return to the initial snapshot.
       postDeviceCommands = lib.mkAfter ''
         zfs rollback -r rpool@blank
-        zfs rollback -r dpool@blank
       '';
-      supportedFilesystems = ["zfs"];
+      supportedFilesystems = ["vfat" "zfs"];
     };
     kernelParams = ["nohibernate"];
-    supportedFilesystems = ["zfs"];
+    supportedFilesystems = ["vfat" "zfs"];
     # NOTE: Sadly, cannot be avoided right now. Needed because the nixos-anywhere
     # installer doesn't successfully unmount/export nested datasets.
-    # zfs.forceImportRoot = false;
+    zfs.forceImportRoot = false;
   };
 
   networking.hostId = "deadbee5";

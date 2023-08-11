@@ -53,7 +53,7 @@
       modelSerialSeparator = "-";
     };
     disks = {
-      rpool-boot = {
+      boot = {
         model = "ST12000NM0017";
         serial = "2A1111_ZJV05SVK";
         contentConfigs = [
@@ -61,7 +61,7 @@
           rpoolConfig
         ];
       };
-      rpool-data1 = {
+      data1 = {
         model = "ST12000NM003G";
         serial = "2MT113_ZL2GNTPA";
         contentConfigs = [rpoolConfig];

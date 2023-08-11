@@ -42,7 +42,6 @@
 
   networking = {
     hostName = "hetzner-ext";
-    hostId = "deadbee5";
     useDHCP = false;
     useNetworkd = true;
   };

@@ -33,10 +33,15 @@ Edit the files in secrets with `sops secrets/<whatever>.yaml`.
 Deploy `hetzner-ext` with:
 
 ```bash
-ssh hetzner "bash -s" < scripts/hetzner-ipv6-only-dns-fix.sh
+cat >> ~/.ssh/config <<EOF
+Host hetzner-root
+  HostName 2a01:4f9:6a:1692::2
+  User root
+  IdentityFile ~/.ssh/id_ed25519
+EOF
+ssh hetzner-root "bash -s" < scripts/hetzner-ipv6-only-dns-fix.sh
 nix run github:numtide/nixos-anywhere/9df79870b04667f2d16f1a78a1ab87d124403fb7 -- \
-  root@2a01:4f9:6a:1692::2 \
-  -i /home/connorbaker/.ssh/id_ed25519 \
+  hetzner-root \
   --flake .#hetzner-ext \
   --extra-files /Volumes/hetzner-ext
 ```
