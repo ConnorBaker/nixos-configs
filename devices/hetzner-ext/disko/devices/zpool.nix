@@ -1,7 +1,7 @@
 {lib, ...}: let
   zfsPoolCommonConfig = {
     type = "zpool";
-    mode = "raidz2";
+    mode = "mirror";
     options = {
       ashift = "12";
       autotrim = "on";
@@ -77,51 +77,8 @@
       # };
     };
   };
-
-  dpool = lib.recursiveUpdate zfsPoolCommonConfig {
-    # TODO(@connorbaker): sharesmb option?
-
-    # NOTE: This mountpoint doesn't pass the option to zpool create -- it's for NixOS'
-    # fileSystems attribute set.
-    mountpoint = "/data";
-    # NOTE: As such, we have to use rootFsOptions.mountpoint as well.
-    rootFsOptions.mountpoint = "/data";
-
-    # NOTE: We use this to create the initial snapshot.
-    postCreateHook = ''
-      zfs snapshot dpool@blank
-    '';
-
-    datasets = {
-      # TODO(@connorbaker): Create dataset torrent mirroring
-      # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#bit-torrent
-      # - https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Workload%20Tuning.html#sequential-workloads
-      photos = {
-        type = "zfs_fs";
-        mountpoint = "/data/photos";
-      };
-
-      # encrypted = {
-      #   type = "zfs_fs";
-      #   options = {
-      #     mountpoint = "none";
-      #     encryption = "aes-256-gcm";
-      #     keyformat = "passphrase";
-      #     keylocation = "file:///tmp/secret.key";
-      #   };
-      #   # use this to read the key during boot
-      #   # postCreateHook = ''
-      #   #   zfs set keylocation="prompt" "rpool/$name";
-      #   # '';
-      # };
-      # "encrypted/test" = {
-      #   type = "zfs_fs";
-      #   mountpoint = "/zfs_crypted";
-      # };
-    };
-  };
 in {
   disko.devices.zpool = {
-    inherit rpool dpool;
+    inherit rpool;
   };
 }
