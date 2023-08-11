@@ -1,119 +1,39 @@
-{config, ...}: {
-  boot = {
-    initrd.availableKernelModules = [
-      "ahci"
-      "sd_mod"
-      "xhci_pci"
-    ];
-    kernelModules = ["kvm-intel"];
-    kernelPackages = config.boot.zfs.package.latestCompatibleLinuxPackages;
-    kernelParams = ["nohibernate"];
-    loader.grub = {
-      copyKernels = true;
-      enable = true;
-    };
-    supportedFilesystems = ["vfat" "zfs"];
-  };
+{
+  imports = [
+    ./hardware.nix
 
-  disko.devices = {
-    disk = {
-      main = let
-        interface = "ata";
-        model = "ST12000NM0017";
-        serial = "2A1111_ZJV05SVK";
-      in {
-        device = "/dev/disk/by-id/${interface}-${model}-${serial}";
-        type = "disk";
-        content = {
-          type = "gpt";
-          partitions = {
-            boot = {
-              size = "1M";
-              type = "EF02"; # for grub MBR
-            };
-            ESP = {
-              size = "512M";
-              type = "EF00";
-              content = {
-                format = "vfat";
-                mountpoint = "/boot";
-                type = "filesystem";
-              };
-            };
-            zfs = {
-              size = "100%";
-              content = {
-                type = "zfs";
-                pool = "zroot";
-              };
-            };
-          };
-        };
-      };
-      data = let
-        interface = "ata";
-        model = "ST12000NM003G";
-        serial = "2MT113_ZL2GNTPA";
-      in {
-        device = "/dev/disk/by-id/${interface}-${model}-${serial}";
-        type = "disk";
-        content = {
-          type = "gpt";
-          partitions.zfs = {
-            size = "100%";
-            content = {
-              type = "zfs";
-              pool = "zroot";
-            };
-          };
-        };
-      };
-    };
-    zpool.zroot = {
-      type = "zpool";
-      mode = "mirror";
-      rootFsOptions."com.sun:auto-snapshot" = "false";
-      options.ashift = "12";
-      mountpoint = "/";
-      datasets = {
-        home = {
-          type = "zfs_fs";
-          mountpoint = "/home";
-        };
-        nix = {
-          type = "zfs_fs";
-          mountpoint = "/nix";
-          options.atime = "off";
-        };
-      };
-    };
-  };
+    # Disks and formatting
+    ./disko
 
-  hardware = {
-    cpu = {
-      amd.updateMicrocode = true;
-      intel.updateMicrocode = true;
-    };
-    enableAllFirmware = true;
-  };
+    # ZFS-relevant changes to boot, networking, services, etc.
+    ./zfs.nix
 
-  nix.settings = {
-    experimental-features = [
-      "flakes"
-      "nix-command"
-    ];
-    system-features = [
-      "benchmark"
-      "big-parallel"
-      "kvm"
-      "nixos-test"
-    ];
-    trusted-users = [
-      "@nixbld"
-      "@wheel"
-      "root"
-    ];
-  };
+    # Changes for impermanence
+    ./impermanence.nix
+
+    # Configure Nix
+    ../../modules/nix/nix.nix
+
+    # Configure system
+    ../../modules/boot.nix
+    ../../modules/cpu-hardware.nix
+    ../../modules/networking.nix
+    ../../modules/headless.nix
+    ../../modules/users.nix
+    ../../modules/mimalloc.nix
+    ../../modules/zram.nix
+    ../../modules/sudo.nix
+
+    # Configure services
+    ../../modules/services/openssh.nix
+
+    # Configure programs
+    ../../modules/programs/git.nix
+    ../../modules/programs/htop.nix
+
+    # Users
+    ../../users/connorbaker.nix
+  ];
 
   nixpkgs = {
     config.allowUnfree = true;
@@ -125,30 +45,6 @@
     hostId = "deadbee5";
     useDHCP = false;
     useNetworkd = true;
-  };
-
-  powerManagement.cpuFreqGovernor = "powersave";
-
-  security.sudo = {
-    execWheelOnly = true;
-    wheelNeedsPassword = false;
-  };
-
-  services = {
-    openssh = {
-      allowSFTP = true;
-      enable = true;
-      settings = {
-        KbdInteractiveAuthentication = false;
-        PasswordAuthentication = false;
-        PermitRootLogin = "prohibit-password";
-        X11Forwarding = false;
-      };
-    };
-    zfs = {
-      autoScrub.enable = true;
-      trim.enable = true;
-    };
   };
 
   system.stateVersion = "23.05";
@@ -168,23 +64,5 @@
       };
     };
     wait-online.anyInterface = true;
-  };
-
-  users.users = let
-    keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJLd6kNEt/f89JGImBViXake15Y3VQ6AuKR/IBr1etpt connorbaker@nixos-desktop"
-    ];
-  in {
-    root.openssh.authorizedKeys = {
-      inherit keys;
-    };
-    connorbaker = {
-      description = "Connor Baker's user account";
-      extraGroups = ["wheel"];
-      isNormalUser = true;
-      openssh.authorizedKeys = {
-        inherit keys;
-      };
-    };
   };
 }
