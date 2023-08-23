@@ -1,4 +1,4 @@
-{
+{lib, pkgs, ...}: {
   imports = [
     ./hardware.nix
 
@@ -26,6 +26,7 @@
 
     # Configure services
     ../../modules/services/openssh.nix
+    ../../modules/services/tailscale.nix
 
     # Configure programs
     ../../modules/programs/git.nix
