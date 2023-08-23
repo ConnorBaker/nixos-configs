@@ -4,6 +4,7 @@
 
     # Configure Nix
     ../../modules/nix/nix.nix
+    ./nix.nix
     # ../../modules/nix/cantcacheme/pull.nix
     # ../../modules/nix/cantcacheme/push.nix
 
@@ -35,10 +36,7 @@
     ./packages.nix
   ];
 
-  boot = {
-    kernelPackages = pkgs.linuxPackages_latest;
-    loader.systemd-boot.enable = true;
-  };
+  boot.kernelPackages = pkgs.linuxPackages_latest;
   networking.hostName = "nixos-desktop";
   sops.age.sshKeyPaths = ["/home/connorbaker/.ssh/id_ed25519"];
   system.stateVersion = "23.05";

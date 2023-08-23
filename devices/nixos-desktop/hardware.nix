@@ -13,6 +13,10 @@
       kernelModules = ["dm-snapshot"];
     };
     kernelModules = ["kvm-intel"];
+    loader = {
+      efi.canTouchEfiVariables = true;
+      systemd-boot.enable = true;
+    };
   };
 
   fileSystems = {
