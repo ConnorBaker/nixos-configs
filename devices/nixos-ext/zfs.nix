@@ -12,7 +12,7 @@
     supportedFilesystems = ["vfat" "zfs"];
     # NOTE: Sadly, cannot be avoided right now. Needed because the nixos-anywhere
     # installer doesn't successfully unmount/export nested datasets.
-    zfs.forceImportRoot = true;
+    zfs.forceImportAll = true;
   };
 
   networking.hostId = "deadbee5";
