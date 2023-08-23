@@ -1,4 +1,4 @@
-{lib, ...}: {
+{config, lib, pkgs, ...}: {
   boot = {
     initrd = {
       # NOTE: Return to the initial snapshot.
@@ -12,8 +12,27 @@
     supportedFilesystems = ["vfat" "zfs"];
     # NOTE: Sadly, cannot be avoided right now. Needed because the nixos-anywhere
     # installer doesn't successfully unmount/export nested datasets.
-    zfs.forceImportAll = true;
+    # zfs.forceImportRoot = true;
+    # NOTE: Required for datasets nested under the root dataset? Seems like there's a race
+    # condition with Systemd's import service.
+    # zfs.forceImportAll = true;
   };
+
+  # Copied from https://github.com/NixOS/nixpkgs/issues/62644#issuecomment-1479523469
+  systemd.generators."zfs-mount-generator" = "${config.boot.zfs.package}/lib/systemd/system-generator/zfs-mount-generator";
+  environment.etc."zfs/zed.d/history_event-zfs-list-cacher.sh".source = "${config.boot.zfs.package}/etc/zfs/zed.d/history_event-zfs-list-cacher.sh";
+  systemd.services.zfs-mount.enable = false;
+  services.zfs.zed.settings.PATH = lib.mkForce (lib.makeBinPath [
+    pkgs.diffutils
+    config.boot.zfs.package
+    pkgs.coreutils
+    pkgs.curl
+    pkgs.gawk
+    pkgs.gnugrep
+    pkgs.gnused
+    pkgs.nettools
+    pkgs.util-linux
+  ]);
 
   networking.hostId = "deadbee5";
 
