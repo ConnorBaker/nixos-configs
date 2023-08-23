@@ -1,5 +1,10 @@
+# nixos-configs
+
+Configuration for my NixOS machines.
+
 TODO:
 
+- [ ] Include `nixos-anywhere` in flake to version control it.
 - [ ] Deploy SSH keys to machines
 - [ ] Migrate to use of flake modules
 - [ ] <https://github.com/Mic92/sops-nix/issues/340>
@@ -13,6 +18,10 @@ TODO:
 > **WARNING**
 >
 > When using the `--build-on-remote` flag with `nixos-anywhere`, make sure the remote account is one which Nix trusts. In the NixOS installer, this means `root` instead of `nixos`.
+
+> **INFO**
+>
+> When using impermanence rooted at `/persist`, it's important that the directory provided to `--extra-files` is has a root of `/persist`. For example, instead of using `--extra-files ./secret_deployment_files/etc/ssh`, `--extra-files ./secret_deployment_files/persist/etc/ssh`.
 
 ## `nixos-desktop`
 
@@ -56,10 +65,6 @@ TODO:
     - Expose only over WireGuard?
 
 ## `nixos-ext`
-
-> **WARNING**
->
-> Because `nixos-ext` uses `/persist` for all things to be persisted, it's important that the directory provided to `--extra-files` has a structure like `/persist/etc/ssh/` (for example) instead of `/etc/ssh/`.
 
 Deploy `nixos-ext` with:
 

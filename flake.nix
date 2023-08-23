@@ -30,7 +30,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/release-23.05";
     # nixpkgs.url = "github:ConnorBaker/nixpkgs/feat/nvidia-dcgm-prometheus-exporter-module";
 
-    queued-build-hook.url = "github:nix-community/queued-build-hook";
+    # queued-build-hook.url = "github:nix-community/queued-build-hook";
 
     sops-nix = {
       inputs.nixpkgs.follows = "nixpkgs";
@@ -49,7 +49,6 @@
           inputs.nixpkgs.lib.nixosSystem {
             modules = [
               inputs.sops-nix.nixosModules.sops
-              inputs.queued-build-hook.nixosModules.queued-build-hook
               {
                 nixpkgs.overlays = [
                   (_: _: {inherit (inputs'.nix.packages) nix;})
