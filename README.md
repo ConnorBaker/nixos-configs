@@ -37,33 +37,6 @@ ssh-to-age -private-key -i ~/.ssh/id_ed25519 > ~/.config/sops/age/keys.txt
 
 Edit the files in secrets with `sops secrets/<whatever>.yaml`.
 
-## `hetzner-ext`
-
-Deploy `hetzner-ext` with:
-
-```bash
-cat >> ~/.ssh/config <<EOF
-Host hetzner-root
-  HostName 2a01:4f9:6a:1692::2
-  User root
-  IdentityFile ~/.ssh/id_ed25519
-EOF
-ssh hetzner-root "bash -s" < scripts/hetzner-ipv6-only-dns-fix.sh
-nix run github:numtide/nixos-anywhere/9df79870b04667f2d16f1a78a1ab87d124403fb7 -- \
-  hetzner-root \
-  --flake .#hetzner-ext \
-  --extra-files /Volumes/hetzner-ext
-```
-
-TODO:
-
-- `hetzner-ext`
-  - [ ] Switch to ZFS and ZFS-encrypted disks
-  - [ ] Jellyfin
-    - Expose only over WireGuard?
-  - [ ] Make custom NixOS-iso available via torrent?
-    - Expose only over WireGuard?
-
 ## `nixos-ext`
 
 Deploy `nixos-ext` with:
