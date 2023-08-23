@@ -10,6 +10,7 @@
       "xhci_pci"
     ];
     kernelModules = ["kvm-amd"];
+    kernelParams = ["amd_pstate=active"];
     loader = {
       efi.canTouchEfiVariables = true;
       systemd-boot.enable = true;
@@ -17,5 +18,5 @@
   };
 
   nixpkgs.hostPlatform = "x86_64-linux";
-  powerManagement.cpuFreqGovernor = "powersave";
+  powerManagement.cpuFreqGovernor = "performance";
 }
