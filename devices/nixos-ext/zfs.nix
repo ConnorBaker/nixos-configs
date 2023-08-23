@@ -1,4 +1,9 @@
-{config, lib, pkgs, ...}: {
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}: {
   boot = {
     initrd = {
       # NOTE: Return to the initial snapshot.
@@ -19,20 +24,11 @@
   };
 
   # Copied from https://github.com/NixOS/nixpkgs/issues/62644#issuecomment-1479523469
-  systemd.generators."zfs-mount-generator" = "${config.boot.zfs.package}/lib/systemd/system-generator/zfs-mount-generator";
+  systemd = {
+    generators.zfs-mount-generator = "${config.boot.zfs.package}/lib/systemd/system-generator/zfs-mount-generator";
+    services.zfs-mount.enable = false;
+  };
   environment.etc."zfs/zed.d/history_event-zfs-list-cacher.sh".source = "${config.boot.zfs.package}/etc/zfs/zed.d/history_event-zfs-list-cacher.sh";
-  systemd.services.zfs-mount.enable = false;
-  services.zfs.zed.settings.PATH = lib.mkForce (lib.makeBinPath [
-    pkgs.diffutils
-    config.boot.zfs.package
-    pkgs.coreutils
-    pkgs.curl
-    pkgs.gawk
-    pkgs.gnugrep
-    pkgs.gnused
-    pkgs.nettools
-    pkgs.util-linux
-  ]);
 
   networking.hostId = "deadbee5";
 
@@ -49,6 +45,17 @@
     zfs = {
       autoScrub.enable = true;
       trim.enable = true;
+      zed.settings.PATH = lib.mkForce (lib.makeBinPath [
+        pkgs.diffutils
+        config.boot.zfs.package
+        pkgs.coreutils
+        pkgs.curl
+        pkgs.gawk
+        pkgs.gnugrep
+        pkgs.gnused
+        pkgs.nettools
+        pkgs.util-linux
+      ]);
     };
   };
 }
