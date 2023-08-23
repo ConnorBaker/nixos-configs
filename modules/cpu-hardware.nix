@@ -7,4 +7,5 @@
     enableAllFirmware = true;
   };
   nixpkgs.config.allowUnfree = true;
+  powerManagement.cpuFreqGovernor = "performance";
 }
