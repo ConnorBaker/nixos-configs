@@ -32,15 +32,18 @@
       + ''
         echo "Checking if already authenticated to Tailscale ..."
         status="$(${lib.getExe pkgs.tailscale} status -json | ${lib.getExe pkgs.jq} -r .BackendState)"
+        echo "Tailscale status: $status"
         if [ $status = "Running" ]; then
           echo "Already authenticated to Tailscale, exiting."
           exit 0
         fi
       ''
       # otherwise authenticate with tailscale
+      # limit to 30s to avoid hanging the boot process
       + ''
         echo "Authenticating with Tailscale ..."
-        ${lib.getExe pkgs.tailscale} up --auth-key file:/etc/tailscale/tskey-reusable
+        ${pkgs.coreutils}/bin/timeout 30 \
+          ${lib.getExe pkgs.tailscale} up --auth-key file:/etc/tailscale/tskey-reusable
       '';
   };
 }
