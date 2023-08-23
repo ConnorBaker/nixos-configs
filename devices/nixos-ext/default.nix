@@ -36,6 +36,11 @@
     ../../users/connorbaker.nix
   ];
 
+  environment.etc = {
+    "ssh/ssh_host_ed25519_key.pub".source = ./keys/ssh_host_ed25519_key.pub;
+    "ssh/ssh_host_rsa_key.pub".source = ./keys/ssh_host_rsa_key.pub;
+  };
+
   networking.hostName = "nixos-ext";
   system.stateVersion = "23.05";
 }
