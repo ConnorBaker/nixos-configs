@@ -16,6 +16,7 @@
     kernelParams = ["nohibernate"];
     supportedFilesystems = ["vfat" "zfs"];
     zfs.enableUnstable = true;
+    kernelPackages = pkgs.linuxKernel.packages.linux_6_4;
   };
 
   # Some settings copied from https://github.com/NixOS/nixpkgs/issues/62644#issuecomment-1479523469
