@@ -14,7 +14,7 @@
 
     nil = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:oxalica/nil/2023-05-09";
+      url = "github:oxalica/nil";
     };
 
     nix = {
@@ -27,7 +27,7 @@
       url = "github:nix-community/nix-ld-rs";
     };
 
-    nixpkgs.url = "github:NixOS/nixpkgs/release-23.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     # nixpkgs.url = "github:ConnorBaker/nixpkgs/feat/nvidia-dcgm-prometheus-exporter-module";
 
     # queued-build-hook.url = "github:nix-community/queued-build-hook";

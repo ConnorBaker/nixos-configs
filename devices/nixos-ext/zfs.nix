@@ -15,6 +15,7 @@
     };
     kernelParams = ["nohibernate"];
     supportedFilesystems = ["vfat" "zfs"];
+    zfs.enableUnstable = true;
   };
 
   # Some settings copied from https://github.com/NixOS/nixpkgs/issues/62644#issuecomment-1479523469
