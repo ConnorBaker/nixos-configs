@@ -15,19 +15,9 @@
     };
     kernelParams = ["nohibernate"];
     supportedFilesystems = ["vfat" "zfs"];
-    # NOTE: Sadly, cannot be avoided right now. Needed because the nixos-anywhere
-    # installer doesn't successfully unmount/export nested datasets.
-    # zfs.forceImportRoot = true;
-    # NOTE: Required for datasets nested under the root dataset? Seems like there's a race
-    # condition with Systemd's import service.
-    # zfs.forceImportAll = true;
   };
 
-  # Copied from https://github.com/NixOS/nixpkgs/issues/62644#issuecomment-1479523469
-  systemd = {
-    generators.zfs-mount-generator = "${config.boot.zfs.package}/lib/systemd/system-generator/zfs-mount-generator";
-    services.zfs-mount.enable = false;
-  };
+  # Some settings copied from https://github.com/NixOS/nixpkgs/issues/62644#issuecomment-1479523469
   environment.etc."zfs/zed.d/history_event-zfs-list-cacher.sh".source = "${config.boot.zfs.package}/etc/zfs/zed.d/history_event-zfs-list-cacher.sh";
 
   networking.hostId = "deadbee5";
@@ -45,11 +35,12 @@
     zfs = {
       autoScrub.enable = true;
       trim.enable = true;
+      # Add pkgs.diffutils to PATH for zed (required for zfs-mount-generator).
       zed.settings.PATH = lib.mkForce (lib.makeBinPath [
-        pkgs.diffutils
         config.boot.zfs.package
         pkgs.coreutils
         pkgs.curl
+        pkgs.diffutils
         pkgs.gawk
         pkgs.gnugrep
         pkgs.gnused
@@ -57,5 +48,10 @@
         pkgs.util-linux
       ]);
     };
+  };
+
+  systemd = {
+    generators.zfs-mount-generator = "${config.boot.zfs.package}/lib/systemd/system-generator/zfs-mount-generator";
+    services.zfs-mount.enable = false;
   };
 }

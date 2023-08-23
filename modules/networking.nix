@@ -16,13 +16,20 @@
       logRefusedConnections = false;
     };
     nameservers = [
-      "1.1.1.1"
+      # Quad-9
+      "9.9.9.9"
+      "2620:fe::fe"
+
+      # Google
       "8.8.8.8"
+      "2001:4860:4860::8888"
+
+      # Public Nat64 -- https://nat64.net
+      "2a01:4f8:c2c:123f::1"
+      "2a00:1098:2b::1"
     ];
     # Use networkd instead of the pile of shell scripts
     useNetworkd = lib.mkDefault true;
-    # TODO(@connorbaker): Disabling useDHCP breaks the network and prevents access for the desktop.
-    # useDHCP = lib.mkDefault false;
   };
 
   systemd = {
