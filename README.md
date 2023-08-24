@@ -49,3 +49,16 @@ nix run github:numtide/nixos-anywhere/9df79870b04667f2d16f1a78a1ab87d124403fb7 -
   --build-on-remote \
   --extra-files /Volumes/nixos-ext
 ```
+
+## `nixos-hetzner`
+
+Deploy `nixos-hetzner` with:
+
+```bash
+nix run github:numtide/nixos-anywhere/9df79870b04667f2d16f1a78a1ab87d124403fb7 -- \
+  root@65.21.24.6 \
+  -i ~/.ssh/id_ed25519 \
+  --flake .#nixos-hetzner \
+  --build-on-remote \
+  --extra-files /Volumes/nixos-hetzner
+```
