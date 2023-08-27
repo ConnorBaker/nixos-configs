@@ -75,7 +75,7 @@
             ];
           });
 
-        nixos-hetzner = withSystem "x86_64-linux" ({inputs', ...}:
+        nixos-build01 = withSystem "x86_64-linux" ({inputs', ...}:
           inputs.nixpkgs.lib.nixosSystem {
             modules = [
               inputs.sops-nix.nixosModules.sops
@@ -86,7 +86,7 @@
                   (_: _: {inherit (inputs'.nix.packages) nix;})
                 ];
               }
-              ./devices/nixos-hetzner
+              ./devices/nixos-build01
             ];
           });
       };

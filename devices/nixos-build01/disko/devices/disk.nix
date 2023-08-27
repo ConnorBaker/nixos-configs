@@ -41,27 +41,35 @@
     };
   };
 
-  samsungPM9A3Disks = let
+  samsung990Pro2TBDisks = let
     common = {
       interface = "nvme";
-      model = "SAMSUNG_MZQL21T9HCJR";
-      modelSerialSeparator = "-";
+      model = "Samsung_SSD_990_PRO_2TB";
+      modelSerialSeparator = "_";
     };
     disks = {
       rpool-boot = {
-        serial = "00A07_S64GNN0W300145";
+        serial = "S73WNJ0W701713F";
         contentConfigs = [
           bootConfig
           rpoolConfig
         ];
       };
-      rpool-data = {
-        serial = "00A07_S64GNN0W300147";
+      rpool-data1 = {
+        serial = "S73WNJ0W701716V";
+        contentConfigs = [rpoolConfig];
+      };
+      rpool-data2 = {
+        serial = "S73WNJ0W701722Z";
+        contentConfigs = [rpoolConfig];
+      };
+      rpool-data3 = {
+        serial = "S73WNJ0W701726F";
         contentConfigs = [rpoolConfig];
       };
     };
   in
     lib.mapAttrs (lib.const (lib.recursiveUpdate common)) disks;
 in {
-  config.disko.devices.disk = lib.mapAttrs mkDisk samsungPM9A3Disks;
+  config.disko.devices.disk = lib.mapAttrs mkDisk samsung990Pro2TBDisks;
 }

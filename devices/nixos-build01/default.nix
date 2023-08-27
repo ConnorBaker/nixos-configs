@@ -41,6 +41,6 @@
     "ssh/ssh_host_rsa_key.pub".source = ./keys/ssh_host_rsa_key.pub;
   };
 
-  networking.hostName = "nixos-ext";
+  networking.hostName = "nixos-build01";
   system.stateVersion = "23.05";
 }

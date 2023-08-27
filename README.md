@@ -50,15 +50,15 @@ nix run github:numtide/nixos-anywhere/9df79870b04667f2d16f1a78a1ab87d124403fb7 -
   --extra-files /Volumes/nixos-ext
 ```
 
-## `nixos-hetzner`
+## `nixos-build01`
 
-Deploy `nixos-hetzner` with:
+Deploy `nixos-build01` with:
 
 ```bash
 nix run github:numtide/nixos-anywhere/9df79870b04667f2d16f1a78a1ab87d124403fb7 -- \
-  root@65.21.24.6 \
+  connorbaker@192.168.1.200 \
   -i ~/.ssh/id_ed25519 \
-  --flake .#nixos-hetzner \
+  --flake .#nixos-build01 \
   --build-on-remote \
-  --extra-files /Volumes/nixos-hetzner
+  --extra-files /Volumes/nixos-build01
 ```

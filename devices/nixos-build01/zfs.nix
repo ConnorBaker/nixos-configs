@@ -21,7 +21,7 @@
   # Some settings copied from https://github.com/NixOS/nixpkgs/issues/62644#issuecomment-1479523469
   environment.etc."zfs/zed.d/history_event-zfs-list-cacher.sh".source = "${config.boot.zfs.package}/etc/zfs/zed.d/history_event-zfs-list-cacher.sh";
 
-  networking.hostId = "deadbee5";
+  networking.hostId = "deadba5e";
 
   services = {
     # The following is adapted from:

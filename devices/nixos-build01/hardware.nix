@@ -6,11 +6,11 @@
       "ahci"
       "nvme"
       "thunderbolt"
-      "vmd"
+      "usbhid"
       "xhci_pci"
     ];
-    kernelModules = ["kvm-intel"];
-    kernelParams = ["intel_pstate=active"];
+    kernelModules = ["kvm-amd"];
+    kernelParams = ["amd_pstate=active"];
     loader = {
       efi.canTouchEfiVariables = true;
       systemd-boot.enable = true;
