@@ -10,6 +10,7 @@ TODO:
 - [ ] Use `fastStdenv`: <https://nixos.wiki/wiki/C#Faster_GCC_compiler>
 - [ ] Wrap `fastStdenv` with `mold`: <https://github.com/NixOS/nixpkgs/blob/dbb569b8539424ed7d757bc080adb902ba84a086/pkgs/stdenv/adapters.nix#L192>
 - [ ] Wrap `fastStdenv` with `ccache`: <https://nixos.wiki/wiki/CCache>
+  - Note: <https://github.com/NixOS/nixpkgs/issues/227940>
 - [ ] Write a `config` attribute set for `nixpkgs` which makes the default stdenv ccache
 - [ ] Include `nixos-anywhere` in flake to version control it.
 - [ ] Migrate to use of flake modules

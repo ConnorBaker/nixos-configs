@@ -45,6 +45,7 @@
       config = {
         allowUnfree = true;
         # replaceStdenv = {pkgs, ...}: pkgs.stdenvAdapters.overrideInStdenv pkgs.fastStdenv [pkgs.libidn2];
+        # TODO(@connorbaker): https://github.com/NixOS/nixpkgs/issues/227940
         # replaceStdenv = {pkgs, ...}: pkgs.ccacheStdenv;
       };
       # hostPlatform = {
