@@ -29,6 +29,7 @@
     ../../modules/services/tailscale.nix
 
     # Configure programs
+    ../../modules/programs/ccache.nix
     ../../modules/programs/git.nix
     ../../modules/programs/htop.nix
 

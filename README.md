@@ -4,8 +4,14 @@ Configuration for my NixOS machines.
 
 TODO:
 
+- [ ] Specify `gcc.arch`
+  - Note: <https://discourse.nixos.org/t/nix-cpu-global-cpu-flags/21507>
+  - Note: <https://github.com/NixOS/nixpkgs/pull/202526>
+- [ ] Use `fastStdenv`: <https://nixos.wiki/wiki/C#Faster_GCC_compiler>
+- [ ] Wrap `fastStdenv` with `mold`: <https://github.com/NixOS/nixpkgs/blob/dbb569b8539424ed7d757bc080adb902ba84a086/pkgs/stdenv/adapters.nix#L192>
+- [ ] Wrap `fastStdenv` with `ccache`: <https://nixos.wiki/wiki/CCache>
+- [ ] Write a `config` attribute set for `nixpkgs` which makes the default stdenv ccache
 - [ ] Include `nixos-anywhere` in flake to version control it.
-- [ ] Deploy SSH keys to machines
 - [ ] Migrate to use of flake modules
 - [ ] <https://github.com/Mic92/sops-nix/issues/340>
 - [ ] <https://samleathers.com/posts/2022-02-03-my-new-network-and-deploy-rs.html>

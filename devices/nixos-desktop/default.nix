@@ -27,6 +27,7 @@
     # ./monitoring.nix
 
     # Configure programs
+    ../../modules/programs/ccache.nix
     ../../modules/programs/git.nix
     ../../modules/programs/htop.nix
     ../../modules/programs/nix-ld.nix

@@ -17,5 +17,15 @@
     };
   };
 
-  nixpkgs.hostPlatform = "x86_64-linux";
+  nixpkgs = {
+    # config.replaceStdenv = {pkgs, ...}: pkgs.fastStdenv;
+    hostPlatform = {
+      gcc = {
+        # TODO(@connorbaker): Zen 5 is too new
+        arch = "znver4";
+        tune = "znver4";
+      };
+      system = "x86_64-linux";
+    };
+  };
 }
