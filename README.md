@@ -25,6 +25,7 @@ Configuration for my NixOS machines.
 - [ ] Include `nixos-anywhere` in flake to version control it.
 - [ ] Migrate to use of flake modules
 - [ ] <https://github.com/Mic92/sops-nix/issues/340>
+- Factor out the huge amount of duplication in `nixos-build01` and `nixos-ext`
 
 > **WARNING**
 >

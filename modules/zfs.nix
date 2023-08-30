@@ -3,15 +3,11 @@
   lib,
   pkgs,
   ...
-}: {
+}:
+# TODO: Find a way to implement a check which makes certain networking.hostId is set.
+{
   boot = {
-    initrd = {
-      # NOTE: Return to the initial snapshot.
-      postDeviceCommands = lib.mkAfter ''
-        zfs rollback -r rpool@blank
-      '';
-      supportedFilesystems = ["vfat" "zfs"];
-    };
+    initrd.supportedFilesystems = ["vfat" "zfs"];
     kernelParams = ["nohibernate"];
     supportedFilesystems = ["vfat" "zfs"];
     zfs.enableUnstable = true;
@@ -20,8 +16,6 @@
 
   # Some settings copied from https://github.com/NixOS/nixpkgs/issues/62644#issuecomment-1479523469
   environment.etc."zfs/zed.d/history_event-zfs-list-cacher.sh".source = "${config.boot.zfs.package}/etc/zfs/zed.d/history_event-zfs-list-cacher.sh";
-
-  networking.hostId = "deadba5e";
 
   services = {
     # The following is adapted from:
