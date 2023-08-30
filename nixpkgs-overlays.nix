@@ -7,17 +7,6 @@
     _module.args.pkgs = import inputs.nixpkgs {
       inherit system;
       overlays = [
-        # Use the optimized python build
-        # (final: prev: let
-        #   python3 = prev.python3.override {
-        #     enableOptimizations = true;
-        #     enableLTO = true;
-        #     reproducibleBuild = false;
-        #     self = python3;
-        #   };
-        # in {
-        #   inherit python3;
-        # })
         # Override the Nix build used
         inputs.nix.overlays.default
         (_: prev: {
@@ -42,20 +31,7 @@
         # External Nix formatter
         inputs.alejandra.overlays.default
       ];
-      config = {
-        allowUnfree = true;
-        # replaceStdenv = {pkgs, ...}: pkgs.stdenvAdapters.overrideInStdenv pkgs.fastStdenv [pkgs.libidn2];
-        # TODO(@connorbaker): https://github.com/NixOS/nixpkgs/issues/227940
-        # replaceStdenv = {pkgs, ...}: pkgs.ccacheStdenv;
-      };
-      # hostPlatform = {
-      #   gcc = {
-      #     # TODO(@connorbaker): Raptor Lake is too new
-      #     arch = "alderlake";
-      #     tune = "alderlake";
-      #   };
-      #   inherit system;
-      # };
+      config.allowUnfree = true;
     };
   };
 }

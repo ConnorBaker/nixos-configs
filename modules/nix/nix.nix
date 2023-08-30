@@ -1,4 +1,11 @@
 {
+  # TODO: One (or some combination) of:
+  #
+  # - auto-allocate-uids
+  # - require-drop-supplementary-groups
+  # - use-cgroups
+  #
+  # break ccache by preventing the builders from accessing /var/cache/ccache.
   nix = {
     daemonCPUSchedPolicy = "batch";
     daemonIOSchedPriority = 7;
@@ -21,7 +28,7 @@
       http-connections = 0;
       keep-derivations = true;
       keep-outputs = true;
-      max-jobs = 2;
+      max-jobs = 8;
       max-substitution-jobs = 256; # Nix >= 2.16
       require-drop-supplementary-groups = true; # Nix >= 2.17
       # NOTE: Disabled because nixpkgs-review requires impure evaluation.

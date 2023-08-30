@@ -28,16 +28,5 @@
     };
   };
 
-  # TODO: Not being picked up by the actual build because this is what the resulting OS would use, not what we use to build the OS.
-  nixpkgs = {
-    # config.replaceStdenv = {pkgs, ...}: pkgs.fastStdenv;
-    hostPlatform = {
-      gcc = {
-        # TODO(@connorbaker): Raptor Lake is too new
-        arch = "alderlake";
-        tune = "alderlake";
-      };
-      system = "x86_64-linux";
-    };
-  };
+  nixpkgs.hostPlatform.system = "x86_64-linux";
 }

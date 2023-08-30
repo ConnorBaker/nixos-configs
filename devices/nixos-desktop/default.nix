@@ -5,8 +5,6 @@
     # Configure Nix
     ../../modules/nix/nix.nix
     ./nix.nix
-    # ../../modules/nix/cantcacheme/pull.nix
-    # ../../modules/nix/cantcacheme/push.nix
 
     # Configure system
     ../../modules/boot.nix
@@ -27,7 +25,6 @@
     # ./monitoring.nix
 
     # Configure programs
-    ../../modules/programs/ccache.nix
     ../../modules/programs/git.nix
     ../../modules/programs/htop.nix
     ../../modules/programs/nix-ld.nix
