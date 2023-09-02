@@ -27,6 +27,7 @@
     ]
     # Misc tools
     ++ [
+      dig
       gh
       git
       htop

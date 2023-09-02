@@ -15,10 +15,6 @@
             unstable = prev.nix;
           });
         })
-        # Nil Nix language server
-        inputs.nil.overlays.nil
-        # Nix linker fix for third-party packages
-        inputs.nix-ld-rs.overlays.default
         # External nixpkgs-review
         (final: _: {
           nixpkgs-review = final.callPackage inputs.nixpkgs-review {withSandboxSupport = true;};
@@ -28,8 +24,12 @@
           # TODO(@connorbaker): Does not override the package in haskellPackages.
           nix-output-manager = inputs'.nix-output-manager.packages.default;
         })
-        # External Nix formatter
+        # External Nix tools
         inputs.alejandra.overlays.default
+        inputs.deadnix.overlays.default
+        inputs.nil.overlays.nil
+        inputs.nix-ld-rs.overlays.default
+        inputs.statix.overlays.default
       ];
       config.allowUnfree = true;
     };

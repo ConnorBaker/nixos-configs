@@ -2,7 +2,7 @@
 builtins.throw "This module does not currently work as desired."
 {
   nixpkgs.overlays = [
-    (final: prev: {
+    (_: prev: {
       ccache = prev.ccache.overrideAttrs (oldAttrs: {
         postInstall =
           (oldAttrs.postInstall or "")

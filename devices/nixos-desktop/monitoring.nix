@@ -5,6 +5,8 @@
   ...
 }: let
   grafanaDomain = config.services.grafana.settings.server.domain;
+  grafanaCert = "./certs/${grafanaDomain}.crt";
+  tailscaleKey = "tailscale/${grafanaDomain}.key";
 in {
   networking.firewall.allowedTCPPorts = [443];
 
@@ -25,8 +27,8 @@ in {
         server = {
           enforce_domain = true;
           domain = "nixos-desktop.rove-hexatonic.ts.net";
-          cert_file = "${./certs/${grafanaDomain}.crt}";
-          cert_key = config.sops.secrets."tailscale/${grafanaDomain}.key".path;
+          cert_file = grafanaCert;
+          cert_key = config.sops.secrets.${tailscaleKey}.path;
           protocol = "https";
         };
         security = {
@@ -44,8 +46,8 @@ in {
 
     nginx.virtualHosts.${grafanaDomain} = {
       forceSSL = true;
-      sslCertificate = "${./certs/${grafanaDomain}.crt}";
-      sslCertificateKey = config.sops.secrets."tailscale/${grafanaDomain}.key".path;
+      sslCertificate = grafanaCert;
+      sslCertificateKey = config.sops.secrets.${tailscaleKey}.path;
     };
 
     prometheus = {
@@ -81,8 +83,8 @@ in {
     age.sshKeyPaths = ["/home/connorbaker/.ssh/id_ed25519"];
     secrets = {
       "grafana/admin_password" = {
+        inherit (config.users.users.grafana) group;
         owner = config.users.users.grafana.name;
-        group = config.users.users.grafana.group;
         restartUnits = ["grafana.service"];
         sopsFile = ./secrets/grafana.yaml;
       };

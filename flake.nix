@@ -8,6 +8,14 @@
       url = "github:kamadorueda/alejandra";
     };
 
+    deadnix = {
+      inputs = {
+        utils.follows = "flake-utils";
+        nixpkgs.follows = "nixpkgs";
+      };
+      url = "github:astro/deadnix";
+    };
+
     disko = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nix-community/disko";
@@ -18,6 +26,8 @@
       url = "github:hercules-ci/flake-parts";
     };
 
+    flake-utils.url = "github:numtide/flake-utils";
+
     impermanence.url = "github:nix-community/impermanence";
 
     nil = {
@@ -27,8 +37,7 @@
 
     nix = {
       inputs.nixpkgs.follows = "nixpkgs";
-      # url = "github:NixOS/nix/2.17.0";
-      url = "github:NixOS/nix/736b9cede73692a1cf92a6c21c5259498a04c961";
+      url = "github:NixOS/nix";
     };
 
     nix-ld-rs = {
@@ -51,9 +60,23 @@
 
     # queued-build-hook.url = "github:nix-community/queued-build-hook";
 
+    pre-commit-hooks-nix = {
+      inputs = {
+        flake-utils.follows = "flake-utils";
+        nixpkgs-stable.follows = "nixpkgs";
+        nixpkgs.follows = "nixpkgs";
+      };
+      url = "github:cachix/pre-commit-hooks.nix";
+    };
+
     sops-nix = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:Mic92/sops-nix";
+    };
+
+    statix = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:nerdypepper/statix";
     };
   };
 
@@ -62,11 +85,18 @@
       systems = ["x86_64-linux"];
 
       imports = [
+        inputs.pre-commit-hooks-nix.flakeModule
         ./nixpkgs-overlays.nix
       ];
 
       perSystem = {pkgs, ...}: {
         formatter = pkgs.alejandra;
+        pre-commit.settings.hooks = {
+          alejandra.enable = true;
+          deadnix.enable = true;
+          nil.enable = true;
+          statix.enable = true;
+        };
       };
 
       flake.nixosConfigurations = {

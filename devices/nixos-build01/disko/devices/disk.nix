@@ -1,6 +1,6 @@
 {lib, ...}: let
   # Merge all of the configurations for a disk.
-  mkDisk = name: {
+  mkDisk = _name: {
     interface,
     model,
     serial,
