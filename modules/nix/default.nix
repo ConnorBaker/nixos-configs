@@ -18,13 +18,17 @@
     protocol = "ssh-ng";
     sshUser = "nix";
     # TODO: NOTE: Must be readable by the user connecting to the remote builder.
-    sshKey = "/etc/ssh/id_${hostName}_nix_ed25519";
+    sshKey = "/etc/ssh/id_nix_ed25519";
     # NOTE: publicHostKey is omitted, so SSH will use its regular known-hosts file when connecting.
     system = "x86_64-linux";
   };
   # A machine should not have itself as a remote builder.
   irreflexive = hostName: hostName != config.networking.hostName;
 in {
+  imports = [
+    ./secrets.nix
+  ];
+
   nix = {
     buildMachines = lib.trivial.pipe hostNames [
       (builtins.filter irreflexive)
@@ -59,7 +63,7 @@ in {
       # NOTE: Disabled because nixpkgs-review requires impure evaluation.
       # restrict-eval = true;
       system-features = supportedFeatures;
-      trusted-users = ["root" "@nixbld" "@wheel" "nix"];
+      trusted-users = ["root" "@nixbld" "@wheel"];
       use-cgroups = true;
       use-xdg-base-directories = true;
     };
@@ -76,9 +80,6 @@ in {
     description = "Nix account";
     extraGroups = ["wheel"];
     isNormalUser = true;
-    openssh.authorizedKeys.keyFiles =
-      builtins.map
-      (hostName: ../.. + "/devices/${hostName}/keys/id_${hostName}_nix_ed25519.pub")
-      hostNames;
+    openssh.authorizedKeys.keyFiles = [./keys/id_nix_ed25519.pub];
   };
 }

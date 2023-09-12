@@ -3,39 +3,26 @@ keys:
     - &nixos-build01 age1lmcvfc07ggerxgsrzq2nvc8t6hm44n68ajsh0qr7rs32r6pez5asshkyvf
     - &nixos-desktop age1azuwgsgd2vhgkcuqagxefjt4peh9hz9ddmpcxd8p763qrefd8ddqas32ef
     - &nixos-ext age12z4wlayqratlswq0gq43ps6sp084r7mxh9ukjcczv09cry4skemqr9ekdr
-  builders:
-    - &nixos-build01-nix age1lqcj4wyumls5746jmsuegfcszn05ekmu3g5pe49nf3pwnkr3z96sc7m6rf
-    - &nixos-desktop-nix age1zvuh87eqnnfh28qvzuqvk5cgz0zwelgc27fq0lny3w9lfckmc3psl0fftk
-    - &nixos-ext-nix age16qnuuu9d47xgs8xmzf960rsywed4jf4f4tvar7szwlxmk7732g8qx56ldr
 creation_rules:
   - path_regex: modules/nix/cantcacheme/secrets/[^/]+\.yaml$
     key_groups:
       - age:
           - *nixos-desktop
-  - path_regex: devices/nixos-desktop/secrets\.yaml$
+  - path_regex: modules/nix/secrets\.yaml$
     key_groups:
       - age:
-          # Machine
+          - *nixos-build01
           - *nixos-desktop
-          # Builders
-          - *nixos-desktop-nix
-          - *nixos-build01-nix
-          - *nixos-ext-nix
+          - *nixos-ext
   - path_regex: devices/nixos-build01/secrets\.yaml$
     key_groups:
       - age:
-          # Machine
           - *nixos-build01
-          # Builders
-          - *nixos-desktop-nix
-          - *nixos-build01-nix
-          - *nixos-ext-nix
+  - path_regex: devices/nixos-desktop/secrets\.yaml$
+    key_groups:
+      - age:
+          - *nixos-desktop
   - path_regex: devices/nixos-ext/secrets\.yaml$
     key_groups:
       - age:
-          # Machine
           - *nixos-ext
-          # Builders
-          - *nixos-desktop-nix
-          - *nixos-build01-nix
-          - *nixos-ext-nix

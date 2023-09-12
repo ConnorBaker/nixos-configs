@@ -3,7 +3,7 @@
     ./hardware.nix
 
     # Configure Nix
-    ../../modules/nix/nix.nix
+    ../../modules/nix
 
     # Configure system
     ../../modules/boot.nix
