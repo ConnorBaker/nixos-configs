@@ -47,6 +47,10 @@ Configuration for my NixOS machines.
 >
 > When using impermanence rooted at `/persist`, it's important that the directory provided to `--extra-files` is has a root of `/persist`. For example, instead of using `--extra-files ./secret_deployment_files/etc/ssh`, `--extra-files ./secret_deployment_files/persist/etc/ssh`.
 
+> **INFO**
+>
+> When using sops `/etc/ssh/ssh_host_rsa_key` must be present, as it is needed to create the GPG keyring.
+
 ## `nixos-desktop`
 
 - \[ \] Move to disko
