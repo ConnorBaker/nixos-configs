@@ -17,7 +17,6 @@
     inherit hostName maxJobs supportedFeatures;
     protocol = "ssh-ng";
     sshUser = "nix";
-    # TODO: NOTE: Must be readable by the user connecting to the remote builder.
     sshKey = "/etc/ssh/id_nix_ed25519";
     # NOTE: publicHostKey is omitted, so SSH will use its regular known-hosts file when connecting.
     system = "x86_64-linux";
@@ -78,8 +77,8 @@ in {
 
   users.users.nix = {
     description = "Nix account";
-    extraGroups = ["wheel"];
-    isNormalUser = true;
+    group = "wheel";
+    isSystemUser = true;
     openssh.authorizedKeys.keyFiles = [./keys/id_nix_ed25519.pub];
   };
 }
