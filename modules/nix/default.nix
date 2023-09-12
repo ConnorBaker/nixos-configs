@@ -77,8 +77,8 @@ in {
 
   users.users.nix = {
     description = "Nix account";
-    group = "wheel";
-    isSystemUser = true;
+    extraGroups = ["wheel"];
+    isNormalUser = true;
     openssh.authorizedKeys.keyFiles = [./keys/id_nix_ed25519.pub];
   };
 }
