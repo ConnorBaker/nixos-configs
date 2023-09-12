@@ -1,9 +1,12 @@
-{
+{config, ...}: {
   imports = [
     ./hardware.nix
 
     # Disks and formatting
     ./disko
+
+    # Secrets
+    ./secrets.nix
 
     # Configure Nix
     ../../modules/nix/nix.nix
@@ -33,6 +36,7 @@
   ];
 
   environment.etc = {
+    "ssh/id_${config.networking.hostName}_nix_ed25519.pub".source = ./. + "/keys/id_${config.networking.hostName}_nix_ed25519.pub";
     "ssh/ssh_host_ed25519_key.pub".source = ./keys/ssh_host_ed25519_key.pub;
     "ssh/ssh_host_rsa_key.pub".source = ./keys/ssh_host_rsa_key.pub;
   };

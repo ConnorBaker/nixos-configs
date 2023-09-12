@@ -78,6 +78,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nerdypepper/statix";
     };
+
+    treefmt-nix = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:numtide/treefmt-nix";
+    };
   };
 
   outputs = inputs:
@@ -85,17 +90,45 @@
       systems = ["x86_64-linux"];
 
       imports = [
+        inputs.treefmt-nix.flakeModule
         inputs.pre-commit-hooks-nix.flakeModule
         ./nixpkgs-overlays.nix
       ];
 
-      perSystem = {pkgs, ...}: {
-        formatter = pkgs.alejandra;
-        pre-commit.settings.hooks = {
-          alejandra.enable = true;
-          deadnix.enable = true;
-          nil.enable = true;
-          statix.enable = true;
+      perSystem = {config, ...}: {
+        pre-commit.settings = {
+          hooks = {
+            # Formatter checks
+            treefmt.enable = true;
+
+            # Nix checks
+            deadnix.enable = true;
+            nil.enable = true;
+            statix.enable = true;
+          };
+          # Formatter
+          settings.treefmt.package = config.treefmt.build.wrapper;
+        };
+
+        treefmt = {
+          projectRootFile = "flake.nix";
+          programs = {
+            # Markdown
+            mdformat.enable = true;
+
+            # Nix
+            alejandra.enable = true;
+
+            # Shell
+            shellcheck.enable = true;
+            shfmt.enable = true;
+
+            # YAML
+            yamlfmt.enable = true;
+          };
+          # (ab)use options to pass a hidden file to be formatted.
+          # See https://github.com/numtide/treefmt/issues/153.
+          settings.formatter.yamlfmt.options = [".sops.yaml"];
         };
       };
 

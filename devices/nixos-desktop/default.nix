@@ -4,7 +4,6 @@
 
     # Configure Nix
     ../../modules/nix/nix.nix
-    ./nix.nix
 
     # Configure system
     ../../modules/boot.nix
