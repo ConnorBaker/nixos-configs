@@ -26,7 +26,7 @@
       # url = "github:nix-community/disko/b2ea7d62581fa50d3e19a949b85fe04c1e8d7384";
       # Working: Sep 11, 2023
       # url = "github:nix-community/disko/fc6f863fe175a0e7e4ca39f44740627815f0da39";
-      # Testing: Sep 12, 2023
+      # Working: Sep 12, 2023
       url = "github:nix-community/disko/be98cffef02e5ebf438ea80b34b86e669c48eff1";
     };
 
