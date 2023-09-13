@@ -11,8 +11,8 @@
   users.users.connorbaker.packages = with pkgs;
   # Rust unix tools
     [
+      bat
       ripgrep
-      uutils-coreutils
     ]
     # Python
     ++ [
