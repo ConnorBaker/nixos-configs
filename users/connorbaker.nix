@@ -15,11 +15,8 @@
     openssh.authorizedKeys = {
       keyFiles = [
         ../devices/nixos-desktop/keys/ssh_host_ed25519_key.pub
-        ../devices/nixos-desktop/keys/ssh_host_rsa_key.pub
         ../devices/nixos-ext/keys/ssh_host_ed25519_key.pub
-        ../devices/nixos-ext/keys/ssh_host_rsa_key.pub
         ../devices/nixos-build01/keys/ssh_host_ed25519_key.pub
-        ../devices/nixos-build01/keys/ssh_host_rsa_key.pub
       ];
       keys = [
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJXpenPZWADrxK4+6nFmPspmYPPniI3m+3PxAfjbslg+ connorbaker@Connors-MacBook-Pro.local"
