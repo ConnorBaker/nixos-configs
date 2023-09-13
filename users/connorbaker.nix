@@ -11,8 +11,8 @@
   users.users.connorbaker = {
     description = "Connor Baker's user account";
     extraGroups = ["wheel"];
+    hashedPassword = "$6$I2k4rD4NqxiExXzX$RwvJzZP7mANAC1UEpQKQrI4hhdjUKpx/kUIXUXMO8dLJDW89ICe08Zihw1Eiq0AOZOjkxHxB9kUT3z7gTTnob0";
     isNormalUser = true;
-    hashedPassword = "$6$ofrQUy4vgmA5ufyE$2/3o.j5ZZ2DKZ2O7yJ3FBFvk3y9noN3iovTfyudDDAcY579oyQWhfqkXaPPUlrORRNSnhzeVSUJad0bpy65p.0";
     openssh.authorizedKeys = {
       keyFiles = [
         ../devices/nixos-desktop/keys/ssh_host_ed25519_key.pub
