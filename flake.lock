@@ -63,7 +63,6 @@
       "original": {
         "owner": "nix-community",
         "repo": "disko",
-        "rev": "be98cffef02e5ebf438ea80b34b86e669c48eff1",
         "type": "github"
       }
     },

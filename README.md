@@ -70,7 +70,7 @@ Do this for whichever private keys are necessary.
 Deploy `nixos-ext` with:
 
 ```bash
-nix run github:numtide/nixos-anywhere/9df79870b04667f2d16f1a78a1ab87d124403fb7 -- \
+nix run github:numtide/nixos-anywhere/3686956935964ef245363586deda4197ba762632 -- \
   connorbaker@192.168.1.195 \
   -i ~/.ssh/id_ed25519 \
   --flake .#nixos-ext \
@@ -83,7 +83,7 @@ nix run github:numtide/nixos-anywhere/9df79870b04667f2d16f1a78a1ab87d124403fb7 -
 Deploy `nixos-build01` with:
 
 ```bash
-nix run github:numtide/nixos-anywhere/9df79870b04667f2d16f1a78a1ab87d124403fb7 -- \
+nix run github:numtide/nixos-anywhere/3686956935964ef245363586deda4197ba762632 -- \
   connorbaker@192.168.1.200 \
   -i ~/.ssh/id_ed25519 \
   --flake .#nixos-build01 \
