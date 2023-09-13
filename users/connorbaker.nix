@@ -12,6 +12,7 @@
     description = "Connor Baker's user account";
     extraGroups = ["wheel"];
     isNormalUser = true;
+    hashedPassword = "$6$ofrQUy4vgmA5ufyE$2/3o.j5ZZ2DKZ2O7yJ3FBFvk3y9noN3iovTfyudDDAcY579oyQWhfqkXaPPUlrORRNSnhzeVSUJad0bpy65p.0";
     openssh.authorizedKeys = {
       keyFiles = [
         ../devices/nixos-desktop/keys/ssh_host_ed25519_key.pub
