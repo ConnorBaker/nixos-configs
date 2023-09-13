@@ -18,7 +18,6 @@
     protocol = "ssh-ng";
     sshUser = "nix";
     sshKey = "/etc/ssh/id_nix_ed25519";
-    # NOTE: publicHostKey is omitted, so SSH will use its regular known-hosts file when connecting.
     system = "x86_64-linux";
   };
   # A machine should not have itself as a remote builder.
@@ -67,13 +66,6 @@ in {
       use-xdg-base-directories = true;
     };
   };
-
-  # TODO: Do we need to include them as known hosts if the SSH user is Nix and not root?
-  # services.openssh.knownHosts = {
-  #   nixos-desktop.publicKeyFile = ../../devices/nixos-desktop/keys/ssh_host_ed25519_key.pub;
-  #   nixos-ext.publicKeyFile = ../../devices/nixos-ext/keys/ssh_host_ed25519_key.pub;
-  #   nixos-build01.publicKeyFile = ../../devices/nixos-build01/keys/ssh_host_ed25519_key.pub;
-  # };
 
   users.users.nix = {
     description = "Nix account";
