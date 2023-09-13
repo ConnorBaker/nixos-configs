@@ -5,7 +5,7 @@
 }: let
   # Common configuration for all machines.
   hostNames = ["nixos-ext" "nixos-build01" "nixos-desktop"];
-  maxJobs = 2;
+  maxJobs = 1;
   supportedFeatures = [
     "benchmark"
     "big-parallel"
