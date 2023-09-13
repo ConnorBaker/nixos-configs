@@ -14,7 +14,8 @@
     isNormalUser = true;
     openssh.authorizedKeys = {
       keyFiles = [
-        ../devices/nixos-desktop/keys/id_ed25519.pub
+        ../devices/nixos-desktop/keys/ssh_host_ed25519_key.pub
+        ../devices/nixos-desktop/keys/ssh_host_rsa_key.pub
         ../devices/nixos-ext/keys/ssh_host_ed25519_key.pub
         ../devices/nixos-ext/keys/ssh_host_rsa_key.pub
         ../devices/nixos-build01/keys/ssh_host_ed25519_key.pub

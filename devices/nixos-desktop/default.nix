@@ -2,6 +2,9 @@
   imports = [
     ./hardware.nix
 
+    # Secrets
+    ./secrets.nix
+
     # Configure Nix
     ../../modules/nix
 
@@ -34,7 +37,16 @@
   ];
 
   boot.kernelPackages = pkgs.linuxPackages_latest;
-  networking.hostName = "nixos-desktop";
-  sops.age.sshKeyPaths = ["/home/connorbaker/.ssh/id_ed25519"];
+
+  environment.etc = {
+    "ssh/ssh_host_ed25519_key.pub".source = ./keys/ssh_host_ed25519_key.pub;
+    "ssh/ssh_host_rsa_key.pub".source = ./keys/ssh_host_rsa_key.pub;
+  };
+
+  networking = {
+    hostId = "deadabcd";
+    hostName = "nixos-desktop";
+  };
+
   system.stateVersion = "23.05";
 }

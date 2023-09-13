@@ -70,7 +70,7 @@ in {
 
   # TODO: Do we need to include them as known hosts if the SSH user is Nix and not root?
   # services.openssh.knownHosts = {
-  #   nixos-desktop.publicKeyFile = ../../devices/nixos-desktop/keys/id_ed25519.pub;
+  #   nixos-desktop.publicKeyFile = ../../devices/nixos-desktop/keys/ssh_host_ed25519_key.pub;
   #   nixos-ext.publicKeyFile = ../../devices/nixos-ext/keys/ssh_host_ed25519_key.pub;
   #   nixos-build01.publicKeyFile = ../../devices/nixos-build01/keys/ssh_host_ed25519_key.pub;
   # };
