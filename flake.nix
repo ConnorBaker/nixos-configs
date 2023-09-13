@@ -18,8 +18,12 @@
 
     disko = {
       inputs.nixpkgs.follows = "nixpkgs";
-      # url = "github:nix-community/disko/00169fe4a6015a88c3799f0bf89689e06a4d4896"; # Working
-      url = "github:nix-community/disko/06481a9836c37b7c1aba784092a984c2d2ef5431"; # Testing
+      # Working: Aug 27, 2023
+      # url = "github:nix-community/disko/00169fe4a6015a88c3799f0bf89689e06a4d4896";
+      # Working: Sep 2, 2023
+      # url = "github:nix-community/disko/06481a9836c37b7c1aba784092a984c2d2ef5431";
+      # Testing: Sep 5, 2023
+      url = "github:nix-community/disko/b2ea7d62581fa50d3e19a949b85fe04c1e8d7384";
     };
 
     flake-parts = {
