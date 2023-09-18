@@ -24,6 +24,8 @@
           # TODO(@connorbaker): Does not override the package in haskellPackages.
           nix-output-manager = inputs'.nix-output-manager.packages.default;
         })
+        # External nix-direnv
+        inputs.nix-direnv.overlay
         # External Nix tools
         inputs.alejandra.overlays.default
         inputs.deadnix.overlays.default

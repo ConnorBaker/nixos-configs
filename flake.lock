@@ -367,6 +367,29 @@
         "type": "github"
       }
     },
+    "nix-direnv": {
+      "inputs": {
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1694719020,
+        "narHash": "sha256-Dqg4ZI+kGXCdfgEdfr3PKfhQWUDFXtGn4WSvP08DJyg=",
+        "owner": "nix-community",
+        "repo": "nix-direnv",
+        "rev": "4132068df5153d44b7c17401ccefe54f99736dc1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "nix-direnv",
+        "type": "github"
+      }
+    },
     "nix-ld-rs": {
       "inputs": {
         "flake-compat": "flake-compat_2",
@@ -508,6 +531,7 @@
         "impermanence": "impermanence",
         "nil": "nil",
         "nix": "nix",
+        "nix-direnv": "nix-direnv",
         "nix-ld-rs": "nix-ld-rs",
         "nix-output-monitor": "nix-output-monitor",
         "nixpkgs": "nixpkgs",

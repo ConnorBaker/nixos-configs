@@ -27,6 +27,7 @@
     # Misc tools
     ++ [
       dig
+      direnv
       gh
       git
       htop
@@ -39,6 +40,7 @@
     ++ [
       alejandra
       nil
+      nix-direnv
       nix-output-monitor
       nixpkgs-review
     ]

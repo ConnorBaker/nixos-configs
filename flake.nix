@@ -40,6 +40,14 @@
       url = "github:NixOS/nix";
     };
 
+    nix-direnv = {
+      inputs = {
+        flake-utils.follows = "flake-utils";
+        nixpkgs.follows = "nixpkgs";
+      };
+      url = "github:nix-community/nix-direnv";
+    };
+
     nix-ld-rs = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nix-community/nix-ld-rs";
