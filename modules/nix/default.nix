@@ -5,25 +5,37 @@
 }: let
   # Common configuration for all machines.
   # Maps host names to machine architecture.
-  # hostNameToSystem :: AttrSet String (List String)
-  hostNameToSystems = {
-    nixos-build01 = [
-      "aarch64-linux" # Emulated
-      "x86_64-linux" # Physical
-    ];
-    nixos-desktop = [
-      "aarch64-linux" # Emulated
-      "x86_64-linux" # Physical
-    ];
-    nixos-ext = [
-      "aarch64-linux" # Emulated
-      "x86_64-linux" # Physical
-    ];
-    nixos-orin = [
-      "aarch64-linux" # Physical
-    ];
+  # hostNameToSystem :: AttrSet String (AttrSet String Any)
+  hostNameToConfig = {
+    nixos-build01 = {
+      speedFactor = 8;
+      systems = [
+        "aarch64-linux" # Emulated
+        "x86_64-linux" # Physical
+      ];
+    };
+    nixos-desktop = {
+      speedFactor = 8;
+      systems = [
+        "aarch64-linux" # Emulated
+        "x86_64-linux" # Physical
+      ];
+    };
+    nixos-ext = {
+      speedFactor = 8;
+      systems = [
+        "aarch64-linux" # Emulated
+        "x86_64-linux" # Physical
+      ];
+    };
+    nixos-orin = {
+      speedFactor = 1;
+      systems = [
+        "aarch64-linux" # Physical
+      ];
+    };
   };
-  maxJobs = 1;
+  maxJobs = 2;
   supportedFeatures = [
     "benchmark"
     "big-parallel"
@@ -31,12 +43,14 @@
     "nixos-test"
   ];
   # Functions to generate machine-specific configuration.
-  machineBoilerplate = hostName: systems: {
-    inherit hostName maxJobs supportedFeatures systems;
-    protocol = "ssh-ng";
-    sshKey = "/etc/ssh/id_nix_ed25519";
-    sshUser = "nix";
-  };
+  # machineBoilerplate :: String -> AttrSet String Any -> AttrSet String Any
+  machineBoilerplate = hostName:
+    lib.attrsets.recursiveUpdate {
+      inherit hostName maxJobs supportedFeatures;
+      protocol = "ssh-ng";
+      sshKey = "/etc/ssh/id_nix_ed25519";
+      sshUser = "nix";
+    };
   # A machine should not have itself as a remote builder.
   irreflexive = hostName: _: hostName != config.networking.hostName;
 in {
@@ -45,10 +59,10 @@ in {
   ];
 
   nix = {
-    buildMachines = lib.trivial.pipe hostNameToSystems [
-      # AttrSet String (List String) -> AttrSet String (List String)
+    buildMachines = lib.trivial.pipe hostNameToConfig [
+      # AttrSet String (AttrSet String Any) -> AttrSet String (AttrSet String Any)
       (lib.attrsets.filterAttrs irreflexive)
-      # AttrSet String (List String) -> AttrSet String (AttrSet String Any)
+      # AttrSet String (AttrSet String Any) -> AttrSet String (AttrSet String Any)
       (lib.attrsets.mapAttrs machineBoilerplate)
       # AttrSet String (AttrSet String Any) -> List (AttrSet String Any)
       lib.attrsets.attrValues

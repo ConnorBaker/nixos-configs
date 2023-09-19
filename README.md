@@ -93,6 +93,11 @@ nix run github:numtide/nixos-anywhere/3686956935964ef245363586deda4197ba762632 -
 
 ## `nixos-orin`
 
+TODO:
+
+- \[ \] The normal `aarch64-linux` tarball `kexec` image doesn't work, presumably because the Jetson is ✨special✨.
+  - In progress: creating a custom `kexec` image using the Jetpack kernel.
+
 Deploy `nixos-orin` with:
 
 ```bash

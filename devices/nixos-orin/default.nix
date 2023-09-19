@@ -16,7 +16,8 @@
     ../../modules/cpu-hardware.nix
     ../../modules/cuda.nix
     ../../modules/headless.nix
-    ../../modules/mimalloc.nix
+    # Boehm GC, a dependency of mimalloc, doesn't pass test cases when run inside qemu
+    # ../../modules/mimalloc.nix
     ../../modules/networking.nix
     ../../modules/sudo.nix
     ../../modules/users.nix

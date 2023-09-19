@@ -71,6 +71,14 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     # nixpkgs.url = "github:ConnorBaker/nixpkgs/feat/nvidia-dcgm-prometheus-exporter-module";
 
+    nixos-images = {
+      inputs = {
+        nixos-unstable.follows = "nixpkgs";
+        nixos-2305.follows = "nixpkgs";
+      };
+      url = "github:nix-community/nixos-images";
+    };
+
     # queued-build-hook.url = "github:nix-community/queued-build-hook";
 
     pre-commit-hooks-nix = {
@@ -99,8 +107,15 @@
   };
 
   outputs = inputs:
-    inputs.flake-parts.lib.mkFlake {inherit inputs;} ({withSystem, ...}: {
-      systems = ["x86_64-linux"];
+    inputs.flake-parts.lib.mkFlake {inherit inputs;} ({
+      self,
+      withSystem,
+      ...
+    }: {
+      systems = [
+        "aarch64-linux"
+        "x86_64-linux"
+      ];
 
       imports = [
         inputs.treefmt-nix.flakeModule
@@ -108,7 +123,12 @@
         ./nixpkgs-overlays.nix
       ];
 
-      perSystem = {config, ...}: {
+      perSystem = {
+        config,
+        pkgs,
+        ...
+      }: {
+        packages.nixos-orin-kexec-tarball = self.nixosConfigurations.nixos-orin-kexec.config.system.build.kexecTarball;
         pre-commit.settings = {
           hooks = {
             # Formatter checks
@@ -187,6 +207,45 @@
               inputs.disko.nixosModules.disko
               # Not using ZFS or impermanence on Orin.
               ./devices/nixos-orin
+            ];
+          });
+
+        nixos-orin-kexec = withSystem "aarch64-linux" ({pkgs, ...}:
+          inputs.nixpkgs.lib.nixosSystem {
+            inherit pkgs;
+            modules = [
+              {system.kexec-installer.name = "nixos-kexec-installer-noninteractive";}
+              inputs.nixos-images.nixosModules.noninteractive
+              inputs.nixos-images.nixosModules.kexec-installer
+              inputs.jetpack-nixos.nixosModules.default
+              # Unset some things that are set by default in the kexec-installer module.
+              # This is done largely to ensure that there are no references to ZFS, which the jetpack kernel doesn't support.
+              # We can't use an in-tree kernel either because then the kexec-installer won't work.
+              ({
+                config,
+                lib,
+                pkgs,
+                ...
+              }: {
+                boot = {
+                  kernelModules = lib.mkForce ["nvgpu" "bridge" "macvlan" "tap" "tun" "loop" "atkbd"];
+                  kernelPackages = lib.mkForce pkgs.nvidia-jetpack.kernelPackages;
+                  extraModulePackages = lib.mkForce config.boot.kernelPackages.nvidia-display-driver;
+                };
+                environment.defaultPackages = lib.mkForce [
+                  pkgs.rsync
+                  pkgs.parted
+                  pkgs.gptfdisk
+                ];
+                hardware = {
+                  enableRedistributableFirmware = lib.mkForce true;
+                  nvidia-jetpack = {
+                    enable = true;
+                    som = "orin-agx";
+                    carrierBoard = "devkit";
+                  };
+                };
+              })
             ];
           });
       };
