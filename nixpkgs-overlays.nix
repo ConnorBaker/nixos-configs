@@ -15,6 +15,8 @@
             unstable = prev.nix;
           });
         })
+        # Add jetson nixpkgs
+        inputs.jetpack-nixos.overlays.default
         # External nixpkgs-review
         (final: _: {
           nixpkgs-review = final.callPackage inputs.nixpkgs-review {withSandboxSupport = true;};

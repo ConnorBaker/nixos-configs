@@ -30,6 +30,11 @@
 
     impermanence.url = "github:nix-community/impermanence";
 
+    jetpack-nixos = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:anduril/jetpack-nixos";
+    };
+
     nil = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:oxalica/nil";
@@ -170,6 +175,18 @@
               inputs.disko.nixosModules.disko
               inputs.impermanence.nixosModules.impermanence
               ./devices/nixos-build01
+            ];
+          });
+
+        nixos-orin = withSystem "aarch64-linux" ({pkgs, ...}:
+          inputs.nixpkgs.lib.nixosSystem {
+            inherit pkgs;
+            modules = [
+              inputs.jetpack-nixos.nixosModules.default
+              inputs.sops-nix.nixosModules.sops
+              inputs.disko.nixosModules.disko
+              # Not using ZFS or impermanence on Orin.
+              ./devices/nixos-orin
             ];
           });
       };

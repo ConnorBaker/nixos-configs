@@ -4,7 +4,14 @@
   ...
 }: let
   # Common configuration for all machines.
-  hostNames = ["nixos-ext" "nixos-build01" "nixos-desktop"];
+  # Maps host names to machine architecture.
+  # hostNameToSystem :: AttrSet String String
+  hostNameToSystem = {
+    nixos-build01 = "x86_64-linux";
+    nixos-desktop = "x86_64-linux";
+    nixos-ext = "x86_64-linux";
+    nixos-orin = "aarch64-linux";
+  };
   maxJobs = 1;
   supportedFeatures = [
     "benchmark"
@@ -13,24 +20,27 @@
     "nixos-test"
   ];
   # Functions to generate machine-specific configuration.
-  machineBoilerplate = hostName: {
-    inherit hostName maxJobs supportedFeatures;
+  machineBoilerplate = hostName: system: {
+    inherit hostName maxJobs supportedFeatures system;
     protocol = "ssh-ng";
-    sshUser = "nix";
     sshKey = "/etc/ssh/id_nix_ed25519";
-    system = "x86_64-linux";
+    sshUser = "nix";
   };
   # A machine should not have itself as a remote builder.
-  irreflexive = hostName: hostName != config.networking.hostName;
+  irreflexive = hostName: _: hostName != config.networking.hostName;
 in {
   imports = [
     ./secrets.nix
   ];
 
   nix = {
-    buildMachines = lib.trivial.pipe hostNames [
-      (builtins.filter irreflexive)
-      (builtins.map machineBoilerplate)
+    buildMachines = lib.trivial.pipe hostNameToSystem [
+      # AttrSet String String -> AttrSet String String
+      (lib.attrsets.filterAttrs irreflexive)
+      # AttrSet String String -> AttrSet String (AttrSet String Any)
+      (lib.attrsets.mapAttrs machineBoilerplate)
+      # AttrSet String (AttrSet String Any) -> List (AttrSet String Any)
+      lib.attrsets.attrValues
     ];
     daemonCPUSchedPolicy = "batch";
     daemonIOSchedPriority = 7;

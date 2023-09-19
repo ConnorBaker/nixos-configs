@@ -284,6 +284,26 @@
         "type": "github"
       }
     },
+    "jetpack-nixos": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1693193148,
+        "narHash": "sha256-/GUh0y6vvMVOeSC/v0ydfch9ynuJxLf0aPucidAgFKY=",
+        "owner": "anduril",
+        "repo": "jetpack-nixos",
+        "rev": "57b79aba8d4608839f9777a775bfcb1354d88f21",
+        "type": "github"
+      },
+      "original": {
+        "owner": "anduril",
+        "repo": "jetpack-nixos",
+        "type": "github"
+      }
+    },
     "lowdown-src": {
       "flake": false,
       "locked": {
@@ -529,6 +549,7 @@
         "flake-parts": "flake-parts",
         "flake-utils": "flake-utils",
         "impermanence": "impermanence",
+        "jetpack-nixos": "jetpack-nixos",
         "nil": "nil",
         "nix": "nix",
         "nix-direnv": "nix-direnv",

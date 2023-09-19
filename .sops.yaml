@@ -3,6 +3,7 @@ keys:
     - &nixos-build01 age1lmcvfc07ggerxgsrzq2nvc8t6hm44n68ajsh0qr7rs32r6pez5asshkyvf
     - &nixos-desktop age1azuwgsgd2vhgkcuqagxefjt4peh9hz9ddmpcxd8p763qrefd8ddqas32ef
     - &nixos-ext age12z4wlayqratlswq0gq43ps6sp084r7mxh9ukjcczv09cry4skemqr9ekdr
+    - &nixos-orin age1leyyqreersrk2k6xffmfp2lqflxe6ss8lftwy3lfejklg84zuc7qdzk990
 creation_rules:
   - path_regex: modules/nix/cantcacheme/secrets/[^/]+\.yaml$
     key_groups:
@@ -14,6 +15,7 @@ creation_rules:
           - *nixos-build01
           - *nixos-desktop
           - *nixos-ext
+          - *nixos-orin
   - path_regex: devices/nixos-build01/secrets\.yaml$
     key_groups:
       - age:
@@ -26,3 +28,7 @@ creation_rules:
     key_groups:
       - age:
           - *nixos-ext
+  - path_regex: devices/nixos-orin/secrets\.yaml$
+    key_groups:
+      - age:
+          - *nixos-orin
