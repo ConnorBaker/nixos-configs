@@ -65,6 +65,19 @@ ssh-to-age -private-key -i ~/.ssh/id_ed25519 >> ~/.config/sops/age/keys.txt
 
 Do this for whichever private keys are necessary.
 
+## `nixos-build01`
+
+Deploy `nixos-build01` with:
+
+```bash
+nix run github:numtide/nixos-anywhere/3686956935964ef245363586deda4197ba762632 -- \
+  connorbaker@192.168.1.200 \
+  -i ~/.ssh/id_ed25519 \
+  --flake .#nixos-build01 \
+  --build-on-remote \
+  --extra-files /Volumes/nixos-build01
+```
+
 ## `nixos-ext`
 
 Deploy `nixos-ext` with:
@@ -78,15 +91,15 @@ nix run github:numtide/nixos-anywhere/3686956935964ef245363586deda4197ba762632 -
   --extra-files /Volumes/nixos-ext
 ```
 
-## `nixos-build01`
+## `nixos-orin`
 
-Deploy `nixos-build01` with:
+Deploy `nixos-orin` with:
 
 ```bash
-nix run github:numtide/nixos-anywhere/3686956935964ef245363586deda4197ba762632 -- \
-  connorbaker@192.168.1.200 \
+nix run github:numtide/nixos-anywhere/17efd86530884d11bff52148a5ff2259e2e869ed -- \
+  root@192.168.1.204 \
   -i ~/.ssh/id_ed25519 \
-  --flake .#nixos-build01 \
+  --flake .#nixos-ext \
   --build-on-remote \
-  --extra-files /Volumes/nixos-build01
+  --extra-files /Volumes/nixos-orin
 ```

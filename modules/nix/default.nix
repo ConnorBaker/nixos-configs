@@ -5,12 +5,23 @@
 }: let
   # Common configuration for all machines.
   # Maps host names to machine architecture.
-  # hostNameToSystem :: AttrSet String String
-  hostNameToSystem = {
-    nixos-build01 = "x86_64-linux";
-    nixos-desktop = "x86_64-linux";
-    nixos-ext = "x86_64-linux";
-    nixos-orin = "aarch64-linux";
+  # hostNameToSystem :: AttrSet String (List String)
+  hostNameToSystems = {
+    nixos-build01 = [
+      "aarch64-linux" # Emulated
+      "x86_64-linux" # Physical
+    ];
+    nixos-desktop = [
+      "aarch64-linux" # Emulated
+      "x86_64-linux" # Physical
+    ];
+    nixos-ext = [
+      "aarch64-linux" # Emulated
+      "x86_64-linux" # Physical
+    ];
+    nixos-orin = [
+      "aarch64-linux" # Physical
+    ];
   };
   maxJobs = 1;
   supportedFeatures = [
@@ -20,8 +31,8 @@
     "nixos-test"
   ];
   # Functions to generate machine-specific configuration.
-  machineBoilerplate = hostName: system: {
-    inherit hostName maxJobs supportedFeatures system;
+  machineBoilerplate = hostName: systems: {
+    inherit hostName maxJobs supportedFeatures systems;
     protocol = "ssh-ng";
     sshKey = "/etc/ssh/id_nix_ed25519";
     sshUser = "nix";
@@ -34,10 +45,10 @@ in {
   ];
 
   nix = {
-    buildMachines = lib.trivial.pipe hostNameToSystem [
-      # AttrSet String String -> AttrSet String String
+    buildMachines = lib.trivial.pipe hostNameToSystems [
+      # AttrSet String (List String) -> AttrSet String (List String)
       (lib.attrsets.filterAttrs irreflexive)
-      # AttrSet String String -> AttrSet String (AttrSet String Any)
+      # AttrSet String (List String) -> AttrSet String (AttrSet String Any)
       (lib.attrsets.mapAttrs machineBoilerplate)
       # AttrSet String (AttrSet String Any) -> List (AttrSet String Any)
       lib.attrsets.attrValues
