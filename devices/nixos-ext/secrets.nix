@@ -3,8 +3,10 @@
     age.sshKeyPaths = ["/persist/etc/ssh/ssh_host_ed25519_key"];
     defaultSopsFile = ./secrets.yaml;
     gnupg.sshKeyPaths = [];
-    secrets = {
-      "tailscale/tskey_reusable".path = "/etc/tailscale/tskey-reusable";
+    secrets = let
+      name = "tailscale/tskey-reusable";
+    in {
+      ${name}.path = "/etc/${name}";
     };
   };
 }
