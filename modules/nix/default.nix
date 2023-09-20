@@ -10,22 +10,22 @@
     nixos-build01 = {
       speedFactor = 8;
       systems = [
-        "aarch64-linux" # Emulated
         "x86_64-linux" # Physical
+        "aarch64-linux" # Emulated
       ];
     };
     nixos-desktop = {
       speedFactor = 8;
       systems = [
-        "aarch64-linux" # Emulated
         "x86_64-linux" # Physical
+        "aarch64-linux" # Emulated
       ];
     };
     nixos-ext = {
       speedFactor = 8;
       systems = [
-        "aarch64-linux" # Emulated
         "x86_64-linux" # Physical
+        "aarch64-linux" # Emulated
       ];
     };
     nixos-orin = {

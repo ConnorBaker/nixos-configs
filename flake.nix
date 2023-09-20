@@ -128,7 +128,9 @@
         pkgs,
         ...
       }: {
-        packages.nixos-orin-kexec-tarball = self.nixosConfigurations.nixos-orin-kexec.config.system.build.kexecTarball;
+        packages = {
+          nixos-orin-kexec-tarball = self.nixosConfigurations.nixos-orin-kexec.config.system.build.kexecTarball;
+        };
         pre-commit.settings = {
           hooks = {
             # Formatter checks
@@ -210,9 +212,17 @@
             ];
           });
 
-        nixos-orin-kexec = withSystem "aarch64-linux" ({pkgs, ...}:
+        nixos-orin-kexec = withSystem "aarch64-linux" ({
+          pkgs,
+          system,
+          ...
+        }:
           inputs.nixpkgs.lib.nixosSystem {
-            inherit pkgs;
+            # inherit pkgs;
+            pkgs = import inputs.nixpkgs {
+              inherit system;
+              overlays = [inputs.jetpack-nixos.overlays.default];
+            };
             modules = [
               {system.kexec-installer.name = "nixos-kexec-installer-noninteractive";}
               inputs.nixos-images.nixosModules.noninteractive
@@ -228,17 +238,17 @@
                 ...
               }: {
                 boot = {
-                  kernelModules = lib.mkForce ["nvgpu" "bridge" "macvlan" "tap" "tun" "loop" "atkbd"];
-                  kernelPackages = lib.mkForce pkgs.nvidia-jetpack.kernelPackages;
-                  extraModulePackages = lib.mkForce config.boot.kernelPackages.nvidia-display-driver;
+                  kernelModules = lib.mkOverride 45 ["nvgpu" "bridge" "macvlan" "tap" "tun" "loop" "atkbd"];
+                  kernelPackages = lib.mkOverride 45 pkgs.nvidia-jetpack.kernelPackages;
+                  extraModulePackages = lib.mkOverride 45 [config.boot.kernelPackages.nvidia-display-driver];
                 };
-                environment.defaultPackages = lib.mkForce [
+                environment.defaultPackages = lib.mkOverride 45 [
                   pkgs.rsync
                   pkgs.parted
                   pkgs.gptfdisk
                 ];
                 hardware = {
-                  enableRedistributableFirmware = lib.mkForce true;
+                  enableRedistributableFirmware = lib.mkOverride 45 true;
                   nvidia-jetpack = {
                     enable = true;
                     som = "orin-agx";
