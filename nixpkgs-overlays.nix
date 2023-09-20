@@ -18,8 +18,11 @@
             }
         )
         # Override the Nix build used
+        inputs.nix.overlays.default
+        # Swap out older versions of Nix with newer ones.
+        # Don't go too far back, because some packages truly haven't been updated.
+        # For example, nixos-options has header errors.
         (final: prev: {
-          nix = prev.nixVersions.nix_2_17;
           nixVersions = prev.nixVersions.extend (
             _: _:
               lib.attrsets.genAttrs

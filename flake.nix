@@ -40,6 +40,11 @@
       url = "github:oxalica/nil";
     };
 
+    nix = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:NixOS/nix/2.18-maintenance";
+    };
+
     nix-direnv = {
       inputs = {
         flake-utils.follows = "flake-utils";
@@ -126,6 +131,8 @@
         pkgs,
         ...
       }: {
+        # Helpful for inspecting attributes
+        legacyPackages = pkgs;
         packages = {
           nixos-orin-kexec-tarball = self.nixosConfigurations.nixos-orin-kexec.config.system.build.kexecTarball;
         };
