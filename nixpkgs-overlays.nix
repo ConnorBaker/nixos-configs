@@ -18,8 +18,8 @@
             }
         )
         # Override the Nix build used
-        inputs.nix.overlays.default
         (final: prev: {
+          nix = prev.nixVersions.nix_2_17;
           nixVersions = prev.nixVersions.extend (
             _: _:
               lib.attrsets.genAttrs

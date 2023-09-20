@@ -40,11 +40,6 @@
       url = "github:oxalica/nil";
     };
 
-    nix = {
-      inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:NixOS/nix";
-    };
-
     nix-direnv = {
       inputs = {
         flake-utils.follows = "flake-utils";
