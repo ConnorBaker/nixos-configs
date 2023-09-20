@@ -68,7 +68,8 @@
       url = "github:mic92/nixpkgs-review";
     };
 
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # nixos/systemd-stage1: fix initrd build with zfsUnstable #255583: https://github.com/NixOS/nixpkgs/pull/255583
+    nixpkgs.url = "github:NixOS/nixpkgs/fd6901755debe65abf8102a61dbfb44dd09fa1dc";
     # nixpkgs.url = "github:ConnorBaker/nixpkgs/feat/nvidia-dcgm-prometheus-exporter-module";
 
     nixos-images = {
