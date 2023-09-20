@@ -91,7 +91,10 @@
     };
 
     sops-nix = {
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs = {
+        nixpkgs-stable.follows = "nixpkgs";
+        nixpkgs.follows = "nixpkgs";
+      };
       url = "github:Mic92/sops-nix";
     };
 
