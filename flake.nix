@@ -68,8 +68,7 @@
       url = "github:mic92/nixpkgs-review";
     };
 
-    # nixos/systemd-stage1: fix initrd build with zfsUnstable #255583: https://github.com/NixOS/nixpkgs/pull/255583
-    nixpkgs.url = "github:NixOS/nixpkgs/fd6901755debe65abf8102a61dbfb44dd09fa1dc";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     # nixpkgs.url = "github:ConnorBaker/nixpkgs/feat/nvidia-dcgm-prometheus-exporter-module";
 
     nixos-images = {
@@ -218,14 +217,13 @@
             ];
           });
 
-        nixos-orin-kexec = withSystem "aarch64-linux" ({
-          pkgs,
-          system,
-          ...
-        }:
-          inputs.nixpkgs.lib.nixosSystem {
+        nixos-orin-kexec = withSystem "aarch64-linux" ({system, ...}: let
+          # jetsonNixpkgs = inputs.jetpack-nixos.inputs.nixpkgs;
+          jetsonNixpkgs = inputs.nixpkgs;
+        in
+          jetsonNixpkgs.lib.nixosSystem {
             # inherit pkgs;
-            pkgs = import inputs.nixpkgs {
+            pkgs = import jetsonNixpkgs {
               inherit system;
               overlays = [inputs.jetpack-nixos.overlays.default];
             };
@@ -248,6 +246,7 @@
                   kernelPackages = lib.mkOverride 45 pkgs.nvidia-jetpack.kernelPackages;
                   extraModulePackages = lib.mkOverride 45 [config.boot.kernelPackages.nvidia-display-driver];
                 };
+                disabledModules = ["profiles/all-hardware.nix"];
                 environment.defaultPackages = lib.mkOverride 45 [
                   pkgs.rsync
                   pkgs.parted
@@ -261,6 +260,7 @@
                     carrierBoard = "devkit";
                   };
                 };
+                nixpkgs.hostPlatform = system;
               })
             ];
           });
