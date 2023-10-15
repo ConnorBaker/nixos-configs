@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   ...
@@ -6,7 +7,10 @@
   # NOTE: Use mkOptionDefault to ensure our value is added to the list of
   # values, rather than replacing the list of values.
   # Required for various dot-net tools.
-  programs.nix-ld.libraries = lib.mkOptionDefault [pkgs.icu.out];
+  programs.nix-ld.libraries = lib.mkOptionDefault [
+    config.hardware.nvidia.package
+    pkgs.icu.out
+  ];
 
   users.users.connorbaker.packages = with pkgs;
   # Rust unix tools
