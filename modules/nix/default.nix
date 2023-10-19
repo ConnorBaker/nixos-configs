@@ -28,8 +28,15 @@
         "aarch64-linux" # Emulated
       ];
     };
-    nixos-orin = {
+    ubuntu-orin = {
       speedFactor = 1;
+      systems = [
+        "aarch64-linux" # Physical
+      ];
+    };
+    ubuntu-hetzner = {
+      maxJobs = 40;
+      speedFactor = 16;
       systems = [
         "aarch64-linux" # Physical
       ];
@@ -43,6 +50,7 @@
     "nixos-test"
   ];
   # Functions to generate machine-specific configuration.
+  # Attributes defined in the hostNameToConfig map override these defaults.
   # machineBoilerplate :: String -> AttrSet String Any -> AttrSet String Any
   machineBoilerplate = hostName:
     lib.attrsets.recursiveUpdate {
@@ -57,6 +65,13 @@ in {
   imports = [
     ./secrets.nix
   ];
+
+  # Must manually add ubuntu-hetzner because it is not in my Tailscale network.
+  networking.hosts = {
+    "65.21.10.91" = ["ubuntu-hetzner"];
+    "2a01:4f9:3080:40c1::2" = ["ubuntu-hetzner"];
+    "192.168.1.204" = ["ubuntu-orin"];
+  };
 
   nix = {
     buildMachines = lib.trivial.pipe hostNameToConfig [
@@ -102,10 +117,17 @@ in {
     };
   };
 
-  users.users.nix = {
-    description = "Nix account";
-    extraGroups = ["wheel"];
-    isNormalUser = true;
-    openssh.authorizedKeys.keyFiles = [./keys/id_nix_ed25519.pub];
+  programs.ssh.knownHosts = lib.attrsets.genAttrs (builtins.attrNames hostNameToConfig) (hostName: {
+    publicKeyFile = ../.. + "/devices/${hostName}/keys/ssh_host_ed25519_key.pub";
+  });
+
+  users.users = {
+    nix = {
+      description = "Nix account";
+      extraGroups = ["wheel"];
+      isNormalUser = true;
+      openssh.authorizedKeys.keyFiles = [./keys/id_nix_ed25519.pub];
+    };
+    root.openssh.authorizedKeys.keyFiles = [./keys/id_nix_ed25519.pub];
   };
 }
