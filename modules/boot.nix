@@ -6,4 +6,5 @@
     };
     tmp.cleanOnBoot = true;
   };
+  systemd.enableEmergencyMode = false;
 }
