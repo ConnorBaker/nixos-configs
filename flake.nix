@@ -110,11 +110,7 @@
   };
 
   outputs = inputs:
-    inputs.flake-parts.lib.mkFlake {inherit inputs;} ({
-      self,
-      withSystem,
-      ...
-    }: {
+    inputs.flake-parts.lib.mkFlake {inherit inputs;} ({withSystem, ...}: {
       systems = [
         "aarch64-linux"
         "x86_64-linux"
