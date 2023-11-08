@@ -14,7 +14,7 @@
       '';
       supportedFilesystems = ["vfat" "zfs"];
     };
-    kernelPackages = pkgs.linuxKernel.packages.linux_6_4;
+    kernelPackages = pkgs.linuxKernel.packages.linux_6_5;
     kernelParams = ["nohibernate"];
     supportedFilesystems = ["vfat" "zfs"];
     zfs.enableUnstable = true;
