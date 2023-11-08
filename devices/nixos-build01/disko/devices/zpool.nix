@@ -11,20 +11,12 @@
       atime = "off";
       canmount = "off";
       compression = "zstd";
-      checksum = "sha512"; # TODO(@connorbaker): Switch to blake3 after ZFS 2.2.
+      checksum = "blake3";
       dnodesize = "auto";
       normalization = "formD";
       xattr = "sa";
       "com.sun:auto-snapshot" = "false";
     };
-    # datasets.reserved = {
-    #   type = "zfs_fs";
-    #   options = {
-    #     canmount = "off";
-    #     mountpoint = "none";
-    #     reservation = "200G";
-    #   };
-    # };
   };
 
   rpool = lib.recursiveUpdate zfsPoolCommonConfig {
@@ -47,6 +39,11 @@
         mountpoint = "/nix";
       };
 
+      tmp = {
+        type = "zfs_fs";
+        mountpoint = "/tmp";
+      };
+
       home = {
         type = "zfs_fs";
         mountpoint = "/home";
@@ -57,24 +54,6 @@
         type = "zfs_fs";
         mountpoint = "/persist";
       };
-
-      # encrypted = {
-      #   type = "zfs_fs";
-      #   options = {
-      #     mountpoint = "none";
-      #     encryption = "aes-256-gcm";
-      #     keyformat = "passphrase";
-      #     keylocation = "file:///tmp/secret.key";
-      #   };
-      #   # use this to read the key during boot
-      #   # postCreateHook = ''
-      #   #   zfs set keylocation="prompt" "rpool/$name";
-      #   # '';
-      # };
-      # "encrypted/test" = {
-      #   type = "zfs_fs";
-      #   mountpoint = "/zfs_crypted";
-      # };
     };
   };
 in {

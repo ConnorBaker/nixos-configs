@@ -11,7 +11,7 @@
       atime = "off";
       canmount = "off";
       compression = "zstd";
-      checksum = "sha512"; # TODO(@connorbaker): Switch to blake3 after ZFS 2.2.
+      checksum = "blake3";
       dnodesize = "auto";
       normalization = "formD";
       xattr = "sa";
@@ -45,6 +45,11 @@
       nix = {
         type = "zfs_fs";
         mountpoint = "/nix";
+      };
+
+      tmp = {
+        type = "zfs_fs";
+        mountpoint = "/tmp";
       };
 
       home = {
