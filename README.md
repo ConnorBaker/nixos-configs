@@ -69,12 +69,15 @@ Do this for whichever private keys are necessary.
 
 Deploy `nixos-build01` with:
 
-```bash
-nix run github:numtide/nixos-anywhere/3686956935964ef245363586deda4197ba762632 -- \
+```console
+nix run github:connorbaker/nixos-anywhere/fix/rsync-ipv6 --builders '' -- \
   connorbaker@192.168.1.200 \
   -i ~/.ssh/id_ed25519 \
+  --kexec https://gh-v6.com/nix-community/nixos-images/releases/download/nixos-unstable/nixos-kexec-installer-noninteractive-x86_64-linux.tar.gz \
   --flake .#nixos-build01 \
   --build-on-remote \
+  --print-build-logs \
+  --debug \
   --extra-files /Volumes/nixos-build01
 ```
 
@@ -82,12 +85,15 @@ nix run github:numtide/nixos-anywhere/3686956935964ef245363586deda4197ba762632 -
 
 Deploy `nixos-ext` with:
 
-```bash
-nix run github:numtide/nixos-anywhere/3686956935964ef245363586deda4197ba762632 -- \
+```console
+nix run github:connorbaker/nixos-anywhere/fix/rsync-ipv6 --builders '' -- \
   connorbaker@192.168.1.195 \
   -i ~/.ssh/id_ed25519 \
+  --kexec https://gh-v6.com/nix-community/nixos-images/releases/download/nixos-unstable/nixos-kexec-installer-noninteractive-x86_64-linux.tar.gz \
   --flake .#nixos-ext \
   --build-on-remote \
+  --print-build-logs \
+  --debug \
   --extra-files /Volumes/nixos-ext
 ```
 

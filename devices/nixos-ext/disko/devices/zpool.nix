@@ -127,6 +127,7 @@
   };
 in {
   disko.devices.zpool = {
-    inherit rpool dpool;
+    inherit rpool;
+    # TODO(@connorbaker): Disabled dpool temporarily; it was not successfully mounted on initial system installation.
   };
 }
