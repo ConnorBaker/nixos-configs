@@ -1,5 +1,4 @@
 {config, ...}: {
-  environment.noXlibs = false;
   hardware = {
     nvidia = {
       nvidiaPersistenced = true;

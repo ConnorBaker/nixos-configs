@@ -1,8 +1,5 @@
-{lib, ...}: {
-  environment = {
-    noXlibs = lib.mkDefault true;
-    variables.BROWSER = "echo";
-  };
+{
+  environment.variables.BROWSER = "echo";
   fonts.fontconfig.enable = false;
   sound.enable = false;
   systemd.sleep.extraConfig = ''
