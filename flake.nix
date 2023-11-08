@@ -121,9 +121,20 @@
       ];
 
       imports = [
+        # Add tools to the environment for the linters etc.
+        {
+          perSystem = {
+            inputs',
+            lib,
+            system,
+            ...
+          }: let
+            cfg = import ./nixpkgs-overlays.nix {inherit inputs inputs';} {inherit lib;};
+            nixpkgs = import inputs.nixpkgs ({inherit system;} // cfg.nixpkgs);
+          in {_module.args.pkgs = nixpkgs;};
+        }
         inputs.treefmt-nix.flakeModule
         inputs.pre-commit-hooks-nix.flakeModule
-        ./nixpkgs-overlays.nix
       ];
 
       perSystem = {
@@ -133,9 +144,7 @@
       }: {
         # Helpful for inspecting attributes
         legacyPackages = pkgs;
-        packages = {
-          nixos-orin-kexec-tarball = self.nixosConfigurations.nixos-orin-kexec.config.system.build.kexecTarball;
-        };
+
         pre-commit.settings = {
           hooks = {
             # Formatter checks
@@ -173,95 +182,28 @@
       };
 
       flake.nixosConfigurations = {
-        nixos-desktop = withSystem "x86_64-linux" ({pkgs, ...}:
+        nixos-desktop = withSystem "x86_64-linux" ({inputs', ...}:
           inputs.nixpkgs.lib.nixosSystem {
-            inherit pkgs;
             modules = [
-              inputs.sops-nix.nixosModules.sops
+              (import ./nixpkgs-overlays.nix {inherit inputs inputs';})
               ./devices/nixos-desktop
             ];
           });
 
         # TODO: nixos-ext and nixos-build01 can be factored out into a module for systems running ZFS with rpool.
-        nixos-ext = withSystem "x86_64-linux" ({pkgs, ...}:
+        nixos-ext = withSystem "x86_64-linux" ({inputs', ...}:
           inputs.nixpkgs.lib.nixosSystem {
-            inherit pkgs;
             modules = [
-              inputs.sops-nix.nixosModules.sops
-              inputs.disko.nixosModules.disko
-              inputs.impermanence.nixosModules.impermanence
+              (import ./nixpkgs-overlays.nix {inherit inputs inputs';})
               ./devices/nixos-ext
             ];
           });
 
-        nixos-build01 = withSystem "x86_64-linux" ({pkgs, ...}:
+        nixos-build01 = withSystem "x86_64-linux" ({inputs', ...}:
           inputs.nixpkgs.lib.nixosSystem {
-            inherit pkgs;
             modules = [
-              inputs.sops-nix.nixosModules.sops
-              inputs.disko.nixosModules.disko
-              inputs.impermanence.nixosModules.impermanence
+              (import ./nixpkgs-overlays.nix {inherit inputs inputs';})
               ./devices/nixos-build01
-            ];
-          });
-
-        nixos-orin = withSystem "aarch64-linux" ({pkgs, ...}:
-          inputs.nixpkgs.lib.nixosSystem {
-            inherit pkgs;
-            modules = [
-              inputs.jetpack-nixos.nixosModules.default
-              inputs.sops-nix.nixosModules.sops
-              inputs.disko.nixosModules.disko
-              # Not using ZFS or impermanence on Orin.
-              ./devices/nixos-orin
-            ];
-          });
-
-        nixos-orin-kexec = withSystem "aarch64-linux" ({system, ...}: let
-          # jetsonNixpkgs = inputs.jetpack-nixos.inputs.nixpkgs;
-          jetsonNixpkgs = inputs.nixpkgs;
-        in
-          jetsonNixpkgs.lib.nixosSystem {
-            # inherit pkgs;
-            pkgs = import jetsonNixpkgs {
-              inherit system;
-              overlays = [inputs.jetpack-nixos.overlays.default];
-            };
-            modules = [
-              {system.kexec-installer.name = "nixos-kexec-installer-noninteractive";}
-              inputs.nixos-images.nixosModules.noninteractive
-              inputs.nixos-images.nixosModules.kexec-installer
-              inputs.jetpack-nixos.nixosModules.default
-              # Unset some things that are set by default in the kexec-installer module.
-              # This is done largely to ensure that there are no references to ZFS, which the jetpack kernel doesn't support.
-              # We can't use an in-tree kernel either because then the kexec-installer won't work.
-              ({
-                config,
-                lib,
-                pkgs,
-                ...
-              }: {
-                boot = {
-                  kernelModules = lib.mkOverride 45 ["nvgpu" "bridge" "macvlan" "tap" "tun" "loop" "atkbd"];
-                  kernelPackages = lib.mkOverride 45 pkgs.nvidia-jetpack.kernelPackages;
-                  extraModulePackages = lib.mkOverride 45 [config.boot.kernelPackages.nvidia-display-driver];
-                };
-                disabledModules = ["profiles/all-hardware.nix"];
-                environment.defaultPackages = lib.mkOverride 45 [
-                  pkgs.rsync
-                  pkgs.parted
-                  pkgs.gptfdisk
-                ];
-                hardware = {
-                  enableRedistributableFirmware = lib.mkOverride 45 true;
-                  nvidia-jetpack = {
-                    enable = true;
-                    som = "orin-agx";
-                    carrierBoard = "devkit";
-                  };
-                };
-                nixpkgs.hostPlatform = system;
-              })
             ];
           });
       };

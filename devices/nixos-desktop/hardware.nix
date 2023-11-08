@@ -1,4 +1,8 @@
-{modulesPath, ...}: {
+{
+  lib,
+  modulesPath,
+  ...
+}: {
   imports = ["${modulesPath}/installer/scan/not-detected.nix"];
 
   boot = {
@@ -29,5 +33,12 @@
     };
   };
 
-  nixpkgs.hostPlatform.system = "x86_64-linux";
+  nixpkgs = lib.modules.mkForce {
+    config = {
+      allowUnfree = true;
+      cudaSupport = true;
+      cudaCapabilities = ["8.9"];
+    };
+    hostPlatform.system = "x86_64-linux";
+  };
 }
