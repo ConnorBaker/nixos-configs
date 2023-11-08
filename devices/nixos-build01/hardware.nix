@@ -22,11 +22,11 @@
     };
   };
 
-  nixpkgs = lib.options.mkForce {
+  nixpkgs = {
     config = {
-      allowUnfree = true;
-      cudaSupport = true;
-      cudaCapabilities = ["8.9"];
+      allowUnfree = lib.modules.mkForce true;
+      cudaSupport = lib.modules.mkForce true;
+      cudaCapabilities = lib.modules.mkForce ["8.9"];
     };
     hostPlatform.system = "x86_64-linux";
   };
