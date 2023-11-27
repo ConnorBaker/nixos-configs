@@ -1,39 +1,40 @@
-{
-  config,
-  pkgs,
-  ...
-}: let
+{ config, pkgs, ... }:
+let
   grafanaDomain = config.services.grafana.settings.server.domain;
   grafanaHttpAddr = config.services.grafana.settings.server.http_addr;
   grafanaHttpPort = config.services.grafana.settings.server.http_port;
   grafanaProtocol = config.services.grafana.settings.server.protocol;
-in {
+in
+{
   services = {
     grafana = {
       enable = true;
       provision = {
         enable = true;
-        dashboards.settings.providers = [
-          # TODO(@connorbaker): NVIDIA exporters.
-          # Look at dcgm-exporter: https://github.com/NixOS/nixpkgs/pull/235024
-          # Might be missing NixOS module.
-          # https://grafana.com/grafana/dashboards/12239-nvidia-dcgm-exporter-dashboard/
-          # TODO(@connorbaker): ZFS dashboards:
-          # - https://grafana.com/grafana/dashboards/15008-zfs/
-          # - https://grafana.com/grafana/dashboards/15362-zfs-pool-metrics/
-          # - https://grafana.com/grafana/dashboards/17350-zfs-pool-metrics-influxdb-v2/
-          {
-            name = "Node Exporter Full";
-            options.path = let
-              src = pkgs.fetchFromGitHub {
-                owner = "rfmoz";
-                repo = "grafana-dashboards";
-                rev = "73427563c80cb145f764462cd362c60f20358060";
-                sha256 = "sha256-f/hDBEykQAe5Jwp8wIZV5sPauZztToO7TyhxzMP/4GY=";
-              };
-            in "${src}/prometheus/node-exporter-full.json";
-          }
-        ];
+        dashboards.settings.providers =
+          [
+            # TODO(@connorbaker): NVIDIA exporters.
+            # Look at dcgm-exporter: https://github.com/NixOS/nixpkgs/pull/235024
+            # Might be missing NixOS module.
+            # https://grafana.com/grafana/dashboards/12239-nvidia-dcgm-exporter-dashboard/
+            # TODO(@connorbaker): ZFS dashboards:
+            # - https://grafana.com/grafana/dashboards/15008-zfs/
+            # - https://grafana.com/grafana/dashboards/15362-zfs-pool-metrics/
+            # - https://grafana.com/grafana/dashboards/17350-zfs-pool-metrics-influxdb-v2/
+            {
+              name = "Node Exporter Full";
+              options.path =
+                let
+                  src = pkgs.fetchFromGitHub {
+                    owner = "rfmoz";
+                    repo = "grafana-dashboards";
+                    rev = "73427563c80cb145f764462cd362c60f20358060";
+                    sha256 = "sha256-f/hDBEykQAe5Jwp8wIZV5sPauZztToO7TyhxzMP/4GY=";
+                  };
+                in
+                "${src}/prometheus/node-exporter-full.json";
+            }
+          ];
         datasources.settings.datasources = [
           {
             name = "Prometheus";
@@ -91,18 +92,20 @@ in {
       enable = true;
       enableReload = true;
       port = 9090;
-      scrapeConfigs = let
-        inherit (config.services.prometheus.exporters) node;
-      in [
-        {
-          job_name = "node";
-          static_configs = [{targets = ["localhost:${toString node.port}"];}];
-        }
-        # {
-        #   job_name = "zfs";
-        #   static_configs = [{targets = ["localhost:${toString zfs.port}"];}];
-        # }
-      ];
+      scrapeConfigs =
+        let
+          inherit (config.services.prometheus.exporters) node;
+        in
+        [
+          {
+            job_name = "node";
+            static_configs = [ { targets = [ "localhost:${toString node.port}" ]; } ];
+          }
+          # {
+          #   job_name = "zfs";
+          #   static_configs = [{targets = ["localhost:${toString zfs.port}"];}];
+          # }
+        ];
       exporters.node = {
         enable = true;
         enabledCollectors = [

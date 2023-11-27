@@ -3,8 +3,9 @@
   lib,
   pkgs,
   ...
-}: {
-  nix.settings.secret-key-files = [config.sops.secrets."cantcacheme/signing-key".path];
+}:
+{
+  nix.settings.secret-key-files = [ config.sops.secrets."cantcacheme/signing-key".path ];
   queued-build-hook = {
     enable = true;
     postBuildScriptContent = ''
@@ -24,23 +25,27 @@
     };
   };
   sops.secrets =
-    lib.attrsets.genAttrs [
-      "cantcacheme/access-key"
-      "cantcacheme/s3-endpoint"
-      "cantcacheme/secret-access-key"
-      "cantcacheme/signing-key"
-    ] (lib.trivial.const {
-      restartUnits = [
-        "async-nix-post-build-hook.service"
-        "async-nix-post-build-hook.socket"
-      ];
-      sopsFile = ./secrets/cantcacheme.yaml;
-    });
+    lib.attrsets.genAttrs
+      [
+        "cantcacheme/access-key"
+        "cantcacheme/s3-endpoint"
+        "cantcacheme/secret-access-key"
+        "cantcacheme/signing-key"
+      ]
+      (
+        lib.trivial.const {
+          restartUnits = [
+            "async-nix-post-build-hook.service"
+            "async-nix-post-build-hook.socket"
+          ];
+          sopsFile = ./secrets/cantcacheme.yaml;
+        }
+      );
   systemd.services.async-nix-post-build-hook = {
     environment.HOME = "/var/lib/async-nix-post-build-hook";
     serviceConfig.StateDirectory = "async-nix-post-build-hook";
     # Because the hook runs as root, there's no need for the following line.
     # serviceConfig.SupplementaryGroups = [config.users.groups.keys.name];
-    unitConfig.After = ["sops-nix.service"];
+    unitConfig.After = [ "sops-nix.service" ];
   };
 }

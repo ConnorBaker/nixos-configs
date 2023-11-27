@@ -1,8 +1,5 @@
-{
-  config,
-  lib,
-  ...
-}: let
+{ config, lib, ... }:
+let
   # Common configuration for all machines.
   # Maps host names to machine architecture.
   # hostNameToSystem :: AttrSet String (AttrSet String Any)
@@ -52,7 +49,8 @@
   # Functions to generate machine-specific configuration.
   # Attributes defined in the hostNameToConfig map override these defaults.
   # machineBoilerplate :: String -> AttrSet String Any -> AttrSet String Any
-  machineBoilerplate = hostName:
+  machineBoilerplate =
+    hostName:
     lib.attrsets.recursiveUpdate {
       inherit hostName maxJobs supportedFeatures;
       protocol = "ssh-ng";
@@ -61,16 +59,15 @@
     };
   # A machine should not have itself as a remote builder.
   irreflexive = hostName: _: hostName != config.networking.hostName;
-in {
-  imports = [
-    ./secrets.nix
-  ];
+in
+{
+  imports = [ ./secrets.nix ];
 
   # Must manually add ubuntu-hetzner because it is not in my Tailscale network.
   networking.hosts = {
-    "65.21.10.91" = ["ubuntu-hetzner"];
-    "2a01:4f9:3080:40c1::2" = ["ubuntu-hetzner"];
-    "192.168.1.204" = ["ubuntu-orin"];
+    "65.21.10.91" = [ "ubuntu-hetzner" ];
+    "2a01:4f9:3080:40c1::2" = [ "ubuntu-hetzner" ];
+    "192.168.1.204" = [ "ubuntu-orin" ];
   };
 
   nix = {
@@ -111,23 +108,27 @@ in {
       # NOTE: Disabled because nixpkgs-review requires impure evaluation.
       # restrict-eval = true;
       system-features = supportedFeatures;
-      trusted-users = ["root" "@nixbld" "@wheel"];
+      trusted-users = [
+        "root"
+        "@nixbld"
+        "@wheel"
+      ];
       use-cgroups = true;
       use-xdg-base-directories = true;
     };
   };
 
-  programs.ssh.knownHosts = lib.attrsets.genAttrs (builtins.attrNames hostNameToConfig) (hostName: {
-    publicKeyFile = ../.. + "/devices/${hostName}/keys/ssh_host_ed25519_key.pub";
-  });
+  programs.ssh.knownHosts = lib.attrsets.genAttrs (builtins.attrNames hostNameToConfig) (
+    hostName: { publicKeyFile = ../.. + "/devices/${hostName}/keys/ssh_host_ed25519_key.pub"; }
+  );
 
   users.users = {
     nix = {
       description = "Nix account";
-      extraGroups = ["wheel"];
+      extraGroups = [ "wheel" ];
       isNormalUser = true;
-      openssh.authorizedKeys.keyFiles = [./keys/id_nix_ed25519.pub];
+      openssh.authorizedKeys.keyFiles = [ ./keys/id_nix_ed25519.pub ];
     };
-    root.openssh.authorizedKeys.keyFiles = [./keys/id_nix_ed25519.pub];
+    root.openssh.authorizedKeys.keyFiles = [ ./keys/id_nix_ed25519.pub ];
   };
 }

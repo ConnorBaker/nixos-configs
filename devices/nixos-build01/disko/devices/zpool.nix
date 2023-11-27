@@ -1,4 +1,5 @@
-{lib, ...}: let
+{ lib, ... }:
+let
   zfsPoolCommonConfig = {
     type = "zpool";
     mode = "raidz2";
@@ -56,7 +57,8 @@
       };
     };
   };
-in {
+in
+{
   disko.devices.zpool = {
     inherit rpool;
   };

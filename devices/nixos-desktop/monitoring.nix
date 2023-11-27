@@ -3,12 +3,14 @@
   lib,
   pkgs,
   ...
-}: let
+}:
+let
   grafanaDomain = config.services.grafana.settings.server.domain;
   grafanaCert = "./certs/${grafanaDomain}.crt";
   tailscaleKey = "tailscale/${grafanaDomain}.key";
-in {
-  networking.firewall.allowedTCPPorts = [443];
+in
+{
+  networking.firewall.allowedTCPPorts = [ 443 ];
 
   services = {
     dcgm = {
@@ -66,26 +68,27 @@ in {
           "xfs"
         ];
       };
-      scrapeConfigs = [
-        # {
-        #   job_name = "dcgm";
-        #   static_configs = [
-        #     {
-        #       targets = ["localhost:${toString config.services.prometheus.exporters.dcgm.port}"];
-        #     }
-        #   ];
-        # }
-      ];
+      scrapeConfigs =
+        [
+          # {
+          #   job_name = "dcgm";
+          #   static_configs = [
+          #     {
+          #       targets = ["localhost:${toString config.services.prometheus.exporters.dcgm.port}"];
+          #     }
+          #   ];
+          # }
+        ];
     };
   };
 
   sops = {
-    age.sshKeyPaths = ["/home/connorbaker/.ssh/id_ed25519"];
+    age.sshKeyPaths = [ "/home/connorbaker/.ssh/id_ed25519" ];
     secrets = {
       "grafana/admin_password" = {
         inherit (config.users.users.grafana) group;
         owner = config.users.users.grafana.name;
-        restartUnits = ["grafana.service"];
+        restartUnits = [ "grafana.service" ];
         sopsFile = ./secrets/grafana.yaml;
       };
       "tailscale/${grafanaDomain}.key" = {
@@ -103,11 +106,19 @@ in {
   };
 
   systemd.services =
-    (lib.attrsets.genAttrs ["grafana" "nginx"] (lib.trivial.const {
-      serviceConfig.SupplementaryGroups = [config.users.groups.keys.name];
-      # Use mkDefault to merge with the default After list
-      unitConfig.After = lib.mkDefault ["sops-nix.service"];
-    }))
+    (lib.attrsets.genAttrs
+      [
+        "grafana"
+        "nginx"
+      ]
+      (
+        lib.trivial.const {
+          serviceConfig.SupplementaryGroups = [ config.users.groups.keys.name ];
+          # Use mkDefault to merge with the default After list
+          unitConfig.After = lib.mkDefault [ "sops-nix.service" ];
+        }
+      )
+    )
     // {
       # dcgm.environment.LD_LIBRARY_PATH = let
       #   libnvidia_nscq = pkgs.fetchzip {
@@ -140,7 +151,11 @@ in {
       # --fake-gpus ${lib.boolToString cfg.fakeGpus}
     };
 
-  users.users = lib.attrsets.genAttrs ["grafana" "nginx"] (lib.trivial.const {
-    extraGroups = [config.users.groups.keys.name];
-  });
+  users.users =
+    lib.attrsets.genAttrs
+      [
+        "grafana"
+        "nginx"
+      ]
+      (lib.trivial.const { extraGroups = [ config.users.groups.keys.name ]; });
 }

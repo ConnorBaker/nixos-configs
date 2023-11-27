@@ -1,18 +1,22 @@
-{lib, ...}: let
+{ lib, ... }:
+let
   # Merge all of the configurations for a disk.
-  mkDisk = _name: {
-    interface,
-    model,
-    serial,
-    modelSerialSeparator,
-    contentConfigs,
-  }: {
-    device = "/dev/disk/by-id/${interface}-${model}${modelSerialSeparator}${serial}";
-    type = "disk";
-    # Recursively merged all the configs for a disk.
-    # NOTE: Because we use foldr, later configs override earlier configs.
-    content = lib.foldr lib.recursiveUpdate {} contentConfigs;
-  };
+  mkDisk =
+    _name:
+    {
+      interface,
+      model,
+      serial,
+      modelSerialSeparator,
+      contentConfigs,
+    }:
+    {
+      device = "/dev/disk/by-id/${interface}-${model}${modelSerialSeparator}${serial}";
+      type = "disk";
+      # Recursively merged all the configs for a disk.
+      # NOTE: Because we use foldr, later configs override earlier configs.
+      content = lib.foldr lib.recursiveUpdate { } contentConfigs;
+    };
 
   # Configuration for our boot
   bootConfig = {
@@ -41,35 +45,37 @@
     };
   };
 
-  samsung990Pro2TBDisks = let
-    common = {
-      interface = "nvme";
-      model = "Samsung_SSD_990_PRO_2TB";
-      modelSerialSeparator = "_";
-    };
-    disks = {
-      rpool-boot = {
-        serial = "S73WNJ0W701713F";
-        contentConfigs = [
-          bootConfig
-          rpoolConfig
-        ];
+  samsung990Pro2TBDisks =
+    let
+      common = {
+        interface = "nvme";
+        model = "Samsung_SSD_990_PRO_2TB";
+        modelSerialSeparator = "_";
       };
-      rpool-data1 = {
-        serial = "S73WNJ0W701716V";
-        contentConfigs = [rpoolConfig];
+      disks = {
+        rpool-boot = {
+          serial = "S73WNJ0W701713F";
+          contentConfigs = [
+            bootConfig
+            rpoolConfig
+          ];
+        };
+        rpool-data1 = {
+          serial = "S73WNJ0W701716V";
+          contentConfigs = [ rpoolConfig ];
+        };
+        rpool-data2 = {
+          serial = "S73WNJ0W701722Z";
+          contentConfigs = [ rpoolConfig ];
+        };
+        rpool-data3 = {
+          serial = "S73WNJ0W701726F";
+          contentConfigs = [ rpoolConfig ];
+        };
       };
-      rpool-data2 = {
-        serial = "S73WNJ0W701722Z";
-        contentConfigs = [rpoolConfig];
-      };
-      rpool-data3 = {
-        serial = "S73WNJ0W701726F";
-        contentConfigs = [rpoolConfig];
-      };
-    };
-  in
+    in
     lib.mapAttrs (lib.const (lib.recursiveUpdate common)) disks;
-in {
+in
+{
   config.disko.devices.disk = lib.mapAttrs mkDisk samsung990Pro2TBDisks;
 }

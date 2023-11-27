@@ -1,4 +1,5 @@
-{config, ...}: {
+{ config, ... }:
+{
   hardware = {
     nvidia = {
       nvidiaPersistenced = true;
@@ -11,5 +12,5 @@
     allowUnfree = true;
     cudaSupport = true;
   };
-  services.xserver.videoDrivers = ["nvidia"];
+  services.xserver.videoDrivers = [ "nvidia" ];
 }

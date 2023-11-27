@@ -12,11 +12,17 @@
       postDeviceCommands = lib.mkAfter ''
         zfs rollback -r rpool@blank
       '';
-      supportedFilesystems = ["vfat" "zfs"];
+      supportedFilesystems = [
+        "vfat"
+        "zfs"
+      ];
     };
     kernelPackages = pkgs.linuxKernel.packages.linux_6_5;
-    kernelParams = ["nohibernate"];
-    supportedFilesystems = ["vfat" "zfs"];
+    kernelParams = [ "nohibernate" ];
+    supportedFilesystems = [
+      "vfat"
+      "zfs"
+    ];
     zfs.enableUnstable = true;
   };
 
@@ -27,17 +33,19 @@
     autoScrub.enable = true;
     trim.enable = true;
     # Add pkgs.diffutils to PATH for zed (required for zfs-mount-generator).
-    zed.settings.PATH = lib.mkForce (lib.makeBinPath [
-      config.boot.zfs.package
-      pkgs.coreutils
-      pkgs.curl
-      pkgs.diffutils
-      pkgs.gawk
-      pkgs.gnugrep
-      pkgs.gnused
-      pkgs.nettools
-      pkgs.util-linux
-    ]);
+    zed.settings.PATH = lib.mkForce (
+      lib.makeBinPath [
+        config.boot.zfs.package
+        pkgs.coreutils
+        pkgs.curl
+        pkgs.diffutils
+        pkgs.gawk
+        pkgs.gnugrep
+        pkgs.gnused
+        pkgs.nettools
+        pkgs.util-linux
+      ]
+    );
   };
 
   systemd = {

@@ -1,4 +1,5 @@
-{lib, ...}: let
+{ lib, ... }:
+let
   zfsPoolCommonConfig = {
     type = "zpool";
     mode = "raidz2";
@@ -125,7 +126,8 @@
       # };
     };
   };
-in {
+in
+{
   disko.devices.zpool = {
     inherit rpool;
     # TODO(@connorbaker): Disabled dpool temporarily; it was not successfully mounted on initial system installation.

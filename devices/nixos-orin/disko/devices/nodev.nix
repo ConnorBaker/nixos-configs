@@ -1,3 +1,1 @@
-{
-  disko.devices.nodev."/tmp".fsType = "tmpfs";
-}
+{ disko.devices.nodev."/tmp".fsType = "tmpfs"; }
