@@ -36,9 +36,9 @@
   ];
 
   # The ZFS module only reset rpool by default; we also want to reset dpool.
-  boot.initrd.postDeviceCommands = lib.mkAfter ''
-    zfs rollback -r dpool@blank
-  '';
+  # boot.initrd.postDeviceCommands = lib.mkAfter ''
+  #   zfs rollback -r dpool@blank
+  # '';
 
   environment.etc = {
     "ssh/ssh_host_ed25519_key.pub".source = ./keys/ssh_host_ed25519_key.pub;

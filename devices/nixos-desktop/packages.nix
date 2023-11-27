@@ -42,10 +42,10 @@
     ]
     # Nix
     ++ [
-      alejandra
       nil
       nix-direnv
       nix-output-monitor
+      nixfmt
       nixpkgs-review
     ]
     # Sops tools

@@ -27,19 +27,27 @@
             (lib.const final.nix)
         );
       })
-      # External nixpkgs-review
-      (final: _: {
+      # External tools
+      (final: prev: let
+        inherit (final.haskell.lib) doJailbreak justStaticExecutables;
+      in {
+        haskell =
+          prev.haskell
+          // {
+            packageOverrides = hsFinal: _: let
+              inherit (hsFinal) callCabal2nix;
+            in {
+              nix-output-manager = doJailbreak (callCabal2nix "nix-output-manager" inputs.nix-output-manager {});
+              nixfmt = doJailbreak (callCabal2nix "nixfmt" inputs.nixfmt {});
+            };
+          };
+        nix-output-manager = justStaticExecutables final.haskellPackages.nix-output-manager;
+        nixfmt = justStaticExecutables final.haskellPackages.nixfmt;
         nixpkgs-review = final.callPackage inputs.nixpkgs-review {withSandboxSupport = true;};
-      })
-      # External nix-output-manager
-      (_: _: {
-        # TODO(@connorbaker): Does not override the package in haskellPackages.
-        nix-output-manager = inputs'.nix-output-manager.packages.default;
       })
       # External nix-direnv
       inputs.nix-direnv.overlay
       # External Nix tools
-      inputs.alejandra.overlays.default
       inputs.deadnix.overlays.default
       inputs.nil.overlays.nil
       inputs.nix-ld-rs.overlays.default

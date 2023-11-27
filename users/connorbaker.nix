@@ -11,7 +11,6 @@
   users.users.connorbaker = {
     description = "Connor Baker's user account";
     extraGroups = ["wheel"];
-    hashedPassword = "$6$I2k4rD4NqxiExXzX$RwvJzZP7mANAC1UEpQKQrI4hhdjUKpx/kUIXUXMO8dLJDW89ICe08Zihw1Eiq0AOZOjkxHxB9kUT3z7gTTnob0";
     isNormalUser = true;
     openssh.authorizedKeys = {
       keyFiles = [
