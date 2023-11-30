@@ -37,12 +37,12 @@
 
     nix = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:NixOS/nix/2.18-maintenance";
+      url = "github:NixOS/nix/2.19-maintenance";
     };
 
     nix-direnv = {
       inputs = {
-        flake-utils.follows = "flake-utils";
+        flake-parts.follows = "flake-parts";
         nixpkgs.follows = "nixpkgs";
       };
       url = "github:nix-community/nix-direnv";
@@ -60,7 +60,7 @@
 
     nixfmt = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:piegamesde/nixfmt/4ef4c39acd501a9a1b06b3a151b36be5daebcef3";
+      url = "github:piegamesde/nixfmt/c4b930210270277a658183a034e4a97374daacf0";
     };
 
     nixos-generators = {

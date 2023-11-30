@@ -94,9 +94,9 @@ in
         "ca-derivations"
         "cgroups"
         "flakes"
+        "git-hashing"
         "nix-command"
         "no-url-literals"
-        "repl-flake"
       ];
       fsync-metadata = false;
       http-connections = 0;

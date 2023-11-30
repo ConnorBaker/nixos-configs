@@ -52,7 +52,7 @@
         }
       )
       # External nix-direnv
-      inputs.nix-direnv.overlay
+      inputs.nix-direnv.overlays.default
       # External Nix tools
       inputs.deadnix.overlays.default
       inputs.nil.overlays.nil
