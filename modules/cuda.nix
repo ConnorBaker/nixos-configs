@@ -1,7 +1,7 @@
 {
   nix.settings =
     let
-      substituters = [ "https://cuda-maintainers.cachix.org" ];
+      substituters = ["https://cuda-maintainers.cachix.org"];
     in
     {
       extra-substituters = substituters;

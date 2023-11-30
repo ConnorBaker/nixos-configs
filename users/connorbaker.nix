@@ -1,4 +1,4 @@
-{ config, lib, ... }:
+{config, lib, ...}:
 {
   programs.git.config = lib.attrsets.optionalAttrs config.programs.git.enable {
     init.defaultBranch = "main";
@@ -7,7 +7,7 @@
   };
   users.users.connorbaker = {
     description = "Connor Baker's user account";
-    extraGroups = [ "wheel" ];
+    extraGroups = ["wheel"];
     isNormalUser = true;
     openssh.authorizedKeys = {
       keyFiles = [

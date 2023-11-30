@@ -18,7 +18,7 @@
       ];
     };
     kernelPackages = pkgs.linuxKernel.packages.linux_6_5;
-    kernelParams = [ "nohibernate" ];
+    kernelParams = ["nohibernate"];
     supportedFilesystems = [
       "vfat"
       "zfs"

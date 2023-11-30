@@ -10,7 +10,7 @@ let
   tailscaleKey = "tailscale/${grafanaDomain}.key";
 in
 {
-  networking.firewall.allowedTCPPorts = [ 443 ];
+  networking.firewall.allowedTCPPorts = [443];
 
   services = {
     dcgm = {
@@ -83,12 +83,12 @@ in
   };
 
   sops = {
-    age.sshKeyPaths = [ "/home/connorbaker/.ssh/id_ed25519" ];
+    age.sshKeyPaths = ["/home/connorbaker/.ssh/id_ed25519"];
     secrets = {
       "grafana/admin_password" = {
         inherit (config.users.users.grafana) group;
         owner = config.users.users.grafana.name;
-        restartUnits = [ "grafana.service" ];
+        restartUnits = ["grafana.service"];
         sopsFile = ./secrets/grafana.yaml;
       };
       "tailscale/${grafanaDomain}.key" = {
@@ -113,9 +113,9 @@ in
       ]
       (
         lib.trivial.const {
-          serviceConfig.SupplementaryGroups = [ config.users.groups.keys.name ];
+          serviceConfig.SupplementaryGroups = [config.users.groups.keys.name];
           # Use mkDefault to merge with the default After list
-          unitConfig.After = lib.mkDefault [ "sops-nix.service" ];
+          unitConfig.After = lib.mkDefault ["sops-nix.service"];
         }
       )
     )
@@ -157,5 +157,5 @@ in
         "grafana"
         "nginx"
       ]
-      (lib.trivial.const { extraGroups = [ config.users.groups.keys.name ]; });
+      (lib.trivial.const {extraGroups = [config.users.groups.keys.name];});
 }

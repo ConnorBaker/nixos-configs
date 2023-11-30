@@ -1,4 +1,4 @@
-{ lib, ... }:
+{lib, ...}:
 {
   # From https://github.com/numtide/srvos/blob/01d15efe6df0d2988a65beba28d03eff0dae48d4/nixos/server/default.nix#L84-L88.
   # use TCP BBR has significantly increased throughput and reduced latency for connections

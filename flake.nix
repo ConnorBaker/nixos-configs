@@ -108,8 +108,8 @@
 
   outputs =
     inputs:
-    inputs.flake-parts.lib.mkFlake { inherit inputs; } (
-      { withSystem, ... }:
+    inputs.flake-parts.lib.mkFlake {inherit inputs;} (
+      {withSystem, ...}:
       {
         systems = [
           "aarch64-linux"
@@ -127,8 +127,8 @@
                 ...
               }:
               let
-                cfg = import ./nixpkgs-overlays.nix { inherit inputs inputs'; } { inherit lib; };
-                nixpkgs = import inputs.nixpkgs ({ inherit system; } // cfg.nixpkgs);
+                cfg = import ./nixpkgs-overlays.nix {inherit inputs inputs';} {inherit lib;};
+                nixpkgs = import inputs.nixpkgs ({inherit system;} // cfg.nixpkgs);
               in
               {
                 _module.args.pkgs = nixpkgs;
@@ -139,7 +139,7 @@
         ];
 
         perSystem =
-          { config, pkgs, ... }:
+          {config, pkgs, ...}:
           {
             # Helpful for inspecting attributes
             legacyPackages = pkgs;
@@ -149,12 +149,12 @@
                 inherit pkgs;
                 modules = [
                   (
-                    { lib, ... }:
+                    {lib, ...}:
                     {
                       services.sshd.enable = true;
                       services.nginx.enable = true;
 
-                      networking.firewall.allowedTCPPorts = [ 80 ];
+                      networking.firewall.allowedTCPPorts = [80];
 
                       system.stateVersion = lib.version;
 
@@ -168,9 +168,9 @@
                 customFormats.gpt-efi-iso-installer = {
                   imports = [
                     (
-                      { lib, modulesPath, ... }:
+                      {lib, modulesPath, ...}:
                       {
-                        imports = [ "${modulesPath}/installer/cd-dvd/installation-cd-minimal.nix" ];
+                        imports = ["${modulesPath}/installer/cd-dvd/installation-cd-minimal.nix"];
                         isoImage = {
                           squashfsCompression = "zstd -Xcompression-level 19";
                           makeUsbBootable = lib.mkForce true;
@@ -178,8 +178,8 @@
                           makeEfiBootable = lib.mkForce true;
                         };
                         # override installation-cd-minimal and enable wpa and sshd start at boot
-                        systemd.services.wpa_supplicant.wantedBy = lib.mkForce [ "multi-user.target" ];
-                        systemd.services.sshd.wantedBy = lib.mkForce [ "multi-user.target" ];
+                        systemd.services.wpa_supplicant.wantedBy = lib.mkForce ["multi-user.target"];
+                        systemd.services.sshd.wantedBy = lib.mkForce ["multi-user.target"];
                       }
                     )
                   ];
@@ -221,7 +221,7 @@
               };
               # (ab)use options to pass a hidden file to be formatted.
               # See https://github.com/numtide/treefmt/issues/153.
-              settings.formatter.yamlfmt.options = [ ".sops.yaml" ];
+              settings.formatter.yamlfmt.options = [".sops.yaml"];
             };
           };
 
@@ -230,9 +230,9 @@
             # Common configuration for all bootable images.
             commonConfigModule =
               system:
-              { lib, modulesPath, ... }:
+              {lib, modulesPath, ...}:
               {
-                imports = [ inputs.nixos-generators.nixosModules.all-formats ];
+                imports = [inputs.nixos-generators.nixosModules.all-formats];
                 # fileSystems = {
                 #   "/" = {
                 #     device = "/dev/disk/by-label/nixos";
@@ -277,10 +277,10 @@
           in
           {
             nixos-desktop = withSystem "x86_64-linux" (
-              { inputs', ... }:
+              {inputs', ...}:
               inputs.nixpkgs.lib.nixosSystem {
                 modules = [
-                  (import ./nixpkgs-overlays.nix { inherit inputs inputs'; })
+                  (import ./nixpkgs-overlays.nix {inherit inputs inputs';})
                   ./devices/nixos-desktop
                 ];
               }
@@ -288,20 +288,20 @@
 
             # TODO: nixos-ext and nixos-build01 can be factored out into a module for systems running ZFS with rpool.
             nixos-ext = withSystem "x86_64-linux" (
-              { inputs', ... }:
+              {inputs', ...}:
               inputs.nixpkgs.lib.nixosSystem {
                 modules = [
-                  (import ./nixpkgs-overlays.nix { inherit inputs inputs'; })
+                  (import ./nixpkgs-overlays.nix {inherit inputs inputs';})
                   ./devices/nixos-ext
                 ];
               }
             );
 
             nixos-build01 = withSystem "x86_64-linux" (
-              { inputs', ... }:
+              {inputs', ...}:
               inputs.nixpkgs.lib.nixosSystem {
                 modules = [
-                  (import ./nixpkgs-overlays.nix { inherit inputs inputs'; })
+                  (import ./nixpkgs-overlays.nix {inherit inputs inputs';})
                   ./devices/nixos-build01
                 ];
               }

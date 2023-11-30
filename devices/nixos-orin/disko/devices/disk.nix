@@ -1,4 +1,4 @@
-{ lib, ... }:
+{lib, ...}:
 let
   # Merge all of the configurations for a disk.
   mkDisk =
@@ -15,7 +15,7 @@ let
       type = "disk";
       # Recursively merged all the configs for a disk.
       # NOTE: Because we use foldr, later configs override earlier configs.
-      content = lib.foldr lib.recursiveUpdate { } contentConfigs;
+      content = lib.foldr lib.recursiveUpdate {} contentConfigs;
     };
 
   # Configuration for our boot

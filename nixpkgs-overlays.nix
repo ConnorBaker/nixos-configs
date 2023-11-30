@@ -1,7 +1,7 @@
 # Arguments from flake.parts
-{ inputs, inputs', ... }:
+{inputs, inputs', ...}:
 # Arguments from NixOS module system
-{ lib, ... }:
+{lib, ...}:
 {
   imports = [
     inputs.sops-nix.nixosModules.sops
@@ -42,13 +42,13 @@
                 inherit (hsFinal) callCabal2nix;
               in
               {
-                nix-output-manager = doJailbreak (callCabal2nix "nix-output-manager" inputs.nix-output-manager { });
-                nixfmt = doJailbreak (callCabal2nix "nixfmt" inputs.nixfmt { });
+                nix-output-manager = doJailbreak (callCabal2nix "nix-output-manager" inputs.nix-output-manager {});
+                nixfmt = doJailbreak (callCabal2nix "nixfmt" inputs.nixfmt {});
               };
           };
           nix-output-manager = justStaticExecutables final.haskellPackages.nix-output-manager;
           nixfmt = justStaticExecutables final.haskellPackages.nixfmt;
-          nixpkgs-review = final.callPackage inputs.nixpkgs-review { withSandboxSupport = true; };
+          nixpkgs-review = final.callPackage inputs.nixpkgs-review {withSandboxSupport = true;};
         }
       )
       # External nix-direnv

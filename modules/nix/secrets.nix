@@ -1,4 +1,4 @@
-{ config, ... }:
+{config, ...}:
 {
   sops.secrets."ssh/id_nix_ed25519" = {
     owner = config.users.users.nix.name;

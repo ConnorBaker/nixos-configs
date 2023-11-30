@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{config, pkgs, ...}:
 let
   grafanaDomain = config.services.grafana.settings.server.domain;
   grafanaHttpAddr = config.services.grafana.settings.server.http_addr;
@@ -99,7 +99,7 @@ in
         [
           {
             job_name = "node";
-            static_configs = [ { targets = [ "localhost:${toString node.port}" ]; } ];
+            static_configs = [{targets = ["localhost:${toString node.port}"];}];
           }
           # {
           #   job_name = "zfs";

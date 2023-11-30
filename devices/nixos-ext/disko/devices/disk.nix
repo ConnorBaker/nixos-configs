@@ -1,4 +1,4 @@
-{ lib, ... }:
+{lib, ...}:
 let
   # Merge all of the configurations for a disk.
   mkDisk =
@@ -15,7 +15,7 @@ let
       type = "disk";
       # Recursively merged all the configs for a disk.
       # NOTE: Because we use foldr, later configs override earlier configs.
-      content = lib.foldr lib.recursiveUpdate { } contentConfigs;
+      content = lib.foldr lib.recursiveUpdate {} contentConfigs;
     };
 
   # Configuration for our boot
@@ -75,15 +75,15 @@ let
         };
         rpool-data1 = {
           serial = "S73WNJ0W608883V";
-          contentConfigs = [ rpoolConfig ];
+          contentConfigs = [rpoolConfig];
         };
         rpool-data2 = {
           serial = "S73WNJ0W608886J";
-          contentConfigs = [ rpoolConfig ];
+          contentConfigs = [rpoolConfig];
         };
         rpool-data3 = {
           serial = "S73WNJ0W608887H";
-          contentConfigs = [ rpoolConfig ];
+          contentConfigs = [rpoolConfig];
         };
       };
     in
@@ -95,7 +95,7 @@ let
         interface = "ata";
         model = "ST22000NT001";
         modelSerialSeparator = "-";
-        contentConfigs = [ dpoolConfig ];
+        contentConfigs = [dpoolConfig];
       };
       disks = {
         # dpool-data1.serial = "3LS101_ZX2097FT";
