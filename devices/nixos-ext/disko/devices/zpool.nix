@@ -12,7 +12,7 @@ let
       atime = "off";
       canmount = "off";
       compression = "zstd";
-      checksum = "blake3";
+      # checksum = "blake3"; # Not ready yet; disko throws an error about invalid pool parameter.
       dnodesize = "auto";
       normalization = "formD";
       xattr = "sa";
