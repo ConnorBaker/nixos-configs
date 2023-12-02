@@ -114,7 +114,7 @@ let
     in
     lib.mapAttrs (lib.const (lib.recursiveUpdate common)) disks;
 
-  disks = samsung990Pro2TBDisks // seagateIronWolfPro22TBDisks;
+  disks = samsung990Pro2TBDisks; # // seagateIronWolfPro22TBDisks;
 in
 {
   config.disko.devices.disk = lib.mapAttrs mkDisk disks;

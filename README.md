@@ -86,8 +86,8 @@ nix run github:connorbaker/nixos-anywhere/fix/rsync-ipv6 --builders '' -- \
 Deploy `nixos-ext` with:
 
 ```console
-nix run github:connorbaker/nixos-anywhere/fix/rsync-ipv6 --builders '' -- \
-  connorbaker@192.168.1.195 \
+nix run "github:nix-community/nixos-anywhere/73a6d3fef4c5b4ab9e4ac868f468ec8f9436afa7" --builders '' -- \
+  root@192.168.1.195 \
   -i ~/.ssh/id_ed25519 \
   --kexec https://gh-v6.com/nix-community/nixos-images/releases/download/nixos-unstable/nixos-kexec-installer-noninteractive-x86_64-linux.tar.gz \
   --flake .#nixos-ext \
