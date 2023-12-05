@@ -227,85 +227,19 @@
 
         flake.nixosConfigurations =
           let
-            # Common configuration for all bootable images.
-            commonConfigModule =
-              system:
-              {lib, modulesPath, ...}:
-              {
-                imports = [inputs.nixos-generators.nixosModules.all-formats];
-                # fileSystems = {
-                #   "/" = {
-                #     device = "/dev/disk/by-label/nixos";
-                #     autoResize = true;
-                #     fsType = "ext4";
-                #   };
-                #   "/boot" = {
-                #     device = "/dev/disk/by-label/ESP";
-                #     fsType = "vfat";
-                #   };
-                # };
-
-                # boot = {
-                #   growPartition = true;
-                #   kernelParams = ["console=ttyS0"];
-                #   loader = {
-                #     efi.canTouchEfiVariables = true;
-                #     grub = {
-                #       device = "nodev";
-                #       efiSupport = true;
-                #       efiInstallAsRemovable = true;
-                #     };
-                #     systemd-boot.enable = true;
-                #   };
-                #   initrd.availableKernelModules = ["uas"];
-                # };
-
-                # networking.hostName = "nixos-bootable";
-
-                # nixpkgs = {
-                #   config.allowUnfree = true;
-                #   hostPlatform.system = system;
-                # };
-
-                # isoImage = {
-                #   squashfsCompression = "zstd -Xcompression-level 19";
-                #   makeBootable = true;
-                #   makeBiosBootable = false;
-                #   makeEfiBootable = true;
-                # };
-              };
+            x86_64-linux-template =
+              extraModules:
+              withSystem "x86_64-linux" (
+                {inputs', ...}:
+                inputs.nixpkgs.lib.nixosSystem {
+                  modules = [(import ./nixpkgs-overlays.nix {inherit inputs inputs';})] ++ extraModules;
+                }
+              );
           in
           {
-            nixos-desktop = withSystem "x86_64-linux" (
-              {inputs', ...}:
-              inputs.nixpkgs.lib.nixosSystem {
-                modules = [
-                  (import ./nixpkgs-overlays.nix {inherit inputs inputs';})
-                  ./devices/nixos-desktop
-                ];
-              }
-            );
-
-            # TODO: nixos-ext and nixos-build01 can be factored out into a module for systems running ZFS with rpool.
-            nixos-ext = withSystem "x86_64-linux" (
-              {inputs', ...}:
-              inputs.nixpkgs.lib.nixosSystem {
-                modules = [
-                  (import ./nixpkgs-overlays.nix {inherit inputs inputs';})
-                  ./devices/nixos-ext
-                ];
-              }
-            );
-
-            nixos-build01 = withSystem "x86_64-linux" (
-              {inputs', ...}:
-              inputs.nixpkgs.lib.nixosSystem {
-                modules = [
-                  (import ./nixpkgs-overlays.nix {inherit inputs inputs';})
-                  ./devices/nixos-build01
-                ];
-              }
-            );
+            nixos-desktop = x86_64-linux-template [./devices/nixos-desktop];
+            nixos-ext = x86_64-linux-template [./devices/nixos-ext];
+            nixos-build01 = x86_64-linux-template [./devices/nixos-build01];
           };
       }
     );

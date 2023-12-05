@@ -10,7 +10,7 @@
     ../../modules/nix
 
     # Hercules
-    ../../modules/hercules.nix
+    ../../modules/hercules-ci-agent.nix
 
     # Configure system
     ../../modules/boot.nix

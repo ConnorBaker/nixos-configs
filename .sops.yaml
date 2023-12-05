@@ -5,10 +5,6 @@ keys:
     - &nixos-ext age12z4wlayqratlswq0gq43ps6sp084r7mxh9ukjcczv09cry4skemqr9ekdr
     - &nixos-orin age1leyyqreersrk2k6xffmfp2lqflxe6ss8lftwy3lfejklg84zuc7qdzk990
 creation_rules:
-  - path_regex: modules/nix/cantcacheme/secrets/[^/]+\.yaml$
-    key_groups:
-      - age:
-          - *nixos-desktop
   - path_regex: modules/nix/secrets\.yaml$
     key_groups:
       - age:

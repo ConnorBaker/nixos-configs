@@ -6,10 +6,23 @@
     gnupg.sshKeyPaths = [];
     secrets =
       let
-        name = "tailscale/tskey-reusable";
+        # Named after their paths in secrets.yaml.
+        tsKey = "tailscale/tskey-reusable";
+        hciKey = "hercules-ci-agent/secrets/cluster-join-token.key";
+        hciBinaryCaches = "hercules-ci-agent/secrets/binary-caches.json";
       in
       {
-        ${name}.path = "/etc/${name}";
+        ${tsKey}.path = "/etc/${tsKey}";
+        ${hciKey} = {
+          owner = "hercules-ci-agent";
+          mode = "0440";
+          path = "/var/lib/${hciKey}";
+        };
+        ${hciBinaryCaches} = {
+          owner = "hercules-ci-agent";
+          mode = "0440";
+          path = "/var/lib/${hciBinaryCaches}";
+        };
       };
   };
 }
