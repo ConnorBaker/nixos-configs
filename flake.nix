@@ -23,6 +23,15 @@
 
     flake-utils.url = "github:numtide/flake-utils";
 
+    hercules-ci-agent = {
+      inputs = {
+        flake-parts.follows = "flake-parts";
+        nix.follows = "nix";
+        nixpkgs.follows = "nixpkgs";
+      };
+      url = "github:hercules-ci/hercules-ci-agent/nix-updates";
+    };
+
     impermanence.url = "github:nix-community/impermanence";
 
     jetpack-nixos = {

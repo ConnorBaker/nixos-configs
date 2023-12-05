@@ -7,6 +7,7 @@
     inputs.sops-nix.nixosModules.sops
     inputs.disko.nixosModules.disko
     inputs.impermanence.nixosModules.impermanence
+    inputs.hercules-ci-agent.nixosModules.agent-service
   ];
   nixpkgs = {
     config.allowUnfree = true;
@@ -58,6 +59,7 @@
       inputs.nil.overlays.nil
       inputs.nix-ld-rs.overlays.default
       inputs.statix.overlays.default
+      inputs.hercules-ci-agent.overlays.default
     ];
   };
 }
