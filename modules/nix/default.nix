@@ -39,7 +39,7 @@ let
       ];
     };
   };
-  maxJobs = 2;
+  maxJobs = 1;
   supportedFeatures = [
     "benchmark"
     "big-parallel"
@@ -93,6 +93,7 @@ in
         "auto-allocate-uids"
         "ca-derivations"
         "cgroups"
+        "configurable-impure-env"
         "flakes"
         "git-hashing"
         "nix-command"

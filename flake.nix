@@ -60,7 +60,7 @@
 
     nixfmt = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:piegamesde/nixfmt/c4b930210270277a658183a034e4a97374daacf0";
+      url = "github:piegamesde/nixfmt/21ef16e7fe9011ecd77ba05fa5873287e4c0d2a4";
     };
 
     nixos-generators = {
