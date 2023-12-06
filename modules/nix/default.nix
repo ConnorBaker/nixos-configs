@@ -84,16 +84,21 @@ in
     distributedBuilds = true;
     settings = {
       accept-flake-config = true;
+      allow-import-from-derivation = false;
+      allowed-uris = [
+        "https://github.com/NixOS"
+        "https://github.com/nix-community"
+        "https://github.com/hercules-ci"
+      ];
       auto-allocate-uids = true;
       auto-optimise-store = true;
-      allow-import-from-derivation = false;
       builders-use-substitutes = true;
+      connect-timeout = 30;
       cores = 0;
       experimental-features = [
         "auto-allocate-uids"
         "ca-derivations"
         "cgroups"
-        "configurable-impure-env"
         "flakes"
         "git-hashing"
         "nix-command"
@@ -104,10 +109,8 @@ in
       keep-derivations = true;
       keep-outputs = true;
       max-jobs = maxJobs;
-      max-substitution-jobs = 256; # Nix >= 2.16
-      require-drop-supplementary-groups = true; # Nix >= 2.17
-      # NOTE: Disabled because nixpkgs-review requires impure evaluation.
-      # restrict-eval = true;
+      max-substitution-jobs = 256;
+      require-drop-supplementary-groups = true;
       system-features = supportedFeatures;
       trusted-users = [
         "root"
