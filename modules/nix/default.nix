@@ -85,11 +85,6 @@ in
     settings = {
       accept-flake-config = true;
       allow-import-from-derivation = false;
-      allowed-uris = [
-        "https://github.com/NixOS"
-        "https://github.com/nix-community"
-        "https://github.com/hercules-ci"
-      ];
       auto-allocate-uids = true;
       auto-optimise-store = true;
       builders-use-substitutes = true;
@@ -100,7 +95,7 @@ in
         "ca-derivations"
         "cgroups"
         "flakes"
-        "git-hashing"
+        # "git-hashing"
         "nix-command"
         "no-url-literals"
       ];

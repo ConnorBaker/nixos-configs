@@ -29,7 +29,7 @@
         nix.follows = "nix";
         nixpkgs.follows = "nixpkgs";
       };
-      url = "github:hercules-ci/hercules-ci-agent/nix-updates";
+      url = "github:hercules-ci/hercules-ci-agent";
     };
 
     impermanence.url = "github:nix-community/impermanence";
@@ -46,7 +46,7 @@
 
     nix = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:NixOS/nix/2.19-maintenance";
+      url = "github:NixOS/nix/2.17-maintenance";
     };
 
     nix-direnv = {
