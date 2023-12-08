@@ -6,37 +6,24 @@ let
   hostNameToConfig = {
     nixos-build01 = {
       speedFactor = 8;
-      systems = [
-        "x86_64-linux" # Physical
-        "aarch64-linux" # Emulated
-      ];
+      systems = ["x86_64-linux"];
     };
     nixos-desktop = {
       speedFactor = 8;
-      systems = [
-        "x86_64-linux" # Physical
-        "aarch64-linux" # Emulated
-      ];
+      systems = ["x86_64-linux"];
     };
     nixos-ext = {
       speedFactor = 8;
-      systems = [
-        "x86_64-linux" # Physical
-        "aarch64-linux" # Emulated
-      ];
+      systems = ["x86_64-linux"];
     };
     ubuntu-orin = {
       speedFactor = 1;
-      systems = [
-        "aarch64-linux" # Physical
-      ];
+      systems = ["aarch64-linux"];
     };
     ubuntu-hetzner = {
       maxJobs = 40;
       speedFactor = 16;
-      systems = [
-        "aarch64-linux" # Physical
-      ];
+      systems = ["aarch64-linux"];
     };
   };
   maxJobs = 1;
@@ -110,6 +97,7 @@ in
       keep-outputs = true;
       max-jobs = maxJobs;
       max-substitution-jobs = 256;
+      narinfo-cache-negative-ttl = 0;
       require-drop-supplementary-groups = true;
       system-features = supportedFeatures;
       trusted-users = [
