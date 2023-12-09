@@ -46,7 +46,7 @@
 
     nix = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:NixOS/nix/2.17-maintenance";
+      url = "github:NixOS/nix/2.18-maintenance";
     };
 
     nix-direnv = {
