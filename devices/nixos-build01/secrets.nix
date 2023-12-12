@@ -10,6 +10,7 @@
         hciBinaryCaches = "hercules-ci-agent/secrets/binary-caches.json";
         hciClusterKey = "hercules-ci-agent/secrets/cluster-join-token.key";
         hciSessionKey = "hercules-ci-agent/secretState/session.key";
+        hciSecrets = "hercules-ci-agent/secrets/secrets.json";
       in
       {
         ${tsKey}.path = "/etc/${tsKey}";
@@ -27,6 +28,11 @@
           owner = "hercules-ci-agent";
           mode = "0440";
           path = "/var/lib/${hciSessionKey}";
+        };
+        ${hciSecrets} = {
+          owner = "hercules-ci-agent";
+          mode = "0440";
+          path = "/var/lib/${hciSecrets}";
         };
       };
   };
