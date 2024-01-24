@@ -30,8 +30,10 @@ let
   supportedFeatures = [
     "benchmark"
     "big-parallel"
+    "ca-derivations"
     "kvm"
     "nixos-test"
+    "uid-range"
   ];
   # Functions to generate machine-specific configuration.
   # Attributes defined in the hostNameToConfig map override these defaults.
@@ -81,10 +83,13 @@ in
         "auto-allocate-uids"
         "ca-derivations"
         "cgroups"
+        "fetch-closure"
         "flakes"
-        # "git-hashing"
+        "git-hashing"
         "nix-command"
         "no-url-literals"
+        "parse-toml-timestamps"
+        "verified-fetches"
       ];
       extra-substituters = ["https://cuda-maintainers.cachix.org"];
       extra-trusted-substituters = ["https://cuda-maintainers.cachix.org"];
@@ -93,8 +98,6 @@ in
       ];
       fsync-metadata = false;
       http-connections = 0;
-      keep-derivations = true;
-      keep-outputs = true;
       max-jobs = maxJobs;
       max-substitution-jobs = 256;
       narinfo-cache-negative-ttl = 0;

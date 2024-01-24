@@ -26,6 +26,8 @@
     hercules-ci-agent = {
       inputs = {
         flake-parts.follows = "flake-parts";
+        # Nix isn't explicitly stated but conditionally checked.
+        # https://github.com/hercules-ci/hercules-ci-agent/blob/d3bec2bf1f042e033b4893fbc59bab141060f3c0/flake.nix#L232
         nix.follows = "nix";
         nixpkgs.follows = "nixpkgs";
       };
@@ -46,7 +48,7 @@
 
     nix = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:NixOS/nix/2.18-maintenance";
+      url = "github:NixOS/nix/2.19-maintenance";
     };
 
     nix-direnv = {
@@ -69,7 +71,7 @@
 
     nixfmt = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:piegamesde/nixfmt/1eff7a84ac82fbebb5f586244f1c80e1fcc4f494";
+      url = "github:piegamesde/nixfmt/405157900171ac943ed9212b2ab9ab363b01be0b";
     };
 
     nixos-generators = {
@@ -113,6 +115,7 @@
     };
   };
 
+  # For nixfmt, a Haskell application which requires IFD.
   nixConfig.allow-import-from-derivation = true;
 
   outputs =
