@@ -37,7 +37,6 @@ let
     type = "gpt";
     partitions.rpool = {
       size = "100%";
-      type = "BF00"; # Solaris Root
       content = {
         type = "zfs";
         pool = "rpool";

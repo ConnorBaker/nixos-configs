@@ -10,14 +10,14 @@
     initrd = {
       # Use ZFS to reset the root pool.
       postDeviceCommands = lib.mkAfter ''
-        zfs rollback -r rpool@blank
+        zfs rollback -r rpool/root@blank
       '';
       supportedFilesystems = [
         "vfat"
         "zfs"
       ];
     };
-    kernelPackages = pkgs.linuxKernel.packages.linux_6_5;
+    kernelPackages = pkgs.linuxKernel.packages.linux_6_6;
     kernelParams = ["nohibernate"];
     supportedFilesystems = [
       "vfat"

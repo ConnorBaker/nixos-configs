@@ -12,7 +12,7 @@ let
       atime = "off";
       canmount = "off";
       compression = "zstd";
-      # checksum = "blake3"; # Not ready yet; disko throws an error about invalid pool parameter.
+      checksum = "blake3";
       dnodesize = "auto";
       normalization = "formD";
       xattr = "sa";
@@ -29,20 +29,13 @@ let
   };
 
   rpool = lib.recursiveUpdate zfsPoolCommonConfig {
-    # TODO(@connorbaker): sharesmb option?
-
-    # NOTE: This mountpoint doesn't pass the option to zpool create -- it's for NixOS'
-    # fileSystems attribute set.
-    mountpoint = "/";
-    # NOTE: As such, we have to use rootFsOptions.mountpoint as well.
-    rootFsOptions.mountpoint = "/";
-
-    # NOTE: We use this to create the initial snapshot.
-    postCreateHook = ''
-      zfs snapshot rpool@blank
-    '';
-
     datasets = {
+      root = {
+        type = "zfs_fs";
+        mountpoint = "/";
+        postCreateHook = "zfs snapshot rpool/root@blank";
+      };
+
       nix = {
         type = "zfs_fs";
         mountpoint = "/nix";

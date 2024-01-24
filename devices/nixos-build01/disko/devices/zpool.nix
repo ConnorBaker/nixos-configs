@@ -21,8 +21,6 @@ let
   };
 
   rpool = lib.recursiveUpdate zfsPoolCommonConfig {
-    # TODO(@connorbaker): sharesmb option?
-
     datasets = {
       root = {
         type = "zfs_fs";
