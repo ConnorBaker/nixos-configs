@@ -4,57 +4,25 @@ Configuration for my NixOS machines.
 
 ## To-do
 
-- Switch to SOPs for secrets
+- [ ] Include `nixos-anywhere` in flake to version control it.
+- [ ] Migrate to use of flake modules
+- [ ] <https://github.com/Mic92/sops-nix/issues/340>
 
-  - In progress
+- Factor out the huge amount of duplication for Disko between the devices
 
-- Investigate the impact of setting
-
-  ```nix
-  {
-    nixpkgs.config.hostPlatform.gcc = {
-      # TODO(@connorbaker): raptorlake and znver5 are too new
-      arch = "alderlake";
-      tune = "alderlake";
-    };
-  }
-  ```
-
-  - Note: <https://discourse.nixos.org/t/nix-cpu-global-cpu-flags/21507>
-  - Note: <https://github.com/NixOS/nixpkgs/pull/202526>
-
-- Investigate compile times as a result of using [`fastStdenv`](https://nixos.wiki/wiki/C#Faster_GCC_compiler)
-
-- Investigate link times as a result of using [`useMoldLinker`](https://github.com/NixOS/nixpkgs/blob/dbb569b8539424ed7d757bc080adb902ba84a086/pkgs/stdenv/adapters.nix#L192)
-
-- Investigate local builds using [`ccacheStdenv`](https://nixos.wiki/wiki/CCache)
-
-  - Note: <https://github.com/NixOS/nixpkgs/issues/227940>
-
-- \[ \] Include `nixos-anywhere` in flake to version control it.
-
-- \[ \] Migrate to use of flake modules
-
-- \[ \] <https://github.com/Mic92/sops-nix/issues/340>
-
-- Factor out the huge amount of duplication in `nixos-build01` and `nixos-ext`
-
-> **WARNING**
+> [!WARNING]
 >
 > When using the `--build-on-remote` flag with `nixos-anywhere`, make sure the remote account is one which Nix trusts. In the NixOS installer, this means `root` instead of `nixos`.
 
-> **INFO**
+> [!NOTE]
 >
 > When using impermanence rooted at `/persist`, it's important that the directory provided to `--extra-files` is has a root of `/persist`. For example, instead of using `--extra-files ./secret_deployment_files/etc/ssh`, `--extra-files ./secret_deployment_files/persist/etc/ssh`.
 
-> **INFO**
+> [!NOTE]
 >
 > When using sops `/etc/ssh/ssh_host_rsa_key` must be present, as it is needed to create the GPG keyring.
 
 ## `nixos-desktop`
-
-- \[ \] Move to disko
-- \[ \] Instructions for using `sops`
 
 Generate the secret age key using `ssh-to-age`:
 
@@ -65,11 +33,25 @@ ssh-to-age -private-key -i ~/.ssh/id_ed25519 >> ~/.config/sops/age/keys.txt
 
 Do this for whichever private keys are necessary.
 
+Deploy `nixos-desktop` with:
+
+```bash
+nix run "github:nix-community/nixos-anywhere/4c94cecf3dd551adf1359fb06aa926330f44e5a6" --builders '' -- \
+  connorbaker@192.168.1.12 \
+  -i ~/.ssh/id_ed25519 \
+  --kexec https://gh-v6.com/nix-community/nixos-images/releases/download/nixos-unstable/nixos-kexec-installer-noninteractive-x86_64-linux.tar.gz \
+  --flake .#nixos-desktop \
+  --build-on-remote \
+  --print-build-logs \
+  --debug \
+  --extra-files /Volumes/nixos-desktop
+```
+
 ## `nixos-build01`
 
 Deploy `nixos-build01` with:
 
-```console
+```bash
 nix run "github:nix-community/nixos-anywhere/4c94cecf3dd551adf1359fb06aa926330f44e5a6" --builders '' -- \
   connorbaker@192.168.1.14 \
   -i ~/.ssh/id_ed25519 \
@@ -85,7 +67,7 @@ nix run "github:nix-community/nixos-anywhere/4c94cecf3dd551adf1359fb06aa926330f4
 
 Deploy `nixos-ext` with:
 
-```console
+```bash
 nix run "github:nix-community/nixos-anywhere/4c94cecf3dd551adf1359fb06aa926330f44e5a6" --builders '' -- \
   connorbaker@192.168.1.13 \
   -i ~/.ssh/id_ed25519 \
@@ -101,7 +83,7 @@ nix run "github:nix-community/nixos-anywhere/4c94cecf3dd551adf1359fb06aa926330f4
 
 TODO:
 
-- \[ \] The normal `aarch64-linux` tarball `kexec` image doesn't work, presumably because the Jetson is ✨special✨.
+- [ ] The normal `aarch64-linux` tarball `kexec` image doesn't work, presumably because the Jetson is ✨special✨.
   - In progress: creating a custom `kexec` image using the Jetpack kernel.
 
 Deploy `nixos-orin` with:

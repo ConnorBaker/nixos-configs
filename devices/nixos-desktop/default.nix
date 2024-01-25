@@ -1,7 +1,9 @@
-{pkgs, ...}:
 {
   imports = [
     ./hardware.nix
+
+    # Disks and formatting
+    ./disko
 
     # Secrets
     ./secrets.nix
@@ -15,14 +17,15 @@
     # Configure system
     ../../modules/boot.nix
     ../../modules/cpu-hardware.nix
-    ../../modules/networking.nix
     ../../modules/headless.nix
-    ../../modules/cuda.nix
-    ../../modules/nvidia.nix
-    ../../modules/users.nix
+    ../../modules/impermanence.nix
     ../../modules/mimalloc.nix
-    ../../modules/zram.nix
+    ../../modules/networking.nix
+    ../../modules/nvidia.nix
     ../../modules/sudo.nix
+    ../../modules/users.nix
+    ../../modules/zfs.nix
+    ../../modules/zram.nix
 
     # Configure services
     ../../modules/services/openssh.nix
@@ -39,8 +42,6 @@
     ../../users/connorbaker.nix
     ./packages.nix
   ];
-
-  boot.kernelPackages = pkgs.linuxPackages_latest;
 
   environment.etc = {
     "ssh/ssh_host_ed25519_key.pub".source = ./keys/ssh_host_ed25519_key.pub;
