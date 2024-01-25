@@ -44,7 +44,7 @@ let
     };
   };
 
-  samsung990ProDisks =
+  samsung9xxProDisks =
     let
       common = {
         interface = "nvme";
@@ -60,12 +60,12 @@ let
           ];
         };
         rpool-data1 = {
-          model = "Samsung_SSD_990_PRO_2TB";
+          model = "Samsung_SSD_980_PRO_2TB";
           serial = "S6B0NL0W218445N";
           contentConfigs = [rpoolConfig];
         };
         rpool-data2 = {
-          model = "Samsung_SSD_990_PRO_2TB";
+          model = "Samsung_SSD_980_PRO_2TB";
           serial = "S6B0NL0W218446M";
           contentConfigs = [rpoolConfig];
         };
@@ -74,5 +74,5 @@ let
     lib.mapAttrs (lib.const (lib.recursiveUpdate common)) disks;
 in
 {
-  config.disko.devices.disk = lib.mapAttrs mkDisk samsung990ProDisks;
+  config.disko.devices.disk = lib.mapAttrs mkDisk samsung9xxProDisks;
 }
