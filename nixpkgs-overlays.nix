@@ -44,7 +44,7 @@
               unstable = final.nix;
             }
           );
-          nix-output-manager = justStaticExecutables final.haskellPackages.nix-output-manager;
+          nix-output-monitor = justStaticExecutables final.haskellPackages.nix-output-monitor;
           nixfmt = justStaticExecutables final.haskellPackages.nixfmt;
           nixpkgs-review = final.callPackage inputs.nixpkgs-review { withSandboxSupport = true; };
         }
