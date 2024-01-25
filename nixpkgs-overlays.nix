@@ -24,19 +24,52 @@
       (
         final: prev:
         let
-          inherit (final.haskell.lib) doJailbreak justStaticExecutables;
+          inherit (final.haskell.lib) justStaticExecutables;
+          hlib = final.haskell.lib.compose;
         in
         {
           haskell = prev.haskell // {
-            packageOverrides =
-              hsFinal: _:
-              let
-                inherit (hsFinal) callCabal2nix;
-              in
-              {
-                nix-output-monitor = doJailbreak (callCabal2nix "nix-output-monitor" inputs.nix-output-monitor { });
-                nixfmt = doJailbreak (callCabal2nix "nixfmt" inputs.nixfmt { });
-              };
+            packageOverrides = hsFinal: _: {
+              nix-output-monitor =
+                let
+                  golden-tests = import "${inputs.nix-output-monitor}/test/golden/all.nix";
+                  cleanSelf = lib.sourceFilesBySuffices inputs.nix-output-monitor [
+                    ".hs"
+                    ".cabal"
+                    "stderr"
+                    "stdout"
+                    "stderr.json"
+                    "stdout.json"
+                    ".zsh"
+                    "LICENSE"
+                    "CHANGELOG.md"
+                    "default.nix"
+                  ];
+                in
+                lib.pipe { } [
+                  (hsFinal.callPackage inputs.nix-output-monitor)
+                  hsFinal.buildFromCabalSdist
+                  (hlib.appendConfigureFlag "--ghc-option=-Werror")
+                  (hlib.overrideCabal {
+                    src = cleanSelf;
+                    preCheck = ''
+                      # ${lib.concatStringsSep ", " (golden-tests ++ map (x: x.drvPath) golden-tests)}
+                      export TESTS_FROM_FILE=true;
+                    '';
+                    buildTools = [ final.installShellFiles ];
+                    postInstall = ''
+                      ln -s nom "$out/bin/nom-build"
+                      ln -s nom "$out/bin/nom-shell"
+                      chmod a+x $out/bin/nom-shell
+                      installShellCompletion --zsh --name _nom-build completions/completion.zsh
+                    '';
+                  })
+                ];
+              nixfmt = lib.pipe { } [
+                (hsFinal.callCabal2nix "nixfmt" inputs.nixfmt)
+                hlib.doJailbreak
+              ];
+            };
           };
           nixVersions = prev.nixVersions.extend (
             _: _: {
