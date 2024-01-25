@@ -31,6 +31,7 @@ let
     "benchmark"
     "big-parallel"
     "ca-derivations"
+    "configurable-impure-env"
     "kvm"
     "nixos-test"
     "uid-range"
