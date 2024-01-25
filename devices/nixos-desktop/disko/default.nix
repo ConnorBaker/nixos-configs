@@ -1,1 +1,1 @@
-{imports = [./devices];}
+{ imports = [ ./devices ]; }

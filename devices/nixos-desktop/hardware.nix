@@ -1,6 +1,6 @@
-{lib, modulesPath, ...}:
+{ lib, modulesPath, ... }:
 {
-  imports = ["${modulesPath}/installer/scan/not-detected.nix"];
+  imports = [ "${modulesPath}/installer/scan/not-detected.nix" ];
 
   boot = {
     initrd.availableKernelModules = [
@@ -10,8 +10,8 @@
       "vmd"
       "xhci_pci"
     ];
-    kernelModules = ["kvm-intel"];
-    kernelParams = ["intel_pstate=active"];
+    kernelModules = [ "kvm-intel" ];
+    kernelParams = [ "intel_pstate=active" ];
     loader = {
       efi.canTouchEfiVariables = true;
       systemd-boot.enable = true;
@@ -22,7 +22,7 @@
     config = {
       allowUnfree = lib.modules.mkForce true;
       cudaSupport = lib.modules.mkForce true;
-      cudaCapabilities = lib.modules.mkForce ["8.9"];
+      cudaCapabilities = lib.modules.mkForce [ "8.9" ];
     };
     hostPlatform.system = "x86_64-linux";
   };

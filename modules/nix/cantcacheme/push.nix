@@ -5,7 +5,7 @@
   ...
 }:
 {
-  nix.settings.secret-key-files = [config.sops.secrets."cantcacheme/signing-key".path];
+  nix.settings.secret-key-files = [ config.sops.secrets."cantcacheme/signing-key".path ];
   queued-build-hook = {
     enable = true;
     postBuildScriptContent = ''
@@ -46,6 +46,6 @@
     serviceConfig.StateDirectory = "async-nix-post-build-hook";
     # Because the hook runs as root, there's no need for the following line.
     # serviceConfig.SupplementaryGroups = [config.users.groups.keys.name];
-    unitConfig.After = ["sops-nix.service"];
+    unitConfig.After = [ "sops-nix.service" ];
   };
 }

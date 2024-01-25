@@ -1,4 +1,4 @@
-{config, ...}:
+{ config, ... }:
 builtins.throw "This module does not currently work as desired." {
   nixpkgs.overlays = [
     (_: prev: {
@@ -27,7 +27,7 @@ builtins.throw "This module does not currently work as desired." {
       );
     })
   ];
-  nix.settings.extra-sandbox-paths = [config.programs.ccache.cacheDir];
+  nix.settings.extra-sandbox-paths = [ config.programs.ccache.cacheDir ];
   programs.ccache = {
     # TODO: We should be able to set additional settings here, like cache size or compression algorithm, etc...
     # Although, I guess we can set that through the environment configuration file? Can ccache access that? Is that impure?

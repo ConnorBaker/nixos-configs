@@ -1,8 +1,8 @@
 {
   sops = {
-    age.sshKeyPaths = ["/persist/etc/ssh/ssh_host_ed25519_key"];
+    age.sshKeyPaths = [ "/persist/etc/ssh/ssh_host_ed25519_key" ];
     defaultSopsFile = ./secrets.yaml;
-    gnupg.sshKeyPaths = [];
+    gnupg.sshKeyPaths = [ ];
     secrets =
       let
         # Named after their paths in secrets.yaml.

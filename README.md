@@ -4,21 +4,23 @@ Configuration for my NixOS machines.
 
 ## To-do
 
-- [ ] Include `nixos-anywhere` in flake to version control it.
-- [ ] Migrate to use of flake modules
-- [ ] <https://github.com/Mic92/sops-nix/issues/340>
+- \[ \] Include `nixos-anywhere` in flake to version control it.
+
+- \[ \] Migrate to use of flake modules
+
+- \[ \] <https://github.com/Mic92/sops-nix/issues/340>
 
 - Factor out the huge amount of duplication for Disko between the devices
 
-> [!WARNING]
+> \[!WARNING\]
 >
 > When using the `--build-on-remote` flag with `nixos-anywhere`, make sure the remote account is one which Nix trusts. In the NixOS installer, this means `root` instead of `nixos`.
 
-> [!NOTE]
+> \[!NOTE\]
 >
 > When using impermanence rooted at `/persist`, it's important that the directory provided to `--extra-files` is has a root of `/persist`. For example, instead of using `--extra-files ./secret_deployment_files/etc/ssh`, `--extra-files ./secret_deployment_files/persist/etc/ssh`.
 
-> [!NOTE]
+> \[!NOTE\]
 >
 > When using sops `/etc/ssh/ssh_host_rsa_key` must be present, as it is needed to create the GPG keyring.
 
@@ -83,7 +85,7 @@ nix run "github:nix-community/nixos-anywhere/4c94cecf3dd551adf1359fb06aa926330f4
 
 TODO:
 
-- [ ] The normal `aarch64-linux` tarball `kexec` image doesn't work, presumably because the Jetson is ✨special✨.
+- \[ \] The normal `aarch64-linux` tarball `kexec` image doesn't work, presumably because the Jetson is ✨special✨.
   - In progress: creating a custom `kexec` image using the Jetpack kernel.
 
 Deploy `nixos-orin` with:

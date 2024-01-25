@@ -1,7 +1,7 @@
 # Arguments from flake.parts
-{inputs, inputs', ...}:
+{ inputs, inputs', ... }:
 # Arguments from NixOS module system
-{lib, ...}:
+{ lib, ... }:
 {
   imports = [
     inputs.sops-nix.nixosModules.sops
@@ -34,8 +34,8 @@
                 inherit (hsFinal) callCabal2nix;
               in
               {
-                nix-output-monitor = doJailbreak (callCabal2nix "nix-output-monitor" inputs.nix-output-monitor {});
-                nixfmt = doJailbreak (callCabal2nix "nixfmt" inputs.nixfmt {});
+                nix-output-monitor = doJailbreak (callCabal2nix "nix-output-monitor" inputs.nix-output-monitor { });
+                nixfmt = doJailbreak (callCabal2nix "nixfmt" inputs.nixfmt { });
               };
           };
           nixVersions = prev.nixVersions.extend (
@@ -46,7 +46,7 @@
           );
           nix-output-manager = justStaticExecutables final.haskellPackages.nix-output-manager;
           nixfmt = justStaticExecutables final.haskellPackages.nixfmt;
-          nixpkgs-review = final.callPackage inputs.nixpkgs-review {withSandboxSupport = true;};
+          nixpkgs-review = final.callPackage inputs.nixpkgs-review { withSandboxSupport = true; };
         }
       )
     ];

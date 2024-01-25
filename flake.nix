@@ -120,8 +120,8 @@
 
   outputs =
     inputs:
-    inputs.flake-parts.lib.mkFlake {inherit inputs;} (
-      {withSystem, ...}:
+    inputs.flake-parts.lib.mkFlake { inherit inputs; } (
+      { withSystem, ... }:
       {
         systems = [
           "aarch64-linux"
@@ -139,8 +139,8 @@
                 ...
               }:
               let
-                cfg = import ./nixpkgs-overlays.nix {inherit inputs inputs';} {inherit lib;};
-                nixpkgs = import inputs.nixpkgs ({inherit system;} // cfg.nixpkgs);
+                cfg = import ./nixpkgs-overlays.nix { inherit inputs inputs'; } { inherit lib; };
+                nixpkgs = import inputs.nixpkgs ({ inherit system; } // cfg.nixpkgs);
               in
               {
                 _module.args.pkgs = nixpkgs;
@@ -151,56 +151,8 @@
         ];
 
         perSystem =
-          {config, pkgs, ...}:
+          { config, pkgs, ... }:
           {
-            # Helpful for inspecting attributes
-            legacyPackages = pkgs;
-
-            packages = {
-              gpt-efi-iso-installer = inputs.nixos-generators.nixosGenerate {
-                inherit pkgs;
-                modules = [
-                  (
-                    {lib, ...}:
-                    {
-                      services.sshd.enable = true;
-                      services.nginx.enable = true;
-
-                      networking.firewall.allowedTCPPorts = [80];
-
-                      system.stateVersion = lib.version;
-
-                      users.users.root.password = "nixos";
-                      services.openssh.settings.PermitRootLogin = lib.mkDefault "yes";
-                      services.getty.autologinUser = lib.mkDefault "root";
-                    }
-                  )
-                ];
-                format = "gpt-efi-iso-installer";
-                customFormats.gpt-efi-iso-installer = {
-                  imports = [
-                    (
-                      {lib, modulesPath, ...}:
-                      {
-                        imports = ["${modulesPath}/installer/cd-dvd/installation-cd-minimal.nix"];
-                        isoImage = {
-                          squashfsCompression = "zstd -Xcompression-level 19";
-                          makeUsbBootable = lib.mkForce true;
-                          makeBiosBootable = lib.mkForce false;
-                          makeEfiBootable = lib.mkForce true;
-                        };
-                        # override installation-cd-minimal and enable wpa and sshd start at boot
-                        systemd.services.wpa_supplicant.wantedBy = lib.mkForce ["multi-user.target"];
-                        systemd.services.sshd.wantedBy = lib.mkForce ["multi-user.target"];
-                      }
-                    )
-                  ];
-                  formatAttr = "isoImage";
-                  fileExtension = ".iso";
-                };
-              };
-            };
-
             pre-commit.settings = {
               hooks = {
                 # Formatter checks
@@ -233,7 +185,7 @@
               };
               # (ab)use options to pass a hidden file to be formatted.
               # See https://github.com/numtide/treefmt/issues/153.
-              settings.formatter.yamlfmt.options = [".sops.yaml"];
+              settings.formatter.yamlfmt.options = [ ".sops.yaml" ];
             };
           };
 
@@ -242,16 +194,16 @@
             x86_64-linux-template =
               extraModules:
               withSystem "x86_64-linux" (
-                {inputs', ...}:
+                { inputs', ... }:
                 inputs.nixpkgs.lib.nixosSystem {
-                  modules = [(import ./nixpkgs-overlays.nix {inherit inputs inputs';})] ++ extraModules;
+                  modules = [ (import ./nixpkgs-overlays.nix { inherit inputs inputs'; }) ] ++ extraModules;
                 }
               );
           in
           {
-            nixos-desktop = x86_64-linux-template [./devices/nixos-desktop];
-            nixos-ext = x86_64-linux-template [./devices/nixos-ext];
-            nixos-build01 = x86_64-linux-template [./devices/nixos-build01];
+            nixos-desktop = x86_64-linux-template [ ./devices/nixos-desktop ];
+            nixos-ext = x86_64-linux-template [ ./devices/nixos-ext ];
+            nixos-build01 = x86_64-linux-template [ ./devices/nixos-build01 ];
           };
       }
     );

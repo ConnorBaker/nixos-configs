@@ -1,4 +1,4 @@
-{lib, ...}:
+{ lib, ... }:
 let
   # Merge all of the configurations for a disk.
   mkDisk =
@@ -15,7 +15,7 @@ let
       type = "disk";
       # Recursively merged all the configs for a disk.
       # NOTE: Because we use foldr, later configs override earlier configs.
-      content = lib.foldr lib.recursiveUpdate {} contentConfigs;
+      content = lib.foldr lib.recursiveUpdate { } contentConfigs;
     };
 
   # Configuration for our boot
@@ -62,12 +62,12 @@ let
         rpool-data1 = {
           model = "Samsung_SSD_980_PRO_2TB";
           serial = "S6B0NL0W218445N";
-          contentConfigs = [rpoolConfig];
+          contentConfigs = [ rpoolConfig ];
         };
         rpool-data2 = {
           model = "Samsung_SSD_980_PRO_2TB";
           serial = "S6B0NL0W218446M";
-          contentConfigs = [rpoolConfig];
+          contentConfigs = [ rpoolConfig ];
         };
       };
     in
