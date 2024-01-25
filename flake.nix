@@ -66,7 +66,9 @@
 
     nix-output-monitor = {
       flake = false;
-      url = "github:maralorn/nix-output-monitor";
+      # url = "github:maralorn/nix-output-monitor";
+      # https://github.com/ConnorBaker/nix-output-monitor/commits/feat/ca-derivation-support/
+      url = "github:ConnorBaker/nix-output-monitor/58a7606c8d2b4889668129282c01364aa9afc5a0";
     };
 
     nixfmt = {
