@@ -2,7 +2,7 @@
 {
   hardware = {
     nvidia = {
-      nvidiaPersistenced = true;
+      nvidiaPersistenced = false;
       package = config.boot.kernelPackages.nvidiaPackages.latest;
       powerManagement.enable = true;
     };

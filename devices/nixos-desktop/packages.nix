@@ -47,7 +47,7 @@
       nil
       nix-direnv
       nix-output-monitor
-      nixfmt
+      nixfmt-rfc-style
       nixpkgs-review
     ]
     # Sops tools

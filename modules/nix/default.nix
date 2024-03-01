@@ -1,4 +1,9 @@
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   # Common configuration for all machines.
   # Maps host names to machine architecture.
@@ -60,6 +65,9 @@ in
   };
 
   nix = {
+    # Choose the version of Nix to use.
+    package = pkgs.nixVersions.unstable;
+
     buildMachines = lib.trivial.pipe hostNameToConfig [
       # AttrSet String (AttrSet String Any) -> AttrSet String (AttrSet String Any)
       (lib.attrsets.filterAttrs irreflexive)

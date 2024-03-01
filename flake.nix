@@ -1,16 +1,5 @@
 {
-  # When we use the overlay attribute of a flake, we fetch the dependency as a flake.
-  # If there's no overlay, we essentially build our own, so we just fetch the source
-  # as a tarball.
   inputs = {
-    deadnix = {
-      inputs = {
-        utils.follows = "flake-utils";
-        nixpkgs.follows = "nixpkgs";
-      };
-      url = "github:astro/deadnix";
-    };
-
     disko = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nix-community/disko";
@@ -28,10 +17,9 @@
         flake-parts.follows = "flake-parts";
         # Nix isn't explicitly stated but conditionally checked.
         # https://github.com/hercules-ci/hercules-ci-agent/blob/d3bec2bf1f042e033b4893fbc59bab141060f3c0/flake.nix#L232
-        nix.follows = "nix";
         nixpkgs.follows = "nixpkgs";
       };
-      url = "github:hercules-ci/hercules-ci-agent";
+      url = "github:hercules-ci/hercules-ci-agent/d3bec2bf1f042e033b4893fbc59bab141060f3c0";
     };
 
     impermanence.url = "github:nix-community/impermanence";
@@ -39,16 +27,6 @@
     jetpack-nixos = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:anduril/jetpack-nixos";
-    };
-
-    nil = {
-      inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:oxalica/nil";
-    };
-
-    nix = {
-      inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:NixOS/nix/2.19-maintenance";
     };
 
     nix-direnv = {
@@ -62,26 +40,6 @@
     nix-ld-rs = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nix-community/nix-ld-rs";
-    };
-
-    nix-output-monitor = {
-      flake = false;
-      url = "github:maralorn/nix-output-monitor";
-    };
-
-    nixfmt = {
-      inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:piegamesde/nixfmt/405157900171ac943ed9212b2ab9ab363b01be0b";
-    };
-
-    nixos-generators = {
-      inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:nix-community/nixos-generators";
-    };
-
-    nixpkgs-review = {
-      flake = false;
-      url = "github:mic92/nixpkgs-review";
     };
 
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -102,11 +60,6 @@
         nixpkgs.follows = "nixpkgs";
       };
       url = "github:Mic92/sops-nix";
-    };
-
-    statix = {
-      inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:nerdypepper/statix";
     };
 
     treefmt-nix = {
@@ -138,12 +91,10 @@
                 system,
                 ...
               }:
-              let
-                cfg = import ./nixpkgs-overlays.nix { inherit inputs inputs'; } { inherit lib; };
-                nixpkgs = import inputs.nixpkgs ({ inherit system; } // cfg.nixpkgs);
-              in
               {
-                _module.args.pkgs = nixpkgs;
+                _module.args.pkgs =
+                  import inputs.nixpkgs
+                    (import ./nixpkgs-overlays.nix { inherit inputs inputs'; } { inherit lib system; }).nixpkgs;
               };
           }
           inputs.treefmt-nix.flakeModule
@@ -174,7 +125,10 @@
                 mdformat.enable = true;
 
                 # Nix
-                nixfmt.enable = true;
+                nixfmt = {
+                  enable = true;
+                  package = pkgs.nixfmt-rfc-style;
+                };
 
                 # Shell
                 shellcheck.enable = true;

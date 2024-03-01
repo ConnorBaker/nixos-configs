@@ -5,6 +5,9 @@
   ...
 }:
 # TODO: Find a way to implement a check which makes certain networking.hostId is set.
+let
+  zfsPkg = config.boot.zfs.package;
+in
 {
   boot = {
     initrd = {
@@ -17,7 +20,7 @@
         "zfs"
       ];
     };
-    kernelPackages = pkgs.linuxKernel.packages.linux_6_6;
+    kernelPackages = pkgs.linuxKernel.packages.linux_6_7;
     kernelParams = [ "nohibernate" ];
     supportedFilesystems = [
       "vfat"
@@ -27,7 +30,7 @@
   };
 
   # Some settings copied from https://github.com/NixOS/nixpkgs/issues/62644#issuecomment-1479523469
-  environment.etc."zfs/zed.d/history_event-zfs-list-cacher.sh".source = "${config.boot.zfs.package}/etc/zfs/zed.d/history_event-zfs-list-cacher.sh";
+  environment.etc."zfs/zed.d/history_event-zfs-list-cacher.sh".source = "${zfsPkg}/etc/zfs/zed.d/history_event-zfs-list-cacher.sh";
 
   services.zfs = {
     autoScrub.enable = true;
@@ -35,7 +38,7 @@
     # Add pkgs.diffutils to PATH for zed (required for zfs-mount-generator).
     zed.settings.PATH = lib.mkForce (
       lib.makeBinPath [
-        config.boot.zfs.package
+        zfsPkg
         pkgs.coreutils
         pkgs.curl
         pkgs.diffutils
@@ -49,7 +52,7 @@
   };
 
   systemd = {
-    generators.zfs-mount-generator = "${config.boot.zfs.package}/lib/systemd/system-generator/zfs-mount-generator";
+    generators.zfs-mount-generator = "${zfsPkg}/lib/systemd/system-generator/zfs-mount-generator";
     services.zfs-mount.enable = false;
   };
 }

@@ -22,6 +22,7 @@
     ../../modules/mimalloc.nix
     ../../modules/networking.nix
     ../../modules/nvidia.nix
+    ../../modules/podman.nix
     ../../modules/sudo.nix
     ../../modules/users.nix
     ../../modules/zfs.nix
