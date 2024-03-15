@@ -18,13 +18,13 @@
         "LeftCPUs4"
         "Memory"
         "Zram"
-        "DiskIO"
+        "NetworkIO"
       ];
       column_meters_1 = [
         "RightCPUs4"
-        "NetworkIO"
-        "Tasks"
-        "Uptime"
+        "DiskIO"
+        "ZFSARC"
+        "ZFSCARC"
       ];
       header_layout = "two_50_50";
       show_cpu_frequency = 1;
