@@ -21,7 +21,13 @@ in
       ];
     };
     kernelPackages = pkgs.linuxKernel.packages.linux_6_7;
-    kernelParams = [ "nohibernate" ];
+    kernelParams = [
+      "nohibernate"
+
+      # https://github.com/openzfs/zfs/issues/9910
+      "init_on_alloc=0"
+      "init_on_free=0"
+    ];
     supportedFilesystems = [
       "vfat"
       "zfs"
