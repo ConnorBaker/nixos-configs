@@ -6,7 +6,7 @@
     "vm.watermark_scale_factor" = 125;
     "vm.page-cluster" = 0;
     # https://github.com/pop-os/default-settings/blob/master_noble/etc/sysctl.d/10-pop-default-settings.conf
-    "vm.swappiness" = 250; # Strong preference for ZRAM
+    "vm.swappiness" = 190; # Strong preference for ZRAM
     "vm.max_map_count" = 2147483642;
     # Higher values since these machines are used mostly as remote builders
     "vm.dirty_ratio" = 80;
