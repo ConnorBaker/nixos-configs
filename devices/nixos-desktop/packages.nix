@@ -32,6 +32,7 @@
     ]
     # Misc tools
     ++ [
+      btop
       dig
       direnv
       gh

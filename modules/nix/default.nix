@@ -76,8 +76,6 @@ in
       # AttrSet String (AttrSet String Any) -> List (AttrSet String Any)
       lib.attrsets.attrValues
     ];
-    daemonCPUSchedPolicy = "batch";
-    daemonIOSchedPriority = 7;
     distributedBuilds = true;
     settings = {
       accept-flake-config = true;
@@ -86,15 +84,17 @@ in
       auto-optimise-store = true;
       builders-use-substitutes = true;
       connect-timeout = 30;
-      cores = 0;
       experimental-features = [
         "auto-allocate-uids"
         "ca-derivations"
         "cgroups"
         "configurable-impure-env"
+        "dynamic-derivations"
         "fetch-closure"
+        "fetch-tree"
         "flakes"
         "git-hashing"
+        "mounted-ssh-store"
         "nix-command"
         "no-url-literals"
         "parse-toml-timestamps"
@@ -113,10 +113,7 @@ in
         "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
       ];
       fsync-metadata = false;
-      http-connections = 0;
       max-jobs = maxJobs;
-      max-substitution-jobs = 256;
-      narinfo-cache-negative-ttl = 0;
       require-drop-supplementary-groups = true;
       system-features = supportedFeatures;
       trusted-users = [
@@ -126,6 +123,7 @@ in
       ];
       use-cgroups = true;
       use-xdg-base-directories = true;
+      warn-dirty = false;
     };
   };
 
