@@ -12,16 +12,6 @@
 
     flake-utils.url = "github:numtide/flake-utils";
 
-    hercules-ci-agent = {
-      inputs = {
-        flake-parts.follows = "flake-parts";
-        # Nix isn't explicitly stated but conditionally checked.
-        # https://github.com/hercules-ci/hercules-ci-agent/blob/d3bec2bf1f042e033b4893fbc59bab141060f3c0/flake.nix#L232
-        nixpkgs.follows = "nixpkgs";
-      };
-      url = "github:hercules-ci/hercules-ci-agent/d3bec2bf1f042e033b4893fbc59bab141060f3c0";
-    };
-
     impermanence.url = "github:nix-community/impermanence";
 
     jetpack-nixos = {
@@ -104,6 +94,7 @@
         perSystem =
           { config, pkgs, ... }:
           {
+            legacyPackages = pkgs;
             pre-commit.settings = {
               hooks = {
                 # Formatter checks

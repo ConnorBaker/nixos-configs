@@ -32,7 +32,7 @@ in
       "vfat"
       "zfs"
     ];
-    zfs.enableUnstable = true;
+    zfs.package = pkgs.zfs_unstable;
   };
 
   # Some settings copied from https://github.com/NixOS/nixpkgs/issues/62644#issuecomment-1479523469
