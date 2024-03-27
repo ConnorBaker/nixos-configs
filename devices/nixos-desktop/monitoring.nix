@@ -150,11 +150,8 @@ in
       # --fake-gpus ${lib.boolToString cfg.fakeGpus}
     };
 
-  users.users =
-    lib.attrsets.genAttrs
-      [
-        "grafana"
-        "nginx"
-      ]
-      (lib.trivial.const { extraGroups = [ config.users.groups.keys.name ]; });
+  users.users = lib.attrsets.genAttrs [
+    "grafana"
+    "nginx"
+  ] (lib.trivial.const { extraGroups = [ config.users.groups.keys.name ]; });
 }

@@ -129,9 +129,9 @@ in
     };
   };
 
-  programs.ssh.knownHosts = lib.attrsets.genAttrs (builtins.attrNames hostNameToConfig) (
-    hostName: { publicKeyFile = ../.. + "/devices/${hostName}/keys/ssh_host_ed25519_key.pub"; }
-  );
+  programs.ssh.knownHosts = lib.attrsets.genAttrs (builtins.attrNames hostNameToConfig) (hostName: {
+    publicKeyFile = ../.. + "/devices/${hostName}/keys/ssh_host_ed25519_key.pub";
+  });
 
   users.users = {
     nix = {

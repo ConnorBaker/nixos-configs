@@ -7,8 +7,7 @@
   };
   users.users.connorbaker = {
     description = "Connor Baker's user account";
-    extraGroups = [ "wheel" ]
-      ++ lib.optionals config.virtualisation.docker.enable [ "docker" ];
+    extraGroups = [ "wheel" ] ++ lib.optionals config.virtualisation.docker.enable [ "docker" ];
     hashedPassword = "$y$j9T$ElNzp8jVQBLw00WZda/PR/$ilWJEMkkGBjYPEG.IkiNGp7ngsLgI7hGzsMeyywNYJ.";
     isNormalUser = true;
     openssh.authorizedKeys = {
