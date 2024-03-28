@@ -13,7 +13,7 @@ in
     initrd = {
       # Use ZFS to reset the root pool.
       postDeviceCommands = lib.mkAfter ''
-        zfs rollback -r rpool/root@blank
+        zfs rollback -r root@blank
       '';
       supportedFilesystems = [
         "vfat"

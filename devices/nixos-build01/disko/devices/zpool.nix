@@ -25,12 +25,15 @@ let
       root = {
         type = "zfs_fs";
         mountpoint = "/";
-        postCreateHook = "zfs snapshot rpool/root@blank";
+        postCreateHook = "zfs list -t snapshot -H -o name | grep -E '^root@blank$' || zfs snapshot root@blank";
       };
 
       nix = {
         type = "zfs_fs";
         mountpoint = "/nix";
+        # Because we have a crazy number of small files, we shrink the recordsize to 4k.
+        # This also happens to be the page size of the SQLite database Nix uses.
+        options.recordsize = "4K";
       };
 
       tmp = {
