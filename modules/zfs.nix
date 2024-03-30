@@ -10,6 +10,10 @@ let
 in
 {
   boot = {
+    extraModprobeConfig = ''
+      # Enable block cloning for ZFS.
+      options zfs zfs_bclone_enabled=1
+    '';
     initrd = {
       # Use ZFS to reset the root pool.
       postDeviceCommands = lib.mkAfter ''
@@ -23,9 +27,6 @@ in
     kernelPackages = pkgs.linuxKernel.packages.linux_6_7;
     kernelParams = [
       "nohibernate"
-
-      # Enable block cloning for ZFS.
-      "zfs_bclone_enabled=1"
 
       # https://github.com/openzfs/zfs/issues/9910
       "init_on_alloc=0"
