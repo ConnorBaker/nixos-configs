@@ -33,7 +33,7 @@ let
       root = {
         type = "zfs_fs";
         mountpoint = "/";
-        postCreateHook = "zfs list -t snapshot -H -o name | grep -E '^root@blank$' || zfs snapshot root@blank";
+        postCreateHook = "zfs list -t snapshot -H -o name | grep -E '^rpool/root@blank$' || zfs snapshot rpool/root@blank";
       };
 
       nix = {
