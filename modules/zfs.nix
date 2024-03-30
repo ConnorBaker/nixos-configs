@@ -24,6 +24,9 @@ in
     kernelParams = [
       "nohibernate"
 
+      # Enable block cloning for ZFS.
+      "zfs_bclone_enabled=1"
+
       # https://github.com/openzfs/zfs/issues/9910
       "init_on_alloc=0"
       "init_on_free=0"
