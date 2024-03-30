@@ -113,7 +113,9 @@ in
         "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
       ];
       fsync-metadata = false;
+      http-connections = 128;
       max-jobs = maxJobs;
+      max-substitution-jobs = 64;
       require-drop-supplementary-groups = true;
       system-features = supportedFeatures;
       trusted-users = [
