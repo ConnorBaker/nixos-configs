@@ -12,11 +12,28 @@
 
     flake-utils.url = "github:numtide/flake-utils";
 
+    histodu = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:oxalica/histodu";
+    };
+
     impermanence.url = "github:nix-community/impermanence";
 
     jetpack-nixos = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:anduril/jetpack-nixos";
+    };
+
+    nix = {
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        nixpkgs-regression.follows = "";
+        flake-compat.follows = "";
+        libgit2.follows = "";
+      };
+      # NOTE: Check libgit2 version when updating.
+      # NOTE: Check boehmgc patches in ./nixpkgs-overlays.nix when updating.
+      url = "github:NixOS/nix/9b88e5284608116b7db0dbd3d5dd7a33b90d52d7";
     };
 
     nix-direnv = {
@@ -38,7 +55,7 @@
     pre-commit-hooks-nix = {
       inputs = {
         flake-utils.follows = "flake-utils";
-        nixpkgs-stable.follows = "nixpkgs";
+        nixpkgs-stable.follows = "";
         nixpkgs.follows = "nixpkgs";
       };
       url = "github:cachix/pre-commit-hooks.nix";
@@ -46,7 +63,7 @@
 
     sops-nix = {
       inputs = {
-        nixpkgs-stable.follows = "nixpkgs";
+        nixpkgs-stable.follows = "";
         nixpkgs.follows = "nixpkgs";
       };
       url = "github:Mic92/sops-nix";

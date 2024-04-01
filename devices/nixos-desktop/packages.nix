@@ -18,6 +18,7 @@
     # Rust unix tools
     [
       bat
+      histodu
       ripgrep
     ]
     # Python
