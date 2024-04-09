@@ -31,9 +31,10 @@ let
       nix = {
         type = "zfs_fs";
         mountpoint = "/nix";
-        # Because we have a crazy number of small files, we shrink the recordsize to 4k.
-        # This also happens to be the page size of the SQLite database Nix uses.
-        options.recordsize = "4K";
+        # NOTE: Although on average we have a large number of small files, and 4k is the page size of the SQLite
+        # database Nix uses, changing to such a small recordsize has a negative impact on read/write performance for
+        # flash storage. Additionally, the SQLite database isn't under heavy usage constantly, so there's no need to
+        # optimize for it.
       };
 
       tmp = {

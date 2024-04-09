@@ -13,6 +13,8 @@ in
     extraModprobeConfig = ''
       # Enable block cloning for ZFS.
       options zfs zfs_bclone_enabled=1
+      # Values to increase the time before ZFS TXG timeout.
+      options zfs zfs_txg_timeout=30
     '';
     initrd = {
       # Use ZFS to reset the root pool.
