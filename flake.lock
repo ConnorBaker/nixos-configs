@@ -184,30 +184,6 @@
         "type": "github"
       }
     },
-    "nix": {
-      "inputs": {
-        "flake-compat": [],
-        "libgit2": [],
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "nixpkgs-regression": []
-      },
-      "locked": {
-        "lastModified": 1711812209,
-        "narHash": "sha256-3uijtGKH6tvQtXIhWzGojSVnoYvc0daAGA4LD0lV+Pc=",
-        "owner": "NixOS",
-        "repo": "nix",
-        "rev": "9b88e5284608116b7db0dbd3d5dd7a33b90d52d7",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "repo": "nix",
-        "rev": "9b88e5284608116b7db0dbd3d5dd7a33b90d52d7",
-        "type": "github"
-      }
-    },
     "nix-direnv": {
       "inputs": {
         "flake-parts": [
@@ -304,7 +280,6 @@
         "histodu": "histodu",
         "impermanence": "impermanence",
         "jetpack-nixos": "jetpack-nixos",
-        "nix": "nix",
         "nix-direnv": "nix-direnv",
         "nix-ld-rs": "nix-ld-rs",
         "nixpkgs": "nixpkgs",

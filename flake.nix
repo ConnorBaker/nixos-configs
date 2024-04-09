@@ -24,18 +24,6 @@
       url = "github:anduril/jetpack-nixos";
     };
 
-    nix = {
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        nixpkgs-regression.follows = "";
-        flake-compat.follows = "";
-        libgit2.follows = "";
-      };
-      # NOTE: Check libgit2 version when updating.
-      # NOTE: Check boehmgc patches in ./nixpkgs-overlays.nix when updating.
-      url = "github:NixOS/nix/9b88e5284608116b7db0dbd3d5dd7a33b90d52d7";
-    };
-
     nix-direnv = {
       inputs = {
         flake-parts.follows = "flake-parts";
