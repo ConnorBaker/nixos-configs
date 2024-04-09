@@ -80,16 +80,16 @@
           # Add tools to the environment for the linters etc.
           {
             perSystem =
-              {
-                inputs',
-                lib,
-                system,
-                ...
-              }:
+              { system, ... }:
               {
                 _module.args.pkgs =
-                  import inputs.nixpkgs
-                    (import ./nixpkgs-overlays.nix { inherit inputs inputs'; } { inherit lib system; }).nixpkgs;
+                  let
+                    # Configuration for nixpkgs as a NixOS module.
+                    nixpkgsModule = import ./nixpkgs-module.nix { inherit inputs system; };
+                    # The actual arguments provided to instantiate nixpkgs.
+                    nixpkgsArgs = nixpkgsModule.nixpkgs;
+                  in
+                  import inputs.nixpkgs nixpkgsArgs;
               };
           }
           inputs.treefmt-nix.flakeModule
@@ -143,12 +143,17 @@
           let
             x86_64-linux-template =
               extraModules:
-              withSystem "x86_64-linux" (
-                { inputs', ... }:
-                inputs.nixpkgs.lib.nixosSystem {
-                  modules = [ (import ./nixpkgs-overlays.nix { inherit inputs inputs'; }) ] ++ extraModules;
-                }
-              );
+              inputs.nixpkgs.lib.nixosSystem {
+                modules = [
+                  (import ./nixpkgs-module.nix {
+                    inherit inputs;
+                    system = "x86_64-linux";
+                  })
+                  inputs.sops-nix.nixosModules.sops
+                  inputs.disko.nixosModules.disko
+                  inputs.impermanence.nixosModules.impermanence
+                ] ++ extraModules;
+              };
           in
           {
             nixos-desktop = x86_64-linux-template [ ./devices/nixos-desktop ];

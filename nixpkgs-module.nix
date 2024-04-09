@@ -1,13 +1,6 @@
 # Arguments from flake.parts
-{ inputs, inputs', ... }:
-# Arguments from NixOS module system
-{ lib, system, ... }:
+{ inputs, system, ... }:
 {
-  imports = [
-    inputs.sops-nix.nixosModules.sops
-    inputs.disko.nixosModules.disko
-    inputs.impermanence.nixosModules.impermanence
-  ];
   nixpkgs = {
     inherit system;
     config.allowUnfree = true;
@@ -45,7 +38,7 @@
       # Misc tools
       inputs.nix-direnv.overlays.default
       inputs.nix-ld-rs.overlays.default
-      (_: _: { inherit (inputs'.histodu.packages) histodu; })
+      (_: _: { inherit (inputs.histodu.packages.${system}) histodu; })
     ];
   };
 }
