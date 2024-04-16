@@ -9,19 +9,11 @@ let
   # Maps host names to machine architecture.
   # hostNameToSystem :: AttrSet String (AttrSet String Any)
   hostNameToConfig = {
-    nixos-build01 = {
-      speedFactor = 8;
-      systems = [ "x86_64-linux" ];
-    };
-    nixos-desktop = {
-      speedFactor = 8;
-      systems = [ "x86_64-linux" ];
-    };
-    nixos-ext = {
-      speedFactor = 8;
-      systems = [ "x86_64-linux" ];
-    };
+    nixos-build01 = { };
+    nixos-desktop = { };
+    nixos-ext = { };
     ubuntu-orin = {
+      maxJobs = 8;
       speedFactor = 1;
       systems = [ "aarch64-linux" ];
     };
@@ -31,7 +23,6 @@ let
       systems = [ "aarch64-linux" ];
     };
   };
-  maxJobs = 1;
   supportedFeatures = [
     "benchmark"
     "big-parallel"
@@ -46,10 +37,13 @@ let
   machineBoilerplate =
     hostName:
     lib.attrsets.recursiveUpdate {
-      inherit hostName maxJobs supportedFeatures;
+      inherit hostName supportedFeatures;
+      maxJobs = 32;
       protocol = "ssh-ng";
+      speedFactor = 8;
       sshKey = "/etc/ssh/id_nix_ed25519";
       sshUser = "nix";
+      systems = [ "x86_64-linux" ];
     };
   # A machine should not have itself as a remote builder.
   irreflexive = hostName: _: hostName != config.networking.hostName;
@@ -98,6 +92,7 @@ in
         "nix-command"
         "no-url-literals"
         "parse-toml-timestamps"
+        "recursive-nix"
         "verified-fetches"
       ];
       extra-substituters = [
@@ -113,9 +108,8 @@ in
         "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
       ];
       fsync-metadata = false;
-      http-connections = 128;
-      max-jobs = maxJobs;
-      max-substitution-jobs = 64;
+      http-connections = 256;
+      max-substitution-jobs = 128;
       require-drop-supplementary-groups = true;
       system-features = supportedFeatures;
       trusted-users = [
