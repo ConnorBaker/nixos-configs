@@ -75,7 +75,7 @@ in
       accept-flake-config = true;
       allow-import-from-derivation = false;
       auto-allocate-uids = true;
-      auto-optimise-store = true;
+      auto-optimise-store = false;
       builders-use-substitutes = true;
       connect-timeout = 30;
       experimental-features = [
