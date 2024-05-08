@@ -38,7 +38,7 @@ Do this for whichever private keys are necessary.
 Deploy `nixos-desktop` with:
 
 ```bash
-nix run "github:nix-community/nixos-anywhere/4c94cecf3dd551adf1359fb06aa926330f44e5a6" --builders '' -- \
+nix run "github:nix-community/nixos-anywhere/242444d228636b1f0e89d3681f04a75254c29f66" --builders '' -- \
   connorbaker@192.168.1.12 \
   -i ~/.ssh/id_ed25519 \
   --kexec https://gh-v6.com/nix-community/nixos-images/releases/download/nixos-unstable/nixos-kexec-installer-noninteractive-x86_64-linux.tar.gz \
@@ -54,7 +54,7 @@ nix run "github:nix-community/nixos-anywhere/4c94cecf3dd551adf1359fb06aa926330f4
 Deploy `nixos-build01` with:
 
 ```bash
-nix run "github:nix-community/nixos-anywhere/4c94cecf3dd551adf1359fb06aa926330f44e5a6" --builders '' -- \
+nix run "github:nix-community/nixos-anywhere/242444d228636b1f0e89d3681f04a75254c29f66" --builders '' -- \
   connorbaker@192.168.1.14 \
   -i ~/.ssh/id_ed25519 \
   --kexec https://gh-v6.com/nix-community/nixos-images/releases/download/nixos-unstable/nixos-kexec-installer-noninteractive-x86_64-linux.tar.gz \
@@ -70,7 +70,7 @@ nix run "github:nix-community/nixos-anywhere/4c94cecf3dd551adf1359fb06aa926330f4
 Deploy `nixos-ext` with:
 
 ```bash
-nix run "github:nix-community/nixos-anywhere/4c94cecf3dd551adf1359fb06aa926330f44e5a6" --builders '' -- \
+nix run "github:nix-community/nixos-anywhere/242444d228636b1f0e89d3681f04a75254c29f66" --builders '' -- \
   connorbaker@192.168.1.13 \
   -i ~/.ssh/id_ed25519 \
   --kexec https://gh-v6.com/nix-community/nixos-images/releases/download/nixos-unstable/nixos-kexec-installer-noninteractive-x86_64-linux.tar.gz \
