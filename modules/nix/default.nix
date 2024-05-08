@@ -60,7 +60,7 @@ in
 
   nix = {
     # Choose the version of Nix to use.
-    package = pkgs.nixVersions.unstable;
+    package = pkgs.nixVersions.latest;
 
     buildMachines = lib.trivial.pipe hostNameToConfig [
       # AttrSet String (AttrSet String Any) -> AttrSet String (AttrSet String Any)
