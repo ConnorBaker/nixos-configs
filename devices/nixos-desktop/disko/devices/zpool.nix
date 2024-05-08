@@ -2,7 +2,7 @@
 let
   zfsPoolCommonConfig = {
     type = "zpool";
-    mode = "raidz2";
+    mode = ""; # Stripe the data; no redundancy!
     options = {
       ashift = "12";
       autotrim = "on";
