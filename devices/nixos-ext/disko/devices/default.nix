@@ -4,6 +4,6 @@
     ./disk.nix
 
     # ZFS pools and datasets.
-    # ./zpool.nix
+    ./zpool.nix
   ];
 }

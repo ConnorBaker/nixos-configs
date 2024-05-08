@@ -1,3 +1,4 @@
+{ lib, ... }:
 {
   imports = [
     ./hardware.nix
@@ -23,6 +24,7 @@
     ../../modules/networking.nix
     ../../modules/sudo.nix
     ../../modules/users.nix
+    ../../modules/zfs.nix
     ../../modules/zram.nix
 
     # Configure services
@@ -37,6 +39,11 @@
     ../../users/connorbaker.nix
   ];
 
+  # The ZFS module only reset rpool by default; we also want to reset dpool.
+  # boot.initrd.postDeviceCommands = lib.mkAfter ''
+  #   zfs rollback -r dpool@blank
+  # '';
+
   environment.etc = {
     "ssh/ssh_host_ed25519_key.pub".source = ./keys/ssh_host_ed25519_key.pub;
   };
@@ -46,5 +53,5 @@
     hostName = "nixos-ext";
   };
 
-  system.stateVersion = "24.05";
+  system.stateVersion = "23.05";
 }
