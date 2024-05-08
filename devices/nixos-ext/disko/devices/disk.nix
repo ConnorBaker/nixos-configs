@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ lib, ... }:
 let
   # Merge all of the configurations for a disk.
   mkDisk =
@@ -116,9 +116,5 @@ let
   disks = samsung990Pro2TBDisks; # // seagateIronWolfPro22TBDisks;
 in
 {
-  boot.kernelPackages = pkgs.linuxKernel.packages.linux_testing;
-  disko = {
-    devices.disk = lib.mapAttrs mkDisk disks;
-    extraDependencies = [pkgs.bcachefs-tools ];
-  };
+  config.disko.devices.disk = lib.mapAttrs mkDisk disks;
 }
