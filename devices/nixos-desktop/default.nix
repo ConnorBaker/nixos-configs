@@ -29,7 +29,7 @@
     ../../modules/zram.nix
 
     # Configure services
-    # ../../modules/services/attic
+    ../../modules/services/harmonia
     ../../modules/services/openssh.nix
     ../../modules/services/tailscale.nix
     # ../../modules/services/monitoring.nix
