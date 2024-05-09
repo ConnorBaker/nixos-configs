@@ -1,5 +1,10 @@
 {
   inputs = {
+    attic = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:zhaofengli/attic";
+    };
+
     disko = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nix-community/disko";
@@ -63,9 +68,6 @@
     };
   };
 
-  # For nixfmt, a Haskell application which requires IFD.
-  nixConfig.allow-import-from-derivation = true;
-
   outputs =
     inputs:
     inputs.flake-parts.lib.mkFlake { inherit inputs; } (
@@ -100,18 +102,17 @@
           { config, pkgs, ... }:
           {
             legacyPackages = pkgs;
-            pre-commit.settings = {
-              hooks = {
-                # Formatter checks
-                treefmt.enable = true;
-
-                # Nix checks
-                deadnix.enable = true;
-                nil.enable = true;
-                statix.enable = true;
+            pre-commit.settings.hooks = {
+              # Formatter checks
+              treefmt = {
+                enable = true;
+                package = config.treefmt.build.wrapper;
               };
-              # Formatter
-              settings.treefmt.package = config.treefmt.build.wrapper;
+
+              # Nix checks
+              deadnix.enable = true;
+              nil.enable = true;
+              statix.enable = true;
             };
 
             treefmt = {
@@ -152,6 +153,7 @@
                   inputs.sops-nix.nixosModules.sops
                   inputs.disko.nixosModules.disko
                   inputs.impermanence.nixosModules.impermanence
+                  inputs.attic.nixosModules.atticd
                 ] ++ extraModules;
               };
           in
