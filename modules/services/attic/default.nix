@@ -98,6 +98,7 @@ in
           max-size = 256 * 1024; # 256 KiB
         };
 
+        # TODO: Copying from R2 is *excruciatingly* slow and the API costs are high given the small chunk size.
         compression = {
           type = "zstd";
           level = 19;
