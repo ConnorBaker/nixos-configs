@@ -1,5 +1,10 @@
 {
   inputs = {
+    attic = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:zhaofengli/attic";
+    };
+
     disko = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nix-community/disko";
@@ -148,6 +153,7 @@
                   inputs.sops-nix.nixosModules.sops
                   inputs.disko.nixosModules.disko
                   inputs.impermanence.nixosModules.impermanence
+                  inputs.attic.nixosModules.atticd
                 ] ++ extraModules;
               };
           in

@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   inherit (lib.modules) mkForce;
   # Named after their paths in secrets.yaml.
@@ -6,7 +11,7 @@ let
   atticCredentials = "atticd/credentials.env";
 in
 {
-  environment.systemPackages = [ config.services.atticd.package pkgs.attic ];
+  environment.systemPackages = [ pkgs.attic ];
 
   # TODO: "/var/lib/postgresql"
   # TODO: "/var/lib/atticd"
@@ -14,29 +19,49 @@ in
   #
   # Steps:
   # 1. Create token with:
-  # sudo atticd-atticadm make-token --sub attic-cuda-test --validity 1y --pull attic-cuda-test --push attic-cuda-test --delete attic-cuda-test --create-cache attic-cuda-test --configure-cache attic-cuda-test --configure-cache-retention attic-cuda-test --destroy-cache attic-cuda-test
+  # sudo atticd-atticadm make-token --sub attic-cuda-tester --validity 1y --pull attic-cuda-test-cache --push attic-cuda-test-cache --delete attic-cuda-test-cache --create-cache attic-cuda-test-cache --configure-cache attic-cuda-test-cache --configure-cache-retention attic-cuda-test-cache --destroy-cache attic-cuda-test-cache
   # 2. Log in to the server:
-  # attic login local http://localhost:8083 <token from previous step>
+  # attic login attic-cuda-test-server https://cantcache.me <token from previous step>
   # 3. Create the cache:
-  # attic cache create attic-cuda-test
+  # attic cache create attic-cuda-test-server:attic-cuda-test-cache
   # 4. Push to the cache:
-  # attic push attic-cuda-test ./result
+  # attic push attic-cuda-test-server:attic-cuda-test-cache ./result
   # 5. Set up to use the cache:
-  # attic use attic-cuda-test
-  networking.firewall.allowedTCPPorts = [ 8083 ];
-  systemd.services.atticd.serviceConfig.Environment = [
-    "RUST_LOG=debug"
-    "RUST_BACKTRACE=1"
-  ];
+  # attic use attic-cuda-test-server:attic-cuda-test-cache
+  systemd.services = {
+    atticd = {
+      serviceConfig = {
+        # We want our user to be persistent.
+        DynamicUser = pkgs.lib.mkForce false;
+        # Log everything
+        Environment = [
+          "RUST_LOG=debug"
+          "RUST_BACKTRACE=1"
+        ];
+      };
+      unitConfig = {
+        RequiresMountsFor = "/var/lib/atticd/storage";
+      };
+    };
+    # NOTE: We cannot use services.postgresql.initialScript because it runs before the users or tables are created!
+    postgresql.postStart = lib.mkAfter (
+      # Give the ability for atticd to create tables in the public schema
+      ''
+        $PSQL -tAc 'GRANT ALL ON SCHEMA public TO "atticd"'
+      ''
+      # Make atticd the owner of the database
+      + ''
+        $PSQL -tAc 'ALTER DATABASE "attic" OWNER TO "atticd"'
+      ''
+    );
+  };
 
   # NOTE: File should have:
   # - ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64
-  # - ACCESS_KEY_ID
-  # - SECRET_ACCESS_KEY
   sops.secrets.${atticCredentials} = {
-    owner = "attic";
+    owner = "atticd";
     mode = "0440";
-    path = "/var/lib/${atticCredentials}";
+    path = "/var/lib/private/${atticCredentials}";
     sopsFile = ./secrets.yaml;
   };
 
@@ -46,21 +71,17 @@ in
 
       credentialsFile = config.sops.secrets.${atticCredentials}.path;
 
-      # Change user and group from atticd to attic to match the name of the table and user
-      # in postgresql
-      user = "attic";
-      group = "attic";
-
       settings = {
-        listen = "[::]:8083";
+        listen = "[::]:5000";
 
         # Allowed `Host` headers
         #
         # This _must_ be configured for production use. If unconfigured or the
         # list is empty, all `Host` headers are allowed.
-        # allowed-hosts = [];
+        allowed-hosts = [ "cantcache.me" ];
 
-        database.url = "postgresql://attic:attic@localhost:5432/attic";
+        database.url = "postgresql://atticd@localhost:5432/attic";
+        # database.url = "postgresql:///attic?host=/run/postgresql";
 
         # TODO: This is where attic is expected to be hosted/available; for now, that's on localhost
         # The canonical API endpoint of this server
@@ -73,7 +94,7 @@ in
         #
         # The API endpoint _must_ end with a slash (e.g., `https://domain.tld/attic/`
         # not `https://domain.tld/attic`).
-        # api-endpoint = "https://cantcache.me/";
+        api-endpoint = "https://cantcache.me/";
 
         # Data chunking
         #
@@ -89,13 +110,13 @@ in
           nar-size-threshold = 64 * 1024; # 64 KiB
 
           # The preferred minimum size of a chunk, in bytes
-          min-size = 16 * 1024; # 16 KiB
+          min-size = 32 * 1024; # 32 KiB
 
           # The preferred average size of a chunk, in bytes
-          avg-size = 64 * 1024; # 64 KiB
+          avg-size = 128 * 1024; # 128 KiB
 
           # The preferred maximum size of a chunk, in bytes
-          max-size = 256 * 1024; # 256 KiB
+          max-size = 512 * 1024; # 512 KiB
         };
 
         # TODO: Copying from R2 is *excruciatingly* slow and the API costs are high given the small chunk size.
@@ -105,50 +126,65 @@ in
         };
 
         storage = {
-          type = "s3";
-          endpoint = "https://b10fa25202b183e3807763a0b0320d47.r2.cloudflarestorage.com";
-          region = "us-east-1";
-          bucket = "attic-cuda-test";
+          type = "local";
+          path = "/var/lib/atticd/storage";
         };
       };
     };
     postgresql = {
       enable = true;
-      enableTCPIP = true;
+      package = pkgs.postgresql_16_jit;
+
+      # Only available on localhost
+      enableTCPIP = false;
+      enableJIT = true;
 
       ensureDatabases = [ "attic" ];
-      ensureUsers = [
-        {
-          name = "attic";
-          ensureDBOwnership = true;
-        }
-      ];
+      ensureUsers = [ { name = "atticd"; } ];
 
       # TODO: We should be able to cut this down to the minimum necessary
       authentication = ''
         # Allow the attic user to access the database
         #
         # TYPE  DATABASE        USER            ADDRESS                 METHOD
-        local   attic           attic                                   trust
-        host    attic           attic           127.0.0.1/32            trust
-        host    attic           attic           ::1/128                 trust
-        host    attic           attic           localhost               trust
+        local   attic           atticd                                  trust
+        host    attic           atticd          127.0.0.1/32            trust
+        host    attic           atticd          ::1/128                 trust
+        host    attic           atticd          localhost               trust
       '';
 
       settings = {
+        # Connectivity
+        port = 5432;
+
+        # Performance
+        max_wal_senders = 0;
+        shared_buffers = "4GB";
+        synchronous_commit = "off";
+        wal_compression = "zstd";
+        wal_level = "minimal";
+        work_mem = "32MB";
+
+        # Not helpful on CoW filesystems
+        wal_init_zero = "off";
+        wal_recycle = "off";
+
+        # logging
         log_connections = true;
         log_destination = mkForce "syslog";
         log_disconnections = true;
         log_statement = "all";
         logging_collector = true;
-        port = 5432;
       };
     };
   };
 
-  users.users.attic = {
-    description = "Attic account";
-    extraGroups = [ "wheel" ];
-    isNormalUser = true;
+  # TODO: The module should handle this for us.
+  users.groups.atticd = { };
+  users.users.atticd = {
+    description = "atticd user";
+    group = "atticd";
+    home = "/var/lib/atticd";
+    isSystemUser = true;
   };
 }

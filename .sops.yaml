@@ -12,7 +12,15 @@ creation_rules:
           - *nixos-desktop
           - *nixos-ext
           - *nixos-orin
+  - path_regex: modules/services/attic/secrets\.yaml$
+    key_groups:
+      - age:
+          - *nixos-desktop
   - path_regex: modules/services/harmonia/secrets\.yaml$
+    key_groups:
+      - age:
+          - *nixos-desktop
+  - path_regex: modules/services/nginx/secrets\.yaml$
     key_groups:
       - age:
           - *nixos-desktop
