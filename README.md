@@ -22,16 +22,20 @@ Configuration for my NixOS machines.
 
 > \[!NOTE\]
 >
-> When using sops `/etc/ssh/ssh_host_rsa_key` must be present, as it is needed to create the GPG keyring.
+> When using `sops`, `/etc/ssh/ssh_host_rsa_key` must be present, as it is needed to create the GPG keyring.
 
 > \[!NOTE\]
 >
-> After the initial installation, you must run the following on all devices in order to be able to run `nixos-rebuild` on them:
+> After the initial installation, you must run the following on all devices in order to be able to view files encrypted with `sops`:
 >
 > ```bash
 > mkdir -p ~/.config/sops/age
 > sudo ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key >> ~/.config/sops/age/keys.txt
 > ```
+
+> \[!NOTE\]
+>
+> When creating files with `sops` which can be read by multiple keys, the device creating the file must have access to all the keys. This is because the device creating the file will encrypt the file with all the keys, and the device reading the file will decrypt the file with the correct key.
 
 ## Binary caches
 

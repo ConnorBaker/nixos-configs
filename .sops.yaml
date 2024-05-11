@@ -11,7 +11,6 @@ creation_rules:
           - *nixos-build01
           - *nixos-desktop
           - *nixos-ext
-          - *nixos-orin
   - path_regex: modules/services/binary-cache/secrets\.yaml$
     key_groups:
       - age:
@@ -22,7 +21,6 @@ creation_rules:
           - *nixos-build01
           - *nixos-desktop
           - *nixos-ext
-          - *nixos-orin
   - path_regex: devices/nixos-build01/secrets\.yaml$
     key_groups:
       - age:
