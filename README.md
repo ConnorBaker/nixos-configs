@@ -128,9 +128,19 @@ Log in with the token with
 attic login cuda-server https://cantcache.me <cuda-user token>
 ```
 
+Get the public key and binary cache endpoint for the cache with
+
+```console
+attic cache info cuda-server:cuda
+```
+
 > \[!NOTE\]
 >
 > It is important to log in afterwards with the limited token to overwrite the entry in `~/.config/attic/config.toml` with the limited token. If we do not, the previous token used, the admin token, will remain in effect.
+
+> \[!NOTE\]
+>
+> Because the cache is public, we don't really need to generate a token for it. However, it is useful for interacting with the cache through the attic CLI.
 
 ### Use `cuda-server`
 
@@ -140,19 +150,11 @@ Set up Nix for the local user to pull from the cache with
 attic use cuda-server:cuda
 ```
 
-Alternatively edit your `~/.config/nix/netrc` to include
-
-```netrc
-machine cantcache.me
-password eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDcwMTQ3NDQsInN1YiI6ImN1ZGEtdXNlciIsImh0dHBzOi8vand0LmF0dGljLnJzL3YxIjp7ImNhY2hlcyI6eyJjdWRhIjp7InIiOjF9fX19.xUkKcsxmAeyYFe1HcyJ-STMiAuuNL_6aSJN1_KKkWzo
-```
-
-and your `~/.config/nix/nix.conf` to include
+edit your `~/.config/nix/nix.conf` to include
 
 ```conf
 substituters = https://cantcache.me/cuda https://cache.nixos.org
 trusted-public-keys = cuda:NtbpAU7XGYlttrhCduqvpYKottCPdWVITWT+3nFVTBY= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
-netrc-file = /home/connorbaker/.config/nix/netrc
 ```
 
 ## `nixos-desktop`
