@@ -1,4 +1,3 @@
-{ lib, ... }:
 {
   imports = [
     ./hardware.nix
@@ -28,6 +27,7 @@
     ../../modules/zram.nix
 
     # Configure services
+    ../../modules/services/binary-cache/attic-watch-store
     ../../modules/services/openssh.nix
     ../../modules/services/tailscale.nix
 
