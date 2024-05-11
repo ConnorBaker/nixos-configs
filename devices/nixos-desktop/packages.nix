@@ -14,48 +14,27 @@
   ];
 
   users.users.connorbaker.packages =
-    with pkgs;
-    # Rust unix tools
-    [
-      bat
-      histodu
-      ripgrep
-    ]
     # Python
-    ++ [
-      black
-      ruff
+    [
+      pkgs.black
+      pkgs.ruff
     ]
     # C/C++
     ++ [
-      cmake
-      dotnet-runtime # for CMake LSP in VS Code
+      pkgs.cmake
+      pkgs.dotnet-runtime # for CMake LSP in VS Code
     ]
     # Misc tools
     ++ [
-      btop
-      dig
-      direnv
-      gh
-      git
-      htop
-      jq
-      nvitop
-      tmux
-      vim
+      pkgs.direnv
+      pkgs.nvitop
     ]
     # Nix
     ++ [
-      nil
-      nix-direnv
-      nix-output-monitor
-      nixfmt-rfc-style
-      nixpkgs-review
-    ]
-    # Sops tools
-    ++ [
-      age
-      sops
-      ssh-to-age
+      pkgs.nil
+      pkgs.nix-direnv
+      pkgs.nix-output-monitor
+      pkgs.nixfmt-rfc-style
+      pkgs.nixpkgs-review
     ];
 }

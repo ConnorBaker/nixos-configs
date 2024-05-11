@@ -26,6 +26,29 @@
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJXpenPZWADrxK4+6nFmPspmYPPniI3m+3PxAfjbslg+ connorbaker@Connors-MacBook-Pro.local"
       ];
     };
-    packages = [ pkgs.attic ];
+    packages =
+      [ pkgs.attic ]
+      # Rust unix tools
+      ++ [
+        pkgs.bat
+        pkgs.histodu
+        pkgs.ripgrep
+      ]
+      # Utilities
+      ++ [
+        pkgs.dig
+        pkgs.gh
+        pkgs.git
+        pkgs.htop
+        pkgs.jq
+        pkgs.tmux
+        pkgs.vim
+      ]
+      # Sops tools
+      ++ [
+        pkgs.age
+        pkgs.sops
+        pkgs.ssh-to-age
+      ];
   };
 }
