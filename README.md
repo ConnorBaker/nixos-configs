@@ -24,6 +24,15 @@ Configuration for my NixOS machines.
 >
 > When using sops `/etc/ssh/ssh_host_rsa_key` must be present, as it is needed to create the GPG keyring.
 
+> \[!NOTE\]
+>
+> After the initial installation, you must run the following on all devices in order to be able to run `nixos-rebuild` on them:
+>
+> ```bash
+> mkdir -p ~/.config/sops/age
+> sudo ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key >> ~/.config/sops/age/keys.txt
+> ```
+
 ## Binary caches
 
 We use two server names, with a cache on each: one for pushing and one for pulling. Since they're backed by the same global cache, we can use the same host for both. However, we need to use different server names to disambiguate the caches because they use different subdomains.
@@ -163,7 +172,7 @@ Generate the secret age key using `ssh-to-age`:
 
 ```bash
 mkdir -p ~/.config/sops/age
-ssh-to-age -private-key -i ~/.ssh/id_ed25519 >> ~/.config/sops/age/keys.txt
+sudo ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key >> ~/.config/sops/age/keys.txt
 ```
 
 Do this for whichever private keys are necessary.
