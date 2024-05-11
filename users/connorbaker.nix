@@ -1,4 +1,9 @@
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 {
   programs.git.config = lib.attrsets.optionalAttrs config.programs.git.enable {
     init.defaultBranch = "main";
@@ -21,5 +26,6 @@
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJXpenPZWADrxK4+6nFmPspmYPPniI3m+3PxAfjbslg+ connorbaker@Connors-MacBook-Pro.local"
       ];
     };
+    packages = [ pkgs.attic ];
   };
 }

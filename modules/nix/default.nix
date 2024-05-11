@@ -95,19 +95,9 @@ in
         "recursive-nix"
         "verified-fetches"
       ];
-      extra-substituters = [
-        "https://cantcache.me"
-        "https://cache.ngi0.nixos.org"
-        "https://cuda-maintainers.cachix.org"
-      ];
-      extra-trusted-substituters = [
-        "https://cantcache.me"
-        "https://cache.ngi0.nixos.org"
-        "https://cuda-maintainers.cachix.org"
-      ];
+      extra-substituters = [ "https://cuda-maintainers.cachix.org" ];
+      extra-trusted-substituters = [ "https://cuda-maintainers.cachix.org" ];
       extra-trusted-public-keys = [
-        (builtins.readFile ../services/harmonia/cantcache.me.pub)
-        "cache.ngi0.nixos.org-1:KqH5CBLNSyX184S9BKZJo1LxrxJ9ltnY2uAs5c/f1MA="
         "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
       ];
       fsync-metadata = false;

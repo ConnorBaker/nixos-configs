@@ -29,9 +29,7 @@
     ../../modules/zram.nix
 
     # Configure services
-    ../../modules/services/attic
-    # ../../modules/services/harmonia
-    ../../modules/services/nginx
+    ../../modules/services/binary-cache
     ../../modules/services/openssh.nix
     ../../modules/services/tailscale.nix
     # ../../modules/services/monitoring.nix

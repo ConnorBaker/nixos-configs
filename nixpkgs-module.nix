@@ -18,6 +18,14 @@
       inputs.nix-direnv.overlays.default
       inputs.nix-ld-rs.overlays.default
       (_: _: { inherit (inputs.histodu.packages.${system}) histodu; })
+      # Overlay for Caddy
+      (
+        final: prev:
+        prev.lib.filesystem.packagesFromDirectoryRecursive {
+          inherit (final) callPackage;
+          directory = ./packages;
+        }
+      )
     ];
   };
 }
