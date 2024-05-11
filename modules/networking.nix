@@ -1,4 +1,4 @@
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 {
   boot.kernel.sysctl =
     let
@@ -61,6 +61,24 @@
 
   # Disable the old-style Networking and use systemd
   networking.useDHCP = false;
+
+  # TODO: Remove this once the limit on duplicate cert issuances is reset
+  security.pki.certificateFiles =
+    lib.warn
+      ''
+        USING LETSENCRYPT STAGING CERTIFICATES
+        This is only for testing purposes and should not be used in production.
+      ''
+      [
+        (pkgs.fetchurl {
+          url = "https://letsencrypt.org/certs/staging/letsencrypt-stg-root-x1.pem";
+          hash = "sha256-Ol4RceX1wtQVItQ48iVgLkI2po+ynDI5mpWSGkroDnM=";
+        })
+        (pkgs.fetchurl {
+          url = "https://letsencrypt.org/certs/staging/letsencrypt-stg-root-x2.pem";
+          hash = "sha256-SXw2wbUMDa/zCHDVkIybl68pIj1VEMXmwklX0MxQL7g=";
+        })
+      ];
 
   services = {
     bpftune.enable = true;
