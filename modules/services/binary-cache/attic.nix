@@ -26,10 +26,10 @@ in
 
       # The API endpoint _must_ end with a slash (e.g., `https://domain.tld/attic/`
       # not `https://domain.tld/attic`).
-      api-endpoint = "https://cantcache.me/";
+      api-endpoint = "https://direct.${domain}/";
       allowed-hosts = [
-        "direct.cantcache.me"
-        "cantcache.me"
+        "direct.${domain}"
+        domain
       ];
 
       database.url = "postgresql://atticd@localhost:5432/attic";

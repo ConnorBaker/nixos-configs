@@ -7,6 +7,8 @@
 let
   inherit (config.services.binary-cache) domain;
   cloudflareCredentials = "caddy/${domain}/credentials.env";
+  inherit (lib.attrsets) genAttrs;
+  inherit (lib.trivial) const;
 in
 {
   networking.firewall = {
@@ -32,32 +34,44 @@ in
       admin off
     '';
 
-    virtualHosts.${domain} = {
-      extraConfig =
-        # Our TLS is done through Cloudflare
-        ''
-          tls {
-            dns cloudflare {env.CLOUDFLARE_DNS_API_TOKEN}
-            resolvers 1.1.1.1 1.0.0.1 2606:4700:4700::1111 2606:4700:4700::1001
-          }
-        ''
-        # Try to compress all responses so long as they're larger than the default 512 bytes,
-        # with a preference for zstd over gzip
-        + ''
-          encode zstd gzip {
-            match header Content-Type *
-          }
-        ''
-        # Use the reverse_proxy directive to forward requests to the backend server on port 5000
-        + ''
-          reverse_proxy :5000
-        '';
-      serverAliases = [ "direct.${domain}" ];
-    };
+    # Create different virtual hosts for each domain.
+    # It's important that we don't use aliases here, as we want to ensure that the domain is
+    # always set to the same value as the key in the virtualHosts attribute set.
+    # Cloudflare proxies the traffic to cantcache.me, but not to direct.cantcache.me,
+    # so we need to create a separate virtual host for the direct subdomain.
+    virtualHosts =
+      let
+        extraConfig =
+          # Our TLS is done through Cloudflare
+          ''
+            tls {
+              dns cloudflare {env.CLOUDFLARE_DNS_API_TOKEN}
+              resolvers 1.1.1.1 1.0.0.1 2606:4700:4700::1111 2606:4700:4700::1001
+            }
+          ''
+          # Try to compress all responses so long as they're larger than the default 512 bytes,
+          # with a preference for zstd over gzip
+          + ''
+            encode zstd gzip {
+              match header Content-Type *
+            }
+          ''
+          # Use the reverse_proxy directive to forward requests to the backend server on port 5000
+          + ''
+            reverse_proxy :5000
+          '';
+        domains = [
+          "direct.${domain}"
+          domain
+        ];
+        mkConfig = const { inherit extraConfig; };
+      in
+      genAttrs domains mkConfig;
   };
 
   # Must contain the following:
   # CLOUDFLARE_DNS_API_TOKEN=...
+  # NOTE: This token must have DNS:Edit and Zone:Read permissions.
   # Then, add an AAAA DNS record to Cloudflare with the public IPv6 address of the host
   sops.secrets.${cloudflareCredentials} = {
     owner = "caddy";
