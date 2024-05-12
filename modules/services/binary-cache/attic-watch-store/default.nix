@@ -26,7 +26,7 @@ in
       Type = "simple";
       ExecStart = "${pkgs.attic}/bin/attic watch-store cuda-server-push:cuda";
       Restart = "on-failure";
-      RestartSec = "30s";
+      RestartSec = "5s";
       StartLimitBurst = 3;
       User = user;
       Group = user;
