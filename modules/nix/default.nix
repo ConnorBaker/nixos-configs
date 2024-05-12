@@ -38,7 +38,7 @@ let
     hostName:
     lib.attrsets.recursiveUpdate {
       inherit hostName supportedFeatures;
-      maxJobs = 32;
+      maxJobs = 1;
       protocol = "ssh-ng";
       speedFactor = 8;
       sshKey = "/etc/ssh/id_nix_ed25519";
