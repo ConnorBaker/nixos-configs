@@ -95,10 +95,17 @@ in
         "recursive-nix"
         "verified-fetches"
       ];
-      extra-substituters = [ "https://cuda-maintainers.cachix.org" ];
-      extra-trusted-substituters = [ "https://cuda-maintainers.cachix.org" ];
+      extra-substituters = [
+        "https://cuda-maintainers.cachix.org"
+        "https://cantcache.me/cuda"
+      ];
+      extra-trusted-substituters = [
+        "https://cuda-maintainers.cachix.org"
+        "https://cantcache.me/cuda"
+      ];
       extra-trusted-public-keys = [
         "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
+        "cuda:NtbpAU7XGYlttrhCduqvpYKottCPdWVITWT+3nFVTBY="
       ];
       fsync-metadata = false;
       http-connections = 256;
