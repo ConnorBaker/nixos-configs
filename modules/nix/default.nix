@@ -12,6 +12,15 @@ let
     nixos-build01 = { };
     nixos-desktop = { };
     nixos-ext = { };
+    "eu.nixbuild.net" = {
+      maxJobs = 100;
+      speedFactor = 32;
+      sshUser = "root";
+      supportedFeatures = [
+        "benchmark"
+        "big-parallel"
+      ];
+    };
     ubuntu-orin = {
       maxJobs = 8;
       speedFactor = 1;
@@ -80,32 +89,21 @@ in
       connect-timeout = 30;
       experimental-features = [
         "auto-allocate-uids"
-        "ca-derivations"
         "cgroups"
-        "configurable-impure-env"
-        "dynamic-derivations"
-        "fetch-closure"
-        "fetch-tree"
         "flakes"
-        "git-hashing"
-        "mounted-ssh-store"
         "nix-command"
-        "no-url-literals"
-        "parse-toml-timestamps"
-        "recursive-nix"
-        "verified-fetches"
       ];
       extra-substituters = [
-        "https://cuda-maintainers.cachix.org"
         "https://cantcache.me/cuda"
+        "https://cuda-maintainers.cachix.org"
       ];
       extra-trusted-substituters = [
-        "https://cuda-maintainers.cachix.org"
         "https://cantcache.me/cuda"
+        "https://cuda-maintainers.cachix.org"
       ];
       extra-trusted-public-keys = [
-        "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
         "cuda:NtbpAU7XGYlttrhCduqvpYKottCPdWVITWT+3nFVTBY="
+        "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
       ];
       fsync-metadata = false;
       http-connections = 256;
@@ -123,9 +121,28 @@ in
     };
   };
 
-  programs.ssh.knownHosts = lib.attrsets.genAttrs (builtins.attrNames hostNameToConfig) (hostName: {
-    publicKeyFile = ../.. + "/devices/${hostName}/keys/ssh_host_ed25519_key.pub";
-  });
+  programs.ssh = {
+    extraConfig = ''
+      Host eu.nixbuild.net
+        PubkeyAcceptedKeyTypes ssh-ed25519
+        ServerAliveInterval 60
+        IPQoS throughput
+        IdentityFile /etc/ssh/id_nix_ed25519
+    '';
+    knownHosts =
+      let
+        localBuildRing = lib.attrsets.genAttrs (builtins.attrNames hostNameToConfig) (hostName: {
+          publicKeyFile = ../.. + "/devices/${hostName}/keys/ssh_host_ed25519_key.pub";
+        });
+      in
+      localBuildRing
+      // {
+        "eu.nixbuild.net" = {
+          hostNames = [ "eu.nixbuild.net" ];
+          publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPIQCZc54poJ8vqawd8TraNryQeJnvH1eLpIDgbiqymM";
+        };
+      };
+  };
 
   users.users = {
     nix = {
