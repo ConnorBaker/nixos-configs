@@ -5,6 +5,8 @@
   ...
 }:
 let
+  nixPrivateKey = "ssh/id_nix_ed25519";
+
   # Common configuration for all machines.
   # Maps host names to machine architecture.
   # hostNameToSystem :: AttrSet String (AttrSet String Any)
@@ -15,7 +17,6 @@ let
     "eu.nixbuild.net" = {
       maxJobs = 100;
       speedFactor = 32;
-      sshUser = "root";
       supportedFeatures = [
         "benchmark"
         "big-parallel"
@@ -35,7 +36,6 @@ let
   supportedFeatures = [
     "benchmark"
     "big-parallel"
-    "ca-derivations"
     "kvm"
     "nixos-test"
     "uid-range"
@@ -50,17 +50,12 @@ let
       maxJobs = 1;
       protocol = "ssh-ng";
       speedFactor = 8;
-      sshKey = "/etc/ssh/id_nix_ed25519";
-      sshUser = "nix";
+      sshKey = config.sops.secrets.${nixPrivateKey}.path;
       systems = [ "x86_64-linux" ];
     };
-  # A machine should not have itself as a remote builder.
-  irreflexive = hostName: _: hostName != config.networking.hostName;
 in
 {
-  imports = [ ./secrets.nix ];
-
-  # Must manually add ubuntu-hetzner because it is not in my Tailscale network.
+  # Must manually add ubuntu-hetzner because it is not in my Tailscale network and so DNS resolution fails.
   networking.hosts = {
     "65.21.10.91" = [ "ubuntu-hetzner" ];
     "2a01:4f9:3080:40c1::2" = [ "ubuntu-hetzner" ];
@@ -73,7 +68,8 @@ in
 
     buildMachines = lib.trivial.pipe hostNameToConfig [
       # AttrSet String (AttrSet String Any) -> AttrSet String (AttrSet String Any)
-      (lib.attrsets.filterAttrs irreflexive)
+      # A machine should not have itself as a remote builder.
+      (lib.attrsets.filterAttrs (hostName: _: hostName != config.networking.hostName))
       # AttrSet String (AttrSet String Any) -> AttrSet String (AttrSet String Any)
       (lib.attrsets.mapAttrs machineBoilerplate)
       # AttrSet String (AttrSet String Any) -> List (AttrSet String Any)
@@ -84,9 +80,9 @@ in
       accept-flake-config = true;
       allow-import-from-derivation = false;
       auto-allocate-uids = true;
-      auto-optimise-store = false;
+      auto-optimise-store = false; # We wipe them frequently enough we don't need the performance hit.
       builders-use-substitutes = true;
-      connect-timeout = 30;
+      connect-timeout = 15; # Don't wait forever for a remote builder to respond.
       experimental-features = [
         "auto-allocate-uids"
         "cgroups"
@@ -122,35 +118,23 @@ in
   };
 
   programs.ssh = {
-    extraConfig = ''
-      Host eu.nixbuild.net
+    extraConfig = lib.strings.concatMapStringsSep "\n" (hostName: ''
+      Match host ${hostName}
         PubkeyAcceptedKeyTypes ssh-ed25519
         ServerAliveInterval 60
         IPQoS throughput
-        IdentityFile /etc/ssh/id_nix_ed25519
-    '';
-    knownHosts =
-      let
-        localBuildRing = lib.attrsets.genAttrs (builtins.attrNames hostNameToConfig) (hostName: {
-          publicKeyFile = ../.. + "/devices/${hostName}/keys/ssh_host_ed25519_key.pub";
-        });
-      in
-      localBuildRing
-      // {
-        "eu.nixbuild.net" = {
-          hostNames = [ "eu.nixbuild.net" ];
-          publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPIQCZc54poJ8vqawd8TraNryQeJnvH1eLpIDgbiqymM";
-        };
-      };
+        IdentityFile ${config.sops.secrets.${nixPrivateKey}.path}
+    '') (lib.attrNames hostNameToConfig);
+    knownHosts = lib.attrsets.genAttrs (builtins.attrNames hostNameToConfig) (hostName: {
+      publicKeyFile = ../.. + "/devices/${hostName}/keys/ssh_host_ed25519_key.pub";
+    });
   };
 
-  users.users = {
-    nix = {
-      description = "Nix account";
-      extraGroups = [ "wheel" ];
-      isNormalUser = true;
-      openssh.authorizedKeys.keyFiles = [ ./keys/id_nix_ed25519.pub ];
-    };
-    root.openssh.authorizedKeys.keyFiles = [ ./keys/id_nix_ed25519.pub ];
+  sops.secrets.${nixPrivateKey} = {
+    mode = "0400";
+    path = "/etc/${nixPrivateKey}";
+    sopsFile = ./secrets.yaml;
   };
+
+  users.users.root.openssh.authorizedKeys.keyFiles = [ ./keys/id_nix_ed25519.pub ];
 }
