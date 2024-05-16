@@ -7,7 +7,17 @@ in
 {
   services.postgresql = {
     enable = true;
-    package = pkgs.postgresql_16_jit;
+    package =
+      let
+        package = pkgs.postgresql_16_jit;
+        defaultPackage = pkgs.postgresql;
+        pinnedIsAtLeastAsRecentAsDefault = lib.versionAtLeast package.version defaultPackage.version;
+      in
+      assert lib.asserts.assertMsg pinnedIsAtLeastAsRecentAsDefault ''
+        "The default version of postgresql (${defaultPackage.version}) is now newer than the pinned version
+        (${package.version}). Please update to use the default version.
+      '';
+      package;
 
     # Only available on localhost
     enableTCPIP = false;
