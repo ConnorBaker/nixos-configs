@@ -15,11 +15,17 @@
       url = "github:hercules-ci/flake-parts";
     };
 
-    flake-utils.url = "github:numtide/flake-utils";
-
     histodu = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:oxalica/histodu";
+    };
+
+    git-hooks-nix = {
+      inputs = {
+        nixpkgs-stable.follows = "";
+        nixpkgs.follows = "nixpkgs";
+      };
+      url = "github:cachix/git-hooks.nix";
     };
 
     impermanence.url = "github:nix-community/impermanence";
@@ -44,15 +50,6 @@
 
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     # nixpkgs.url = "github:ConnorBaker/nixpkgs/feat/nvidia-dcgm-prometheus-exporter-module";
-
-    pre-commit-hooks-nix = {
-      inputs = {
-        flake-utils.follows = "flake-utils";
-        nixpkgs-stable.follows = "";
-        nixpkgs.follows = "nixpkgs";
-      };
-      url = "github:cachix/pre-commit-hooks.nix";
-    };
 
     sops-nix = {
       inputs = {
@@ -93,7 +90,7 @@
             };
         }
         inputs.treefmt-nix.flakeModule
-        inputs.pre-commit-hooks-nix.flakeModule
+        inputs.git-hooks-nix.flakeModule
       ];
 
       perSystem =
