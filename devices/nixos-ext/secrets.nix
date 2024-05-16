@@ -1,39 +1,38 @@
+{ config, lib, ... }:
+let
+  # Named after their paths in secrets.yaml.
+  tsKey = "tailscale/tskey-reusable";
+
+  # Ensure that the user name is not changed.
+  hciUser =
+    let
+      inherit (config.users.users.hercules-ci-agent) name;
+      expectedName = "hercules-ci-agent";
+    in
+    assert lib.asserts.assertMsg (name == expectedName) "${expectedName} user name changed to ${name}!";
+    name;
+
+  tsSecrets.${tsKey}.path = "/etc/${tsKey}";
+  hciSecrets =
+    let
+      hciSecretPaths = builtins.map (relativeSecretPath: "${hciUser}/${relativeSecretPath}") [
+        "secrets/binary-caches.json"
+        "secrets/cluster-join-token.key"
+        "secretState/session.key"
+        "secrets/secrets.json"
+      ];
+    in
+    lib.attrsets.genAttrs hciSecretPaths (name: {
+      owner = hciUser;
+      mode = "0440";
+      path = "/var/lib/${name}";
+    });
+in
 {
   sops = {
     age.sshKeyPaths = [ "/persist/etc/ssh/ssh_host_ed25519_key" ];
     defaultSopsFile = ./secrets.yaml;
     gnupg.sshKeyPaths = [ ];
-    secrets =
-      let
-        # Named after their paths in secrets.yaml.
-        tsKey = "tailscale/tskey-reusable";
-        hciBinaryCaches = "hercules-ci-agent/secrets/binary-caches.json";
-        hciClusterKey = "hercules-ci-agent/secrets/cluster-join-token.key";
-        hciSessionKey = "hercules-ci-agent/secretState/session.key";
-        hciSecrets = "hercules-ci-agent/secrets/secrets.json";
-      in
-      {
-        ${tsKey}.path = "/etc/${tsKey}";
-        ${hciBinaryCaches} = {
-          owner = "hercules-ci-agent";
-          mode = "0440";
-          path = "/var/lib/${hciBinaryCaches}";
-        };
-        ${hciClusterKey} = {
-          owner = "hercules-ci-agent";
-          mode = "0440";
-          path = "/var/lib/${hciClusterKey}";
-        };
-        ${hciSessionKey} = {
-          owner = "hercules-ci-agent";
-          mode = "0440";
-          path = "/var/lib/${hciSessionKey}";
-        };
-        ${hciSecrets} = {
-          owner = "hercules-ci-agent";
-          mode = "0440";
-          path = "/var/lib/${hciSecrets}";
-        };
-      };
+    secrets = tsSecrets // hciSecrets;
   };
 }

@@ -31,10 +31,6 @@
     ../../modules/services/openssh.nix
     ../../modules/services/tailscale.nix
 
-    # Configure programs
-    ../../modules/programs/git.nix
-    ../../modules/programs/htop.nix
-
     # Users
     ../../users/connorbaker.nix
   ];

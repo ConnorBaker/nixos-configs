@@ -36,11 +36,6 @@
     # ../../modules/services/monitoring.nix
     # ./monitoring.nix
 
-    # Configure programs
-    ../../modules/programs/git.nix
-    ../../modules/programs/htop.nix
-    ../../modules/programs/nix-ld.nix
-
     # Users
     ../../users/connorbaker.nix
     ./packages.nix

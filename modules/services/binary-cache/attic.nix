@@ -2,7 +2,8 @@
 let
   inherit (config.services.binary-cache) domain;
   # Named after their paths in secrets.yaml.
-  atticdCredentials = "atticd/${domain}/credentials.env";
+  user = "atticd";
+  atticdCredentials = "${user}/${domain}/credentials.env";
 in
 {
   environment.systemPackages = [ pkgs.attic ];
@@ -10,7 +11,7 @@ in
   # NOTE: File should have:
   # - ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64
   sops.secrets.${atticdCredentials} = {
-    owner = "atticd";
+    owner = user;
     mode = "0440";
     path = "/var/lib/${atticdCredentials}";
     sopsFile = ./secrets.yaml;
@@ -32,7 +33,7 @@ in
         domain
       ];
 
-      database.url = "postgresql://atticd@localhost:5432/attic";
+      database.url = "postgresql://${user}@localhost:5432/attic";
 
       # Our settings are slightly larger than upstream as we prefer larger chunks.
       chunking =
@@ -55,7 +56,7 @@ in
       # Use local storage
       storage = {
         type = "local";
-        path = "/var/lib/atticd/storage";
+        path = "/var/lib/${user}/storage";
       };
     };
   };
@@ -75,11 +76,11 @@ in
 
   # TODO: The module should handle this for us.
   users = {
-    groups.atticd = { };
-    users.atticd = {
-      description = "atticd user";
-      group = "atticd";
-      home = "/var/lib/atticd";
+    groups.${user} = { };
+    users.${user} = {
+      description = "${user} user";
+      group = user;
+      home = "/var/lib/${user}";
       isSystemUser = true;
     };
   };

@@ -6,8 +6,16 @@
 }:
 let
   inherit (config.services.binary-cache) domain;
-  cloudflareCredentials = "caddy/${domain}/cloudflareCredentials.env";
-  zerosslCredentials = "caddy/${domain}/zerosslCredentials.env";
+  user =
+    let
+      inherit (config.users.users.caddy) name;
+      expectedName = "caddy";
+    in
+    assert lib.asserts.assertMsg (name == expectedName) "${expectedName} user name changed to ${name}!";
+    name;
+
+  cloudflareCredentials = "${user}/${domain}/cloudflareCredentials.env";
+  zerosslCredentials = "${user}/${domain}/zerosslCredentials.env";
   inherit (lib.attrsets) genAttrs;
   inherit (lib.trivial) const;
 in
@@ -78,7 +86,7 @@ in
     # NOTE: This token must have DNS:Edit and Zone:Read permissions.
     # Then, add an AAAA DNS record to Cloudflare with the public IPv6 address of the host
     ${cloudflareCredentials} = {
-      owner = "caddy";
+      owner = user;
       mode = "0440";
       path = "/var/lib/${cloudflareCredentials}";
       sopsFile = ./secrets.yaml;
@@ -87,7 +95,7 @@ in
     # Must contain the following:
     # ZEROSSL_API_KEY=...
     ${zerosslCredentials} = {
-      owner = "caddy";
+      owner = user;
       mode = "0440";
       path = "/var/lib/${zerosslCredentials}";
       sopsFile = ./secrets.yaml;
@@ -100,9 +108,9 @@ in
     # execute permissions so it can be accessed by the caddy user
     # TODO: This should be handled for us -- why is caddy creating nested directories without the executable bit?
     preStart = ''
-      mkdir -p /var/lib/caddy/.local/share/caddy
-      chown -R caddy:caddy /var/lib/caddy
-      chmod -R 700 /var/lib/caddy
+      mkdir -p /var/lib/${user}/.local/share/${user}
+      chown -R ${user}:${user} /var/lib/${user}
+      chmod -R 700 /var/lib/${user}
     '';
     serviceConfig.EnvironmentFile = [
       config.sops.secrets.${cloudflareCredentials}.path

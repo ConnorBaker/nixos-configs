@@ -1,6 +1,8 @@
 { lib, pkgs, ... }:
 let
   inherit (lib.modules) mkForce;
+  atticDbName = "attic";
+  atticDbUser = "atticd";
 in
 {
   services.postgresql = {
@@ -11,18 +13,18 @@ in
     enableTCPIP = false;
     enableJIT = true;
 
-    ensureDatabases = [ "attic" ];
-    ensureUsers = [ { name = "atticd"; } ];
+    ensureDatabases = [ atticDbName ];
+    ensureUsers = [ { name = atticDbUser; } ];
 
     # TODO: We should be able to cut this down to the minimum necessary
     authentication = ''
       # Allow the attic user to access the database
       #
       # TYPE  DATABASE        USER            ADDRESS                 METHOD
-      local   attic           atticd                                  trust
-      host    attic           atticd          127.0.0.1/32            trust
-      host    attic           atticd          ::1/128                 trust
-      host    attic           atticd          localhost               trust
+      local   ${atticDbName}  ${atticDbUser}                          trust
+      host    ${atticDbName}  ${atticDbUser}  127.0.0.1/32            trust
+      host    ${atticDbName}  ${atticDbUser}  ::1/128                 trust
+      host    ${atticDbName}  ${atticDbUser}  localhost               trust
     '';
 
     settings = {
@@ -55,11 +57,11 @@ in
   systemd.services.postgresql.postStart = lib.mkAfter (
     # Give the ability for atticd to create tables in the public schema
     ''
-      $PSQL -tAc 'GRANT ALL ON SCHEMA public TO "atticd"'
+      $PSQL -tAc 'GRANT ALL ON SCHEMA public TO "${atticDbUser}"'
     ''
     # Make atticd the owner of the database
     + ''
-      $PSQL -tAc 'ALTER DATABASE "attic" OWNER TO "atticd"'
+      $PSQL -tAc 'ALTER DATABASE "${atticDbName}" OWNER TO "${atticDbUser}"'
     ''
   );
 }
