@@ -64,7 +64,10 @@ in
           # with a preference for zstd over gzip
           + ''
             encode zstd gzip {
-              match header Content-Type *
+              match {
+                header Content-Type text/*
+                header Content-Type application/x-nix-nar
+              }
             }
           ''
           # Use the reverse_proxy directive to forward requests to the backend server on port 5000
