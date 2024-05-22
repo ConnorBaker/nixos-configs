@@ -21,6 +21,10 @@ let
         "benchmark"
         "big-parallel"
       ];
+      systems = [
+        "aarch64-linux"
+        "x86_64-linux"
+      ];
     };
     ubuntu-orin = {
       maxJobs = 8;
