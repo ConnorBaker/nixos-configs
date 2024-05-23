@@ -14,28 +14,28 @@ let
     nixos-build01 = { };
     nixos-desktop = { };
     nixos-ext = { };
-    "eu.nixbuild.net" = {
-      maxJobs = 100;
-      speedFactor = 32;
-      supportedFeatures = [
-        "benchmark"
-        "big-parallel"
-      ];
-      systems = [
-        "aarch64-linux"
-        "x86_64-linux"
-      ];
-    };
-    ubuntu-orin = {
-      maxJobs = 8;
-      speedFactor = 1;
-      systems = [ "aarch64-linux" ];
-    };
-    ubuntu-hetzner = {
-      maxJobs = 40;
-      speedFactor = 16;
-      systems = [ "aarch64-linux" ];
-    };
+    # "eu.nixbuild.net" = {
+    #   maxJobs = 100;
+    #   speedFactor = 32;
+    #   supportedFeatures = [
+    #     "benchmark"
+    #     "big-parallel"
+    #   ];
+    #   systems = [
+    #     "aarch64-linux"
+    #     "x86_64-linux"
+    #   ];
+    # };
+    # ubuntu-orin = {
+    #   maxJobs = 8;
+    #   speedFactor = 1;
+    #   systems = [ "aarch64-linux" ];
+    # };
+    # ubuntu-hetzner = {
+    #   maxJobs = 40;
+    #   speedFactor = 16;
+    #   systems = [ "aarch64-linux" ];
+    # };
   };
   supportedFeatures = [
     "benchmark"
