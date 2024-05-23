@@ -11,9 +11,17 @@ let
   # Maps host names to machine architecture.
   # hostNameToSystem :: AttrSet String (AttrSet String Any)
   hostNameToConfig = {
-    nixos-build01 = { };
+    # NixOS BUILD01 can build anything, but only two at a time.
+    nixos-build01 = {
+      maxJobs = 2;
+    };
+    # NixOS desktop can build anything, but only one at a time (since it runs many other services).
     nixos-desktop = { };
-    nixos-ext = { };
+    # NixOS EXT builds only small jobs, but can build 32 at a time.
+    nixos-ext = {
+      maxJobs = 32;
+      supportedFeatures = lib.lists.filter (feature: feature != "big-parallel") supportedFeatures;
+    };
     # "eu.nixbuild.net" = {
     #   maxJobs = 100;
     #   speedFactor = 32;
