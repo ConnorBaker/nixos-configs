@@ -51,7 +51,7 @@ let
     hostName:
     lib.attrsets.recursiveUpdate {
       inherit hostName supportedFeatures;
-      maxJobs = 2;
+      maxJobs = 1;
       protocol = "ssh-ng";
       speedFactor = 8;
       sshKey = config.sops.secrets.${nixPrivateKey}.path;
