@@ -11,17 +11,9 @@ let
   # Maps host names to machine architecture.
   # hostNameToSystem :: AttrSet String (AttrSet String Any)
   hostNameToConfig = {
-    # NixOS BUILD01 can build anything, but only two at a time.
-    nixos-build01 = {
-      maxJobs = 2;
-    };
-    # NixOS desktop can build anything, but only one at a time (since it runs many other services).
+    nixos-build01 = { };
     nixos-desktop = { };
-    # NixOS EXT builds only small jobs, but can build 32 at a time.
-    nixos-ext = {
-      maxJobs = 32;
-      supportedFeatures = lib.lists.filter (feature: feature != "big-parallel") supportedFeatures;
-    };
+    nixos-ext = { };
     # "eu.nixbuild.net" = {
     #   maxJobs = 100;
     #   speedFactor = 32;
@@ -59,7 +51,7 @@ let
     hostName:
     lib.attrsets.recursiveUpdate {
       inherit hostName supportedFeatures;
-      maxJobs = 1;
+      maxJobs = 2;
       protocol = "ssh-ng";
       speedFactor = 8;
       sshKey = config.sops.secrets.${nixPrivateKey}.path;
