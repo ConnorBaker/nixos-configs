@@ -50,8 +50,8 @@ in
           max-size = 1 * MB;
         };
 
-      # Use ZSTD for compression
-      compression.type = "zstd";
+      # Let the filesystem handle compression.
+      compression.type = "none";
 
       # Use local storage
       storage = {
