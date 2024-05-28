@@ -45,13 +45,16 @@ in
       max_wal_senders = 0;
       shared_buffers = "4GB";
       synchronous_commit = "off";
-      wal_compression = "zstd";
+      wal_compression = "off";  # Let ZFS handle compression
       wal_level = "minimal";
       work_mem = "32MB";
 
       # Not helpful on CoW filesystems
       wal_init_zero = "off";
       wal_recycle = "off";
+
+      # Not helpful on ZFS
+      full_page_writes = "off";
 
       # logging
       log_connections = true;
