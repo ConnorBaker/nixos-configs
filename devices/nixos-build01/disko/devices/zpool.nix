@@ -16,7 +16,6 @@ let
       compression = "off"; # Usually zstd, but we want speed
       dedup = "off";
       dnodesize = "auto";
-      logbias = "throughput";
       normalization = "formD";
       redundant_metadata = "none";
       sync = "disabled"; # Don't wait for data to be written to disk
