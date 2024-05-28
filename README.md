@@ -78,7 +78,7 @@ attic login cuda-server-push https://direct.cantcache.me <cuda-admin token>
 Create the cache with
 
 ```console
-attic cache create cuda-server-push:cuda --private
+attic cache create cuda-server-push:cuda
 ```
 
 Create a token with
