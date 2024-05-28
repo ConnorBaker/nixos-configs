@@ -71,8 +71,13 @@ Create a builder token (hereafter `cuda-builder`) with
 
 ```console
 sudo atticd-atticadm make-token --sub cuda-builder --validity 1y \
+  --pull builder-cache \
   --push builder-cache
 ```
+
+> \[!NOTE\]
+>
+> The `pull` permission is required for the builder token to be able to successfully push to the cache.
 
 Create a user token (hereafter `cuda-user`) with
 
