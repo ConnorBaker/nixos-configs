@@ -39,7 +39,20 @@ Configuration for my NixOS machines.
 
 ## Binary caches
 
-We use two server names, with a cache on each: one for pushing and one for pulling. Since they're backed by the same global cache, we can use the same host for both. However, we need to use different server names to disambiguate the caches because they use different subdomains.
+> \[!NOTE\]
+>
+> To delete everything:
+>
+> ```console
+> sudo systemctl stop atticd.service caddy.service postgresql.service
+> sudo rm -rf /var/log/caddy /var/lib/{atticd,caddy,postgresql}
+> ```
+
+> \[!IMPORTANT\]
+>
+> Caddy provisions a certificate for the domain, so be aware you will lose that and frequent re-creations will cause Let's Encrypt to rate limit you.
+
+### Provision tokens
 
 Create an admin token (hereafter `cuda-admin`) with
 
@@ -54,106 +67,87 @@ sudo atticd-atticadm make-token --sub cuda-admin --validity 1y \
   --destroy-cache "*"
 ```
 
-> \[!NOTE\]
->
-> To delete everything:
->
-> ```console
-> sudo systemctl stop atticd.service caddy.service postgresql.service
-> sudo rm -rf /var/log/caddy /var/lib/{atticd,caddy,postgresql}
-> ```
->
-> IMPORTANT: Caddy provisions a certificate for the domain, so be aware you will lose that and Let's Encrypt will rate limit you.
-
-### Create `cuda-server-push` cache
-
-This cache is used for pushing to the global cache, typically by CI or builders. We use the `direct` subdomain because it is not proxied by Cloudflare, allowing us to upload files larger than 100MB.
-
-Log in to the server with
-
-```console
-attic login cuda-server-push https://direct.cantcache.me <cuda-admin token>
-```
-
-Create the cache with
-
-```console
-attic cache create cuda-server-push:cuda
-```
-
-Create a token with
+Create a builder token (hereafter `cuda-builder`) with
 
 ```console
 sudo atticd-atticadm make-token --sub cuda-builder --validity 1y \
   --push cuda
 ```
 
-Log in with the token with
-
-```console
-attic login cuda-server-push https://direct.cantcache.me <cuda-builder token>
-```
-
-> \[!NOTE\]
->
-> It is important to log in afterwards with the limited token to overwrite the entry in `~/.config/attic/config.toml` with the limited token. If we do not, the previous token used, the admin token, will remain in effect.
-
-### Push to `cuda-server-push`
-
-Push to the cache with
-
-```console
-attic push cuda-server-push:cuda <store paths>
-```
-
-Alternatively, run and push new store paths with
-
-```console
-attic watch-store cuda-server-push:cuda
-```
-
-### Create `cuda-server`
-
-This cache is used for pulling from the global cache, typically by users. We use the proxied domain to benefit from Cloudflare's caching.
-
-Log in to the server with
-
-```console
-attic login cuda-server https://cantcache.me <cuda-admin token>
-```
-
-Create the cache with
-
-```console
-attic cache create cuda-server:cuda --public
-```
-
-Create a token with
+Create a user token (hereafter `cuda-user`) with
 
 ```console
 sudo atticd-atticadm make-token --sub cuda-user --validity 1y \
   --pull cuda
 ```
 
+> \[!NOTE\]
+>
+> After creating a cache with the `cuda-admin` token, it is import to log in with the limited token to overwrite the entry in `~/.config/attic/config.toml`. If we do not, the previous token used, the admin token, will remain in effect.
+
+### Create `cuda-builder` cache
+
+This cache is used for pushing to the global cache, typically by CI or builders. We use the `direct` subdomain because it is not proxied by Cloudflare, allowing us to upload files larger than 100MB.
+
+Log in to the server with
+
+```console
+attic login cuda-builder https://direct.cantcache.me <cuda-admin token>
+```
+
+Create the cache with
+
+```console
+attic cache create cuda-builder:builder-cache
+```
+
 Log in with the token with
 
 ```console
-attic login cuda-server https://cantcache.me <cuda-user token>
+attic login cuda-builder https://direct.cantcache.me <cuda-builder token>
+```
+
+### Create `cuda-user` cache
+
+This cache is used by end-users to pull from the global cache -- however, they will use the `cantcache` subdomain, which is proxied by Cloudflare.
+
+Log in to the server with
+
+```console
+attic login cuda-user https://cantcache.me <cuda-admin token>
+```
+
+Create the cache with
+
+```console
+attic cache create cuda-user:cuda --public
 ```
 
 Get the public key and binary cache endpoint for the cache with
 
 ```console
-attic cache info cuda-server:cuda
+attic cache info cuda-user:cuda
 ```
 
-> \[!NOTE\]
->
-> It is important to log in afterwards with the limited token to overwrite the entry in `~/.config/attic/config.toml` with the limited token. If we do not, the previous token used, the admin token, will remain in effect.
+Log in with the token with
 
-> \[!NOTE\]
->
-> Because the cache is public, we don't really need to generate a token for it. However, it is useful for interacting with the cache through the attic CLI.
+```console
+attic login cuda-user https://cantcache.me <cuda-builder token>
+```
+
+### Push to `cuda-builder`
+
+Assuming attic is configured to use the `direct` subdomain, push to the cache with
+
+```console
+attic push cuda-builder:builder-cache <store paths>
+```
+
+Alternatively, run and push new store paths with
+
+```console
+attic watch-store cuda-builder:builder-cache
+```
 
 ### Use `cuda-server`
 
@@ -167,7 +161,7 @@ edit your `~/.config/nix/nix.conf` to include
 
 ```conf
 substituters = https://cantcache.me/cuda https://cache.nixos.org
-trusted-public-keys = cuda:NtbpAU7XGYlttrhCduqvpYKottCPdWVITWT+3nFVTBY= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+trusted-public-keys = cuda:hfPDBopnLbzD3vux+Eu6yJNyKwG167E87s1vZzKtCkQ= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
 ```
 
 ## `nixos-desktop`

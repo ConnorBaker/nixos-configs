@@ -24,7 +24,7 @@ in
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
       Type = "simple";
-      ExecStart = "${pkgs.attic}/bin/attic watch-store cuda-server-push:cuda";
+      ExecStart = "${pkgs.attic}/bin/attic watch-store cuda-builder:builder-cache";
       Restart = "on-failure";
       RestartSec = "5s";
       StartLimitBurst = 3;

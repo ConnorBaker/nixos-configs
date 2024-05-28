@@ -86,7 +86,7 @@ in
       auto-allocate-uids = true;
       auto-optimise-store = false; # We wipe them frequently enough we don't need the performance hit.
       builders-use-substitutes = true;
-      connect-timeout = 15; # Don't wait forever for a remote builder to respond.
+      connect-timeout = 5; # Don't wait forever for a remote builder to respond.
       experimental-features = [
         "auto-allocate-uids"
         "cgroups"
@@ -102,7 +102,7 @@ in
         "https://cuda-maintainers.cachix.org"
       ];
       extra-trusted-public-keys = [
-        "cuda:NtbpAU7XGYlttrhCduqvpYKottCPdWVITWT+3nFVTBY="
+        "cuda:hfPDBopnLbzD3vux+Eu6yJNyKwG167E87s1vZzKtCkQ="
         "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
       ];
       fallback = true;
