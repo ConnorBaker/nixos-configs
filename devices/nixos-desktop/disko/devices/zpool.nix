@@ -8,15 +8,19 @@ let
       autotrim = "on";
     };
     rootFsOptions = {
+      "com.sun:auto-snapshot" = "false";
       acltype = "posixacl";
       atime = "off";
       canmount = "off";
-      compression = "zstd";
-      checksum = "blake3";
+      checksum = "off"; # blake3 is the best, but we want speed
+      compression = "off"; # Usually zstd, but we want speed
+      dedup = "off";
       dnodesize = "auto";
+      logbias = "throughput";
       normalization = "formD";
+      redundant_metadata = "none";
+      sync = "disabled"; # Don't wait for data to be written to disk
       xattr = "sa";
-      "com.sun:auto-snapshot" = "false";
     };
   };
 

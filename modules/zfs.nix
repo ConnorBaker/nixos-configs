@@ -10,6 +10,8 @@ let
 in
 {
   boot = {
+    # TODO: Investigate potential tuneables in
+    # https://github.com/openzfs/zfs/issues/8381#issuecomment-1374268868
     extraModprobeConfig = ''
       # Enable block cloning for ZFS.
       options zfs zfs_bclone_enabled=1
