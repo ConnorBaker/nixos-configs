@@ -210,6 +210,22 @@ nix run "github:nix-community/nixos-anywhere/242444d228636b1f0e89d3681f04a75254c
   --extra-files /Volumes/nixos-build01
 ```
 
+## `nixos-cantcache-me`
+
+Deploy `nixos-cantcache-me` with:
+
+```bash
+nix run "github:nix-community/nixos-anywhere/242444d228636b1f0e89d3681f04a75254c29f66" --builders '' -- \
+  root@65.109.152.76 \
+  -i ~/.ssh/id_ed25519 \
+  --kexec https://gh-v6.com/nix-community/nixos-images/releases/download/nixos-unstable/nixos-kexec-installer-noninteractive-x86_64-linux.tar.gz \
+  --flake .#nixos-cantcache-me \
+  --build-on-remote \
+  --print-build-logs \
+  --debug \
+  --extra-files /Volumes/nixos-cantcache-me
+```
+
 ## `nixos-ext`
 
 Deploy `nixos-ext` with:

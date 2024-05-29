@@ -45,7 +45,7 @@ in
       max_wal_senders = 0;
       shared_buffers = "4GB";
       synchronous_commit = "off";
-      wal_compression = "off";  # Let ZFS handle compression
+      wal_compression = "off"; # Let ZFS handle compression
       wal_level = "minimal";
       work_mem = "32MB";
 

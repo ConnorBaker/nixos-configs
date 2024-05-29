@@ -105,6 +105,7 @@
       # Configure DHCP to get dynamic addresses, but accept only those coming from the primary router on the network.
       # This avoids having a NetGear repeater blackhole all your traffic.
       # NOTE: Upstream to Nixpkgs? Missing this option.
+      # TODO: Set this instead as a gateway option.
       extraConfig = ''
         [DHCPv4]
         AllowList=192.168.1.1
