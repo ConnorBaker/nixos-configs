@@ -40,7 +40,7 @@
       IPv6AcceptRA = false;
     };
     addresses = [
-      { addressConfig.Address = "65.109.152.76/32"; }
+      { addressConfig.Address = "65.109.152.76/24"; }
       { addressConfig.Address = "2a01:4f9:3080:5652::2/64"; }
     ];
     routes = [
