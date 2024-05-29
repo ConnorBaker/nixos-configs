@@ -166,7 +166,7 @@ edit your `~/.config/nix/nix.conf` to include
 
 ```conf
 substituters = https://cantcache.me/cuda https://cache.nixos.org
-trusted-public-keys = cuda:hfPDBopnLbzD3vux+Eu6yJNyKwG167E87s1vZzKtCkQ= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+trusted-public-keys = cuda:vNqURds2iPt4ipOebtuoEP1zDfr2nYHJDlSYzml4gU8= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
 ```
 
 ## `nixos-desktop`

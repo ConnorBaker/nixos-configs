@@ -102,7 +102,7 @@ in
         "https://cuda-maintainers.cachix.org"
       ];
       extra-trusted-public-keys = [
-        "cuda:hfPDBopnLbzD3vux+Eu6yJNyKwG167E87s1vZzKtCkQ="
+        "cuda:vNqURds2iPt4ipOebtuoEP1zDfr2nYHJDlSYzml4gU8="
         "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
       ];
       fallback = true;

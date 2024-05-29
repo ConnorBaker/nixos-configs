@@ -50,18 +50,6 @@ let
         mountpoint = "/home";
       };
 
-      atticd = {
-        type = "zfs_fs";
-        mountpoint = "/var/lib/atticd";
-        options.recordsize = "8K";
-      };
-
-      postgres = {
-        type = "zfs_fs";
-        mountpoint = "/var/lib/postgresql";
-        options.recordsize = "16K";
-      };
-
       # Persist hosts things like /etc/ssh/ssh_host_* keys, /var/lib and /var/log.
       persist = {
         type = "zfs_fs";

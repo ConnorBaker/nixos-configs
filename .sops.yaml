@@ -17,7 +17,6 @@ creation_rules:
     key_groups:
       - age:
           - *nixos-cantcache-me
-          - *nixos-desktop
   - path_regex: modules/services/binary-cache/attic-watch-store/secrets\.yaml$
     key_groups:
       - age:
