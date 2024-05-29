@@ -37,6 +37,9 @@
     extraConfig = lib.modules.mkForce "";
     networkConfig = {
       DHCP = lib.modules.mkForce false;
+      # Hetzner doesn't support DNSSEC
+      # https://docs.hetzner.com/dns-console/dns/general/dnssec/#dnssec-and-hetzner-online
+      DNSSEC = lib.modules.mkForce "allow-downgrade";
       IPv6AcceptRA = false;
     };
     addresses = [
