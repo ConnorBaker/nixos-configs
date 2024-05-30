@@ -40,6 +40,7 @@
       ++ [
         pkgs.bat
         pkgs.histodu
+        pkgs.hyperfine
         pkgs.ripgrep
       ]
       # Utilities
