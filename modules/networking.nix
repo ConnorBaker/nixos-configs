@@ -135,11 +135,9 @@
       # https://wiki.archlinux.org/title/Systemd-networkd#Speeding_up_TCP_slow-start
       routes = [
         {
-          routeConfig = {
-            Gateway = "_dhcp4";
-            InitialCongestionWindow = 50;
-            InitialAdvertisedReceiveWindow = 50;
-          };
+          Gateway = "_dhcp4";
+          InitialCongestionWindow = 50;
+          InitialAdvertisedReceiveWindow = 50;
         }
       ];
     };

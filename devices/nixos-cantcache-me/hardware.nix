@@ -43,18 +43,16 @@
       IPv6AcceptRA = false;
     };
     addresses = [
-      { addressConfig.Address = "65.109.152.76/24"; }
-      { addressConfig.Address = "2a01:4f9:3080:5652::2/64"; }
+      { Address = "65.109.152.76/24"; }
+      { Address = "2a01:4f9:3080:5652::2/64"; }
     ];
     routes = [
-      { routeConfig.Destination = "65.109.152.1"; }
+      { Destination = "65.109.152.1"; }
       {
-        routeConfig = {
-          Gateway = "65.109.152.1";
-          GatewayOnLink = true;
-        };
+        Gateway = "65.109.152.1";
+        GatewayOnLink = true;
       }
-      { routeConfig.Gateway = "fe80::1"; }
+      { Gateway = "fe80::1"; }
     ];
   };
 }
