@@ -3,7 +3,7 @@
   hardware = {
     nvidia = {
       nvidiaPersistenced = false;
-      package = config.boot.kernelPackages.nvidiaPackages.latest;
+      package = config.boot.kernelPackages.nvidiaPackages.beta;
       powerManagement.enable = true;
     };
     opengl.enable = true;
