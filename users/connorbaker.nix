@@ -10,6 +10,10 @@
     ../modules/programs/htop.nix
     ../modules/programs/nix-ld.nix
   ];
+  networking.firewall = {
+    allowedTCPPorts = [ 6379 8265 ];
+    allowedUDPPorts = [ 6379 8265 ];
+  };
   programs.git.config = lib.attrsets.optionalAttrs config.programs.git.enable {
     init.defaultBranch = "main";
     user.name = "Connor Baker";
@@ -27,6 +31,7 @@
         ../devices/nixos-desktop/keys/ssh_host_ed25519_key.pub
         ../devices/nixos-ext/keys/ssh_host_ed25519_key.pub
         ../devices/nixos-orin/keys/ssh_host_ed25519_key.pub
+        ../devices/ubuntu-azure-build01/keys/ssh_host_ed25519_key.pub
         ../devices/ubuntu-hetzner/keys/ssh_host_ed25519_key.pub
         ../devices/ubuntu-orin/keys/ssh_host_ed25519_key.pub
       ];
@@ -50,6 +55,7 @@
         pkgs.git
         pkgs.htop
         pkgs.jq
+        pkgs.micromamba
         pkgs.tmux
         pkgs.vim
       ]
