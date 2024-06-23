@@ -46,11 +46,12 @@ in
           "RAY_ADDRESS=${RAY_ADDRESS}"
           "RAY_ENABLE_WINDOWS_OR_OSX_CLUSTER=1"
         ];
+        TimeoutStartSec = "infinity";
         ExecStart =
           let
             python-env = python311.withPackages (_: [ ray ]);
           in
-          "${python-env}/bin/ray start --address=${RAY_ADDRESS}";
+          "${python-env}/bin/ray start --address=${RAY_ADDRESS} --block";
       };
   };
 }
