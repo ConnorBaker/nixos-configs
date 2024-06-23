@@ -50,7 +50,7 @@ in
           let
             python-env = python311.withPackages (_: [ ray ]);
           in
-          "${python-env}/bin/ray start --address=${RAY_ADDRESS} --block";
+          "${python-env}/bin/ray start --address=${RAY_ADDRESS}";
       };
   };
 }
