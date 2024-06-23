@@ -9,11 +9,8 @@
     ../modules/programs/git.nix
     ../modules/programs/htop.nix
     ../modules/programs/nix-ld.nix
+    ../modules/services/ray.nix
   ];
-  networking.firewall = {
-    allowedTCPPorts = [ 6379 8265 ];
-    allowedUDPPorts = [ 6379 8265 ];
-  };
   programs.git.config = lib.attrsets.optionalAttrs config.programs.git.enable {
     init.defaultBranch = "main";
     user.name = "Connor Baker";
