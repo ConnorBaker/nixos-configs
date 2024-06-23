@@ -1,6 +1,11 @@
-{ lib, pkgs, ... }:
 {
-  hardware.nvidia-container-toolkit.enable = true;
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+{
+  hardware.nvidia-container-toolkit.enable = lib.lists.elem "nvidia" config.services.xserver.videoDrivers;
   virtualisation = {
     containers.enable = true;
     docker = {
