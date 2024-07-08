@@ -85,8 +85,11 @@ in
         inherit (ethernetCfg.linkConfig) MACAddress;
       in
       {
-        # Match on ethernet interfaces
-        matchConfig.Name = "en*";
+        # Match on ethernet interfaces and MAC address
+        matchConfig = {
+          inherit MACAddress;
+          Name = "en*";
+        };
 
         # Configure DHCP to get dynamic addresses, but accept only those coming from the primary router on the network.
         # This avoids having a NetGear repeater blackhole all your traffic.
@@ -121,8 +124,13 @@ in
         routes = [
           {
             inherit Gateway;
-            Destination = Gateway;
             GatewayOnLink = true;
+          }
+          {
+            Destination = Gateway;
+          }
+          {
+            inherit Gateway;
             InitialCongestionWindow = 50;
             InitialAdvertisedReceiveWindow = 50;
           }
