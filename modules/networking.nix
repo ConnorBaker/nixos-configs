@@ -126,9 +126,7 @@ in
             inherit Gateway;
             GatewayOnLink = true;
           }
-          {
-            Destination = Gateway;
-          }
+          { Destination = Gateway; }
           {
             inherit Gateway;
             InitialCongestionWindow = 50;
