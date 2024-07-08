@@ -63,6 +63,9 @@ in
   networking.hosts = {
     "65.21.10.91" = [ "ubuntu-hetzner" ];
     "2a01:4f9:3080:40c1::2" = [ "ubuntu-hetzner" ];
+    "192.168.1.12" = [ "nixos-desktop" ];
+    "192.168.1.13" = [ "nixos-ext" ];
+    "192.168.1.14" = [ "nixos-build01" ];
     "192.168.1.204" = [ "ubuntu-orin" ];
   };
 
