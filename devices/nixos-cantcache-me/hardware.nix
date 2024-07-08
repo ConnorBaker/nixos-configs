@@ -33,26 +33,30 @@
     hostPlatform.system = "x86_64-linux";
   };
 
-  systemd.network.networks."10-ethernet" = {
-    extraConfig = lib.modules.mkForce "";
-    networkConfig = {
-      DHCP = lib.modules.mkForce false;
-      # Hetzner doesn't support DNSSEC
-      # https://docs.hetzner.com/dns-console/dns/general/dnssec/#dnssec-and-hetzner-online
-      DNSSEC = lib.modules.mkForce "allow-downgrade";
-      IPv6AcceptRA = false;
+  systemd.network.networks."10-ethernet" =
+    let
+      # When we have multiple addresses, we need to configure a bit more manually.
+      Address = "65.109.152.76";
+      Gateway = "65.109.152.1";
+      AddressV6 = "2a01:4f9:3080:5652::2";
+      GatewayV6 = "fe80::1";
+    in
+    {
+      # Normal networking settings
+      linkConfig.MACAddress = "90:e2:ba:ec:42:a2";
+      networkConfig = {
+        inherit Address Gateway;
+      };
+
+      # Hetzner-specific settings
+      networkConfig = {
+        DHCP = lib.modules.mkForce false;
+        IPv6AcceptRA = false;
+      };
+      addresses = [
+        { Address = "${Address}/24"; }
+        { Address = "${AddressV6}/64"; }
+      ];
+      routes = [ { Gateway = GatewayV6; } ];
     };
-    addresses = [
-      { Address = "65.109.152.76/24"; }
-      { Address = "2a01:4f9:3080:5652::2/64"; }
-    ];
-    routes = [
-      { Destination = "65.109.152.1"; }
-      {
-        Gateway = "65.109.152.1";
-        GatewayOnLink = true;
-      }
-      { Gateway = "fe80::1"; }
-    ];
-  };
 }

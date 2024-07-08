@@ -25,4 +25,12 @@
     };
     hostPlatform.system = "x86_64-linux";
   };
+
+  systemd.network.networks."10-ethernet" = {
+    linkConfig.MACAddress = "e8:9c:25:5e:3c:6d";
+    networkConfig = {
+      Address = "192.168.1.13";
+      Gateway = "192.168.1.1";
+    };
+  };
 }

@@ -1,4 +1,8 @@
 { config, lib, ... }:
+let
+  ethernetCfg = config.systemd.network.networks."10-ethernet";
+  boolOrStringToString = bs: if lib.isString bs then bs else lib.boolToString bs;
+in
 {
   boot.kernel.sysctl =
     let
@@ -62,84 +66,67 @@
   # Disable the old-style Networking and use systemd
   networking.useDHCP = false;
 
-  # TODO: Remove this once the limit on duplicate cert issuances is reset
-  # security.pki.certificateFiles =
-  #   lib.warn
-  #     ''
-  #       USING LETSENCRYPT STAGING CERTIFICATES
-  #       This is only for testing purposes and should not be used in production.
-  #     ''
-  #     [
-  #       (pkgs.fetchurl {
-  #         url = "https://letsencrypt.org/certs/staging/letsencrypt-stg-root-x1.pem";
-  #         hash = "sha256-Ol4RceX1wtQVItQ48iVgLkI2po+ynDI5mpWSGkroDnM=";
-  #       })
-  #       (pkgs.fetchurl {
-  #         url = "https://letsencrypt.org/certs/staging/letsencrypt-stg-root-x2.pem";
-  #         hash = "sha256-SXw2wbUMDa/zCHDVkIybl68pIj1VEMXmwklX0MxQL7g=";
-  #       })
-  #     ];
-
   services = {
     bpftune.enable = true;
-    resolved =
-      let
-        cfg = config.systemd.network.networks."10-ethernet".networkConfig;
-        boolOrStringToString = bs: if lib.isString bs then bs else lib.boolToString bs;
-      in
-      {
-        enable = true;
-        fallbackDns = cfg.DNS;
-        dnssec = boolOrStringToString cfg.DNSSEC;
-        dnsovertls = boolOrStringToString cfg.DNSOverTLS;
-      };
+    resolved = {
+      enable = true;
+      fallbackDns = ethernetCfg.networkConfig.DNS;
+      dnssec = boolOrStringToString ethernetCfg.networkConfig.DNSSEC;
+      dnsovertls = boolOrStringToString ethernetCfg.networkConfig.DNSOverTLS;
+    };
   };
 
   systemd.network = {
     enable = true;
     wait-online.enable = false;
-    networks."10-ethernet" = {
-      # Match on ethernet interfaces
-      matchConfig.Name = "en*";
+    networks."10-ethernet" =
+      let
+        inherit (ethernetCfg.networkConfig) Address Gateway;
+        inherit (ethernetCfg.linkConfig) MACAddress;
+      in
+      {
+        # Match on ethernet interfaces
+        matchConfig.Name = "en*";
 
-      # Configure DHCP to get dynamic addresses, but accept only those coming from the primary router on the network.
-      # This avoids having a NetGear repeater blackhole all your traffic.
-      # NOTE: Upstream to Nixpkgs? Missing this option.
-      # TODO: Set this instead as a gateway option.
-      extraConfig = ''
-        [DHCPv4]
-        AllowList=192.168.1.1
-      '';
-      dhcpV4Config.UseDNS = false;
-      networkConfig = {
-        DHCP = true;
-        DNS = [
-          # Cloudflare
-          "1.1.1.1"
-          "2606:4700:4700::1111"
-          "1.0.0.1"
-          "2606:4700:4700::1001"
+        # Configure DHCP to get dynamic addresses, but accept only those coming from the primary router on the network.
+        # This avoids having a NetGear repeater blackhole all your traffic.
+        dhcpV4Config.UseDNS = false;
+        # IPv4 Static Leases
+        dhcpServerStaticLeases = [ { inherit Address MACAddress; } ];
 
-          # Public Nat64 -- https://nat64.net
-          "2a01:4f8:c2c:123f::1"
-          "2a00:1098:2b::1"
+        # Some devices have more than one interface; they won't always be plugged in.
+        linkConfig.RequiredForOnline = "no";
+
+        networkConfig = {
+          DHCP = "ipv6";
+          DNS = [
+            # Cloudflare
+            "1.1.1.1"
+            "2606:4700:4700::1111"
+            "1.0.0.1"
+            "2606:4700:4700::1001"
+
+            # Public Nat64 -- https://nat64.net
+            "2a01:4f8:c2c:123f::1"
+            "2a00:1098:2b::1"
+          ];
+          DNSOverTLS = true;
+          # Hetzner doesn't support DNSSEC
+          # https://docs.hetzner.com/dns-console/dns/general/dnssec/#dnssec-and-hetzner-online
+          DNSSEC = "allow-downgrade";
+        };
+
+        # Larger TCP window sizes, courtesy of
+        # https://wiki.archlinux.org/title/Systemd-networkd#Speeding_up_TCP_slow-start
+        routes = [
+          {
+            inherit Gateway;
+            Destination = Gateway;
+            GatewayOnLink = true;
+            InitialCongestionWindow = 50;
+            InitialAdvertisedReceiveWindow = 50;
+          }
         ];
-        DNSOverTLS = true;
-        DNSSEC = true;
       };
-
-      # Some devices have more than one interface; they won't always be plugged in.
-      linkConfig.RequiredForOnline = "no";
-
-      # Larger TCP window sizes, courtesy of
-      # https://wiki.archlinux.org/title/Systemd-networkd#Speeding_up_TCP_slow-start
-      routes = [
-        {
-          Gateway = "_dhcp4";
-          InitialCongestionWindow = 50;
-          InitialAdvertisedReceiveWindow = 50;
-        }
-      ];
-    };
   };
 }
