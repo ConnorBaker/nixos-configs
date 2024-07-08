@@ -1,6 +1,6 @@
 { pkgs, ... }:
 let
-  python311 = pkgs.python311;
+  inherit (pkgs) python311;
   ray = python311.pkgs.ray.overridePythonAttrs {
     version = "2.30.0";
     src =
