@@ -25,6 +25,7 @@
 
     # Configure services
     ../../modules/services/binary-cache
+    ../../modules/services/monitoring
     ../../modules/services/openssh.nix
     ../../modules/services/tailscale.nix
 

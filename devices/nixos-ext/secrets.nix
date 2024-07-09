@@ -2,6 +2,7 @@
 let
   # Named after their paths in secrets.yaml.
   tsKey = "tailscale/tskey-reusable";
+  tsSecrets.${tsKey}.path = "/etc/${tsKey}";
 
   # Ensure that the user name is not changed.
   hciUser =
@@ -11,8 +12,6 @@ let
     in
     assert lib.asserts.assertMsg (name == expectedName) "${expectedName} user name changed to ${name}!";
     name;
-
-  tsSecrets.${tsKey}.path = "/etc/${tsKey}";
   hciSecrets =
     let
       hciSecretPaths = builtins.map (relativeSecretPath: "${hciUser}/${relativeSecretPath}") [

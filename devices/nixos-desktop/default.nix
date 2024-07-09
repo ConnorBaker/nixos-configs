@@ -30,10 +30,9 @@
 
     # Configure services
     ../../modules/services/binary-cache/attic-watch-store
+    ../../modules/services/monitoring
     ../../modules/services/openssh.nix
     ../../modules/services/tailscale.nix
-    # ../../modules/services/monitoring.nix
-    # ./monitoring.nix
 
     # Users
     ../../users/connorbaker.nix

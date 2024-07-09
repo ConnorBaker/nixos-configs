@@ -23,6 +23,13 @@ creation_rules:
           - *nixos-build01
           - *nixos-desktop
           - *nixos-ext
+  - path_regex: modules/services/monitoring/secrets\.yaml$
+    key_groups:
+      - age:
+          - *nixos-build01
+          - *nixos-cantcache-me
+          - *nixos-desktop
+          - *nixos-ext
   - path_regex: devices/nixos-build01/secrets\.yaml$
     key_groups:
       - age:
