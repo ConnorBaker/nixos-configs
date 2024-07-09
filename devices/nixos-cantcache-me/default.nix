@@ -25,8 +25,8 @@
 
     # Configure services
     ../../modules/services/binary-cache
-    ../../modules/services/monitoring
     ../../modules/services/openssh.nix
+    ../../modules/services/prometheus-exporters.nix
     ../../modules/services/tailscale.nix
 
     # Users
