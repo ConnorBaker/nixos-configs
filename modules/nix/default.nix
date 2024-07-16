@@ -8,11 +8,18 @@ let
   nixPrivateKey = "ssh/id_nix_ed25519";
 
   # Common configuration for all machines.
+  baselineSupportedFeatures = [
+    "benchmark"
+    "big-parallel"
+    "kvm"
+    "nixos-test"
+    "uid-range"
+  ];
   # Maps host names to machine architecture.
   # hostNameToSystem :: AttrSet String (AttrSet String Any)
   hostNameToConfig = {
     nixos-build01 = { };
-    nixos-desktop = { };
+    nixos-desktop.supportedFeatures = baselineSupportedFeatures ++ [ "cuda" ];
     nixos-ext = { };
     # "eu.nixbuild.net" = {
     #   maxJobs = 100;
@@ -37,20 +44,14 @@ let
     #   systems = [ "aarch64-linux" ];
     # };
   };
-  supportedFeatures = [
-    "benchmark"
-    "big-parallel"
-    "kvm"
-    "nixos-test"
-    "uid-range"
-  ];
   # Functions to generate machine-specific configuration.
   # Attributes defined in the hostNameToConfig map override these defaults.
   # machineBoilerplate :: String -> AttrSet String Any -> AttrSet String Any
   machineBoilerplate =
     hostName:
     lib.attrsets.recursiveUpdate {
-      inherit hostName supportedFeatures;
+      inherit hostName;
+      supportedFeatures = baselineSupportedFeatures;
       maxJobs = 1;
       protocol = "ssh-ng";
       speedFactor = 8;
@@ -113,7 +114,8 @@ in
       http-connections = 256;
       max-substitution-jobs = 128;
       require-drop-supplementary-groups = true;
-      system-features = supportedFeatures;
+      system-features =
+        hostNameToConfig.${config.networking.hostName}.supportedFeatures or baselineSupportedFeatures;
       trusted-users = [
         "root"
         "@nixbld"
