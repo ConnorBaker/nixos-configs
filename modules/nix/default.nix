@@ -84,6 +84,8 @@ in
       lib.attrsets.attrValues
     ];
     distributedBuilds = true;
+    # NOTE: Hercules CI doesn't understand numeric values with suffixes.
+    # Oct 17 20:50:47 nixos-ext hercules-ci-agent[382336]: hercules-ci-agent: CppStdException e "\ESC[31;1merror:\ESC[0m setting '\ESC[35;1mnar-buffer-size\ESC[0m' has invalid value '\ESC[35;1m1G\ESC[0m'"(Just "nix::UsageError")
     settings = {
       accept-flake-config = true;
       allow-import-from-derivation = false;
@@ -94,7 +96,7 @@ in
       # Since these machines are builders for CUDA packages, makes sense to allow a larger buffer for curl because we
       # have lots of memory and will be downloading large tarballs.
       # NOTE: https://github.com/NixOS/nix/pull/11171
-      download-buffer-size = "256M";
+      download-buffer-size = 256 * 1024 * 1024; # 256 MB
       experimental-features = [
         "auto-allocate-uids"
         "cgroups"
@@ -119,7 +121,7 @@ in
       log-lines = 100;
       max-substitution-jobs = 64;
       # See: https://github.com/NixOS/nix/blob/1cd48008f0e31b0d48ad745b69256d881201e5ee/src/libstore/local-store.cc#L1172
-      nar-buffer-size = "1G";
+      nar-buffer-size = 1 * 1024 * 1024 * 1024; # 1 GB
       require-drop-supplementary-groups = true;
       system-features =
         hostNameToConfig.${config.networking.hostName}.supportedFeatures or baselineSupportedFeatures;
