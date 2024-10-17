@@ -43,11 +43,6 @@
       url = "github:nix-community/nix-direnv";
     };
 
-    nix-ld-rs = {
-      inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:nix-community/nix-ld-rs";
-    };
-
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     # nixpkgs.url = "github:ConnorBaker/nixpkgs/feat/nvidia-dcgm-prometheus-exporter-module";
 

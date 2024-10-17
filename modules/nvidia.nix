@@ -4,7 +4,8 @@
     graphics.enable = true;
     nvidia = {
       nvidiaPersistenced = false;
-      package = config.boot.kernelPackages.nvidiaPackages.beta;
+      open = true;
+      package = config.boot.kernelPackages.nvidiaPackages.latest;
       powerManagement.enable = true;
     };
   };

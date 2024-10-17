@@ -16,7 +16,6 @@
       })
       # Misc tools
       inputs.nix-direnv.overlays.default
-      inputs.nix-ld-rs.overlays.default
       (_: _: { inherit (inputs.histodu.packages.${system}) histodu; })
       # Overlay for Caddy
       (

@@ -28,7 +28,7 @@ in
         "zfs"
       ];
     };
-    kernelPackages = pkgs.linuxKernel.packages.linux_6_8;
+    kernelPackages = pkgs.linuxKernel.packages.linux_6_10;
     kernelParams = [
       "nohibernate"
 
