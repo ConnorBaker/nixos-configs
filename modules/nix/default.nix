@@ -5,6 +5,18 @@
   ...
 }:
 let
+  inherit (lib.attrsets)
+    attrNames
+    attrValues
+    filterAttrs
+    genAttrs
+    mapAttrs
+    recursiveUpdate
+    ;
+  inherit (lib.lists) elem optionals;
+  inherit (lib.strings) concatMapStringsSep;
+  inherit (lib.trivial) pipe;
+
   nixPrivateKey = "ssh/id_nix_ed25519";
 
   # Common configuration for all machines.
@@ -19,7 +31,11 @@ let
   # hostNameToSystem :: AttrSet String (AttrSet String Any)
   hostNameToConfig = {
     nixos-build01 = { };
-    nixos-desktop.supportedFeatures = baselineSupportedFeatures ++ [ "cuda" ];
+    nixos-desktop.supportedFeatures = baselineSupportedFeatures ++ [
+      "cuda"
+      # NOTE: Expose impure-derivations as a supported feature so machines can forward it to builders with it enabled.
+      "impure-derivations"
+    ];
     nixos-ext = { };
     # "eu.nixbuild.net" = {
     #   maxJobs = 100;
@@ -49,7 +65,7 @@ let
   # machineBoilerplate :: String -> AttrSet String Any -> AttrSet String Any
   machineBoilerplate =
     hostName:
-    lib.attrsets.recursiveUpdate {
+    recursiveUpdate {
       inherit hostName;
       supportedFeatures = baselineSupportedFeatures;
       maxJobs = 1;
@@ -74,14 +90,14 @@ in
     # Choose the version of Nix to use.
     package = pkgs.nixVersions.latest;
 
-    buildMachines = lib.trivial.pipe hostNameToConfig [
+    buildMachines = pipe hostNameToConfig [
       # AttrSet String (AttrSet String Any) -> AttrSet String (AttrSet String Any)
       # A machine should not have itself as a remote builder.
-      (lib.attrsets.filterAttrs (hostName: _: hostName != config.networking.hostName))
+      (filterAttrs (hostName: _: hostName != config.networking.hostName))
       # AttrSet String (AttrSet String Any) -> AttrSet String (AttrSet String Any)
-      (lib.attrsets.mapAttrs machineBoilerplate)
+      (mapAttrs machineBoilerplate)
       # AttrSet String (AttrSet String Any) -> List (AttrSet String Any)
-      lib.attrsets.attrValues
+      attrValues
     ];
     distributedBuilds = true;
     # NOTE: Hercules CI doesn't understand numeric values with suffixes.
@@ -97,12 +113,16 @@ in
       # have lots of memory and will be downloading large tarballs.
       # NOTE: https://github.com/NixOS/nix/pull/11171
       download-buffer-size = 256 * 1024 * 1024; # 256 MB
-      experimental-features = [
-        "auto-allocate-uids"
-        "cgroups"
-        "flakes"
-        "nix-command"
-      ];
+      experimental-features =
+        [
+          "auto-allocate-uids"
+          "cgroups"
+          "flakes"
+          "nix-command"
+        ]
+        ++ optionals (elem "impure-derivations"
+          hostNameToConfig.${config.networking.hostName}.supportedFeatures or baselineSupportedFeatures
+        ) [ "impure-derivations" ];
       fallback = true;
       fsync-metadata = false;
       http-connections = 256;
@@ -125,14 +145,14 @@ in
   };
 
   programs.ssh = {
-    extraConfig = lib.strings.concatMapStringsSep "\n" (hostName: ''
+    extraConfig = concatMapStringsSep "\n" (hostName: ''
       Match host ${hostName}
         PubkeyAcceptedKeyTypes ssh-ed25519
         ServerAliveInterval 60
         IPQoS throughput
         IdentityFile ${config.sops.secrets.${nixPrivateKey}.path}
-    '') (lib.attrNames hostNameToConfig);
-    knownHosts = lib.attrsets.genAttrs (builtins.attrNames hostNameToConfig) (hostName: {
+    '') (attrNames hostNameToConfig);
+    knownHosts = genAttrs (attrNames hostNameToConfig) (hostName: {
       publicKeyFile = ../.. + "/devices/${hostName}/keys/ssh_host_ed25519_key.pub";
     });
   };
