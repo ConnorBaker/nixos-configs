@@ -13,7 +13,6 @@ let
     mapAttrs
     recursiveUpdate
     ;
-  inherit (lib.lists) elem optionals;
   inherit (lib.strings) concatMapStringsSep;
   inherit (lib.trivial) pipe;
 
@@ -31,11 +30,7 @@ let
   # hostNameToSystem :: AttrSet String (AttrSet String Any)
   hostNameToConfig = {
     nixos-build01 = { };
-    nixos-desktop.supportedFeatures = baselineSupportedFeatures ++ [
-      "cuda"
-      # NOTE: Expose impure-derivations as a supported feature so machines can forward it to builders with it enabled.
-      "impure-derivations"
-    ];
+    nixos-desktop.supportedFeatures = baselineSupportedFeatures ++ [ "cuda" ];
     nixos-ext = { };
     # "eu.nixbuild.net" = {
     #   maxJobs = 100;
@@ -113,16 +108,12 @@ in
       # have lots of memory and will be downloading large tarballs.
       # NOTE: https://github.com/NixOS/nix/pull/11171
       download-buffer-size = 256 * 1024 * 1024; # 256 MB
-      experimental-features =
-        [
-          "auto-allocate-uids"
-          "cgroups"
-          "flakes"
-          "nix-command"
-        ]
-        ++ optionals (elem "impure-derivations"
-          hostNameToConfig.${config.networking.hostName}.supportedFeatures or baselineSupportedFeatures
-        ) [ "impure-derivations" ];
+      experimental-features = [
+        "auto-allocate-uids"
+        "cgroups"
+        "flakes"
+        "nix-command"
+      ];
       fallback = true;
       fsync-metadata = false;
       http-connections = 256;
