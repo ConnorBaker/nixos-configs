@@ -103,18 +103,6 @@ in
         "flakes"
         "nix-command"
       ];
-      extra-substituters = [
-        # "https://cantcache.me/cuda"
-        "https://cuda-maintainers.cachix.org"
-      ];
-      extra-trusted-substituters = [
-        # "https://cantcache.me/cuda"
-        "https://cuda-maintainers.cachix.org"
-      ];
-      extra-trusted-public-keys = [
-        # "cuda:vNqURds2iPt4ipOebtuoEP1zDfr2nYHJDlSYzml4gU8="
-        "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
-      ];
       fallback = true;
       fsync-metadata = false;
       http-connections = 256;
