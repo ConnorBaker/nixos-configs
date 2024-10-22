@@ -63,7 +63,7 @@ let
     recursiveUpdate {
       inherit hostName;
       supportedFeatures = baselineSupportedFeatures;
-      maxJobs = 1;
+      maxJobs = 2;
       protocol = "ssh-ng";
       speedFactor = 8;
       sshKey = config.sops.secrets.${nixPrivateKey}.path;
@@ -118,6 +118,7 @@ in
       fsync-metadata = false;
       http-connections = 256;
       log-lines = 100;
+      max-jobs = 2;
       max-substitution-jobs = 64;
       # See: https://github.com/NixOS/nix/blob/1cd48008f0e31b0d48ad745b69256d881201e5ee/src/libstore/local-store.cc#L1172
       nar-buffer-size = 1 * 1024 * 1024 * 1024; # 1 GB
