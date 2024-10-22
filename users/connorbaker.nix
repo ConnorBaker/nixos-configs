@@ -11,6 +11,13 @@
     ../modules/programs/nix-ld.nix
     # ../modules/services/ray.nix
   ];
+
+  # For iperf
+  networking.firewall = {
+    allowedTCPPorts = [ 5001 ];
+    allowedUDPPorts = [ 5001 ];
+  };
+
   programs.git.config = lib.attrsets.optionalAttrs config.programs.git.enable {
     init.defaultBranch = "main";
     user.name = "Connor Baker";
@@ -37,9 +44,8 @@
       ];
     };
     packages =
-      [ pkgs.attic ]
       # Rust unix tools
-      ++ [
+      [
         pkgs.bat
         pkgs.histodu
         pkgs.hyperfine
@@ -51,6 +57,7 @@
         pkgs.gh
         pkgs.git
         pkgs.htop
+        pkgs.iperf
         pkgs.jq
         pkgs.micromamba
         pkgs.tmux

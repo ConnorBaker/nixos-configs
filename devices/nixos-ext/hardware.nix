@@ -29,7 +29,7 @@
   systemd.network.networks."10-ethernet" = {
     linkConfig.MACAddress = "e8:9c:25:5e:3c:6d";
     networkConfig = {
-      Address = "192.168.1.13";
+      Address = "192.168.1.13/24";
       Gateway = "192.168.1.1";
     };
   };

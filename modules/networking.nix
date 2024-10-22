@@ -1,9 +1,28 @@
 { config, lib, ... }:
 let
+  inherit (builtins) toString;
+  inherit (lib.strings)
+    concatMapStringsSep
+    hasSuffix
+    isString
+    removeSuffix
+    ;
+  inherit (lib.trivial) boolToString;
+
+  boolOrStringToString = bs: if isString bs then bs else boolToString bs;
+
   ethernetCfg = config.systemd.network.networks."10-ethernet";
-  boolOrStringToString = bs: if lib.isString bs then bs else lib.boolToString bs;
+  inherit (ethernetCfg.networkConfig) Address Gateway;
+  inherit (ethernetCfg.linkConfig) MACAddress;
 in
 {
+  assertions = [
+    {
+      assertion = hasSuffix "/24" Address;
+      message = ''systemd.network.networks."10-ethernet".networkConfig.Address must end in /24'';
+    }
+  ];
+
   boot.kernel.sysctl =
     let
       KB = 1024;
@@ -33,7 +52,7 @@ in
       # RMEM
       "net.core.rmem_default" = rmem_default;
       "net.core.rmem_max" = mem_max;
-      "net.ipv4.tcp_rmem" = lib.concatMapStringsSep " " builtins.toString [
+      "net.ipv4.tcp_rmem" = concatMapStringsSep " " toString [
         mem_min
         rmem_default
         mem_max
@@ -43,7 +62,7 @@ in
       # WMEM
       "net.core.wmem_default" = wmem_default;
       "net.core.wmem_max" = mem_max;
-      "net.ipv4.tcp_wmem" = lib.concatMapStringsSep " " builtins.toString [
+      "net.ipv4.tcp_wmem" = concatMapStringsSep " " toString [
         mem_min
         wmem_default
         mem_max
@@ -79,60 +98,60 @@ in
   systemd.network = {
     enable = true;
     wait-online.enable = false;
-    networks."10-ethernet" =
-      let
-        inherit (ethernetCfg.networkConfig) Address Gateway;
-        inherit (ethernetCfg.linkConfig) MACAddress;
-      in
-      {
-        # Match on ethernet interfaces and MAC address
-        matchConfig = {
-          inherit MACAddress;
-          Name = "en*";
-        };
-
-        # Configure DHCP to get dynamic addresses, but accept only those coming from the primary router on the network.
-        # This avoids having a NetGear repeater blackhole all your traffic.
-        dhcpV4Config.UseDNS = false;
-        # IPv4 Static Leases
-        dhcpServerStaticLeases = [ { inherit Address MACAddress; } ];
-
-        # Some devices have more than one interface; they won't always be plugged in.
-        linkConfig.RequiredForOnline = "no";
-
-        networkConfig = {
-          DHCP = "ipv6";
-          DNS = [
-            # Cloudflare
-            "1.1.1.1"
-            "2606:4700:4700::1111"
-            "1.0.0.1"
-            "2606:4700:4700::1001"
-
-            # Public Nat64 -- https://nat64.net
-            "2a01:4f8:c2c:123f::1"
-            "2a00:1098:2b::1"
-          ];
-          DNSOverTLS = true;
-          # Hetzner doesn't support DNSSEC
-          # https://docs.hetzner.com/dns-console/dns/general/dnssec/#dnssec-and-hetzner-online
-          DNSSEC = "allow-downgrade";
-        };
-
-        # Larger TCP window sizes, courtesy of
-        # https://wiki.archlinux.org/title/Systemd-networkd#Speeding_up_TCP_slow-start
-        routes = [
-          {
-            inherit Gateway;
-            GatewayOnLink = true;
-          }
-          { Destination = Gateway; }
-          {
-            inherit Gateway;
-            InitialCongestionWindow = 50;
-            InitialAdvertisedReceiveWindow = 50;
-          }
-        ];
+    networks."10-ethernet" = {
+      # Match on ethernet interfaces and MAC address
+      matchConfig = {
+        inherit MACAddress;
+        Name = "en*";
       };
+
+      # Configure DHCP to get dynamic addresses, but accept only those coming from the primary router on the network.
+      # This avoids having a NetGear repeater blackhole all your traffic.
+      dhcpV4Config.UseDNS = false;
+      # IPv4 Static Leases
+      dhcpServerStaticLeases = [
+        {
+          inherit MACAddress;
+          Address = removeSuffix "/24" Address;
+        }
+      ];
+
+      # Some devices have more than one interface; they won't always be plugged in.
+      linkConfig.RequiredForOnline = "no";
+
+      networkConfig = {
+        DHCP = "ipv6";
+        DNS = [
+          # Cloudflare
+          "1.1.1.1"
+          "2606:4700:4700::1111"
+          "1.0.0.1"
+          "2606:4700:4700::1001"
+
+          # Public Nat64 -- https://nat64.net
+          "2a01:4f8:c2c:123f::1"
+          "2a00:1098:2b::1"
+        ];
+        DNSOverTLS = true;
+        # Hetzner doesn't support DNSSEC
+        # https://docs.hetzner.com/dns-console/dns/general/dnssec/#dnssec-and-hetzner-online
+        DNSSEC = "allow-downgrade";
+      };
+
+      # Larger TCP window sizes, courtesy of
+      # https://wiki.archlinux.org/title/Systemd-networkd#Speeding_up_TCP_slow-start
+      routes = [
+        {
+          inherit Gateway;
+          GatewayOnLink = true;
+        }
+        { Destination = Gateway; }
+        {
+          inherit Gateway;
+          InitialCongestionWindow = 50;
+          InitialAdvertisedReceiveWindow = 50;
+        }
+      ];
+    };
   };
 }

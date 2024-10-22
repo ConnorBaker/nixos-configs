@@ -149,7 +149,7 @@
         in
         {
           nixos-build01 = x86_64-linux-template [ ./devices/nixos-build01 ];
-          nixos-cantcache-me = x86_64-linux-template [ ./devices/nixos-cantcache-me ];
+          # nixos-cantcache-me = x86_64-linux-template [ ./devices/nixos-cantcache-me ];
           nixos-desktop = x86_64-linux-template [ ./devices/nixos-desktop ];
           nixos-ext = x86_64-linux-template [ ./devices/nixos-ext ];
         };

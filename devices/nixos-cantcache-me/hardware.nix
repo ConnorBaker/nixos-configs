@@ -36,9 +36,9 @@
   systemd.network.networks."10-ethernet" =
     let
       # When we have multiple addresses, we need to configure a bit more manually.
-      Address = "65.109.152.76";
+      Address = "65.109.152.76/24";
       Gateway = "65.109.152.1";
-      AddressV6 = "2a01:4f9:3080:5652::2";
+      AddressV6 = "2a01:4f9:3080:5652::2/64";
       GatewayV6 = "fe80::1";
     in
     {
@@ -54,8 +54,8 @@
         IPv6AcceptRA = false;
       };
       addresses = [
-        { Address = "${Address}/24"; }
-        { Address = "${AddressV6}/64"; }
+        { inherit Address; }
+        { Address = AddressV6; }
       ];
       routes = [ { Gateway = GatewayV6; } ];
     };
