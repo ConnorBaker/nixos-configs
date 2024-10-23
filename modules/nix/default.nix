@@ -95,8 +95,6 @@ in
       attrValues
     ];
     distributedBuilds = true;
-    # NOTE: Hercules CI doesn't understand numeric values with suffixes.
-    # Oct 17 20:50:47 nixos-ext hercules-ci-agent[382336]: hercules-ci-agent: CppStdException e "\ESC[31;1merror:\ESC[0m setting '\ESC[35;1mnar-buffer-size\ESC[0m' has invalid value '\ESC[35;1m1G\ESC[0m'"(Just "nix::UsageError")
     settings = {
       accept-flake-config = true;
       allow-import-from-derivation = false;

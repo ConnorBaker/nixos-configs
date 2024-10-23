@@ -11,9 +11,6 @@
     # Configure Nix
     ../../modules/nix
 
-    # Hercules
-    ../../modules/hercules-ci-agent.nix
-
     # Configure system
     ../../modules/boot.nix
     ../../modules/cpu-hardware.nix
