@@ -12,10 +12,10 @@
     # ../modules/services/ray.nix
   ];
 
-  # For iperf
+  # For explainshell and iperf
   networking.firewall = {
-    allowedTCPPorts = [ 5001 ];
-    allowedUDPPorts = [ 5001 ];
+    allowedTCPPorts = [ 5000 5001 ];
+    allowedUDPPorts = [ 5000 5001 ];
   };
 
   programs.git.config = lib.attrsets.optionalAttrs config.programs.git.enable {
@@ -60,6 +60,7 @@
         pkgs.iperf
         pkgs.jq
         pkgs.micromamba
+        pkgs.parallel-full
         pkgs.tmux
         pkgs.vim
       ]

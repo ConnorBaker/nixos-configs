@@ -27,7 +27,13 @@
     # Misc tools
     ++ [
       pkgs.direnv
+      pkgs.docker-compose
       pkgs.nvitop
+    ]
+    # Shell
+    ++ [
+      pkgs.shellcheck
+      pkgs.shfmt
     ]
     # Nix
     ++ [
