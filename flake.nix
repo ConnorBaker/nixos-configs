@@ -1,10 +1,5 @@
 {
   inputs = {
-    attic = {
-      inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:zhaofengli/attic";
-    };
-
     disko = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nix-community/disko";
@@ -44,13 +39,9 @@
     };
 
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    # nixpkgs.url = "github:ConnorBaker/nixpkgs/feat/nvidia-dcgm-prometheus-exporter-module";
 
     sops-nix = {
-      inputs = {
-        nixpkgs-stable.follows = "";
-        nixpkgs.follows = "nixpkgs";
-      };
+      inputs.nixpkgs.follows = "nixpkgs";
       url = "github:Mic92/sops-nix";
     };
 
@@ -143,7 +134,6 @@
                 inputs.sops-nix.nixosModules.sops
                 inputs.disko.nixosModules.disko
                 inputs.impermanence.nixosModules.impermanence
-                inputs.attic.nixosModules.atticd
               ] ++ extraModules;
             };
         in

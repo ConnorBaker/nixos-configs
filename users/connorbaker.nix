@@ -14,8 +14,14 @@
 
   # For explainshell and iperf
   networking.firewall = {
-    allowedTCPPorts = [ 5000 5001 ];
-    allowedUDPPorts = [ 5000 5001 ];
+    allowedTCPPorts = [
+      5000
+      5001
+    ];
+    allowedUDPPorts = [
+      5000
+      5001
+    ];
   };
 
   programs.git.config = lib.attrsets.optionalAttrs config.programs.git.enable {

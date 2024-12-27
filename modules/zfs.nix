@@ -28,7 +28,7 @@ in
         "zfs"
       ];
     };
-    kernelPackages = pkgs.linuxKernel.packages.linux_6_10;
+    kernelPackages = pkgs.linuxKernel.packages.linux_6_12;
     kernelParams = [
       "nohibernate"
 
@@ -44,7 +44,8 @@ in
   };
 
   # Some settings copied from https://github.com/NixOS/nixpkgs/issues/62644#issuecomment-1479523469
-  environment.etc."zfs/zed.d/history_event-zfs-list-cacher.sh".source = "${zfsPkg}/etc/zfs/zed.d/history_event-zfs-list-cacher.sh";
+  environment.etc."zfs/zed.d/history_event-zfs-list-cacher.sh".source =
+    "${zfsPkg}/etc/zfs/zed.d/history_event-zfs-list-cacher.sh";
 
   services.zfs = {
     autoScrub.enable = true;
