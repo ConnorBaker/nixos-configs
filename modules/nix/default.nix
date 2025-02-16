@@ -78,7 +78,7 @@ in
     settings = {
       accept-flake-config = true;
       auto-allocate-uids = true;
-      auto-optimise-store = false; # We wipe them frequently enough we don't need the performance hit.
+      auto-optimise-store = true; # With ZFS ARC, might increase hit ratio relative to amount of memory used
       builders-use-substitutes = true;
       connect-timeout = 5; # Don't wait forever for a remote builder to respond.
       # Since these machines are builders for CUDA packages, makes sense to allow a larger buffer for curl because we
