@@ -27,7 +27,7 @@
   programs.git.config = lib.attrsets.optionalAttrs config.programs.git.enable {
     init.defaultBranch = "main";
     user.name = "Connor Baker";
-    user.email = "connor.baker@tweag.io";
+    user.email = "ConnorBaker01@gmail.com";
   };
   users.users.connorbaker = {
     description = "Connor Baker's user account";
