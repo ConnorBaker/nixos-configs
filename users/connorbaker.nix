@@ -9,7 +9,6 @@
     ../modules/programs/git.nix
     ../modules/programs/htop.nix
     ../modules/programs/nix-ld.nix
-    # ../modules/services/ray.nix
   ];
 
   # For explainshell and iperf
@@ -36,14 +35,9 @@
     isNormalUser = true;
     openssh.authorizedKeys = {
       keyFiles = [
-        ../devices/eu.nixbuild.net/keys/ssh_host_ed25519_key.pub
         ../devices/nixos-build01/keys/ssh_host_ed25519_key.pub
         ../devices/nixos-desktop/keys/ssh_host_ed25519_key.pub
         ../devices/nixos-ext/keys/ssh_host_ed25519_key.pub
-        ../devices/nixos-orin/keys/ssh_host_ed25519_key.pub
-        ../devices/ubuntu-azure-build01/keys/ssh_host_ed25519_key.pub
-        ../devices/ubuntu-hetzner/keys/ssh_host_ed25519_key.pub
-        ../devices/ubuntu-orin/keys/ssh_host_ed25519_key.pub
       ];
       keys = [
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJXpenPZWADrxK4+6nFmPspmYPPniI3m+3PxAfjbslg+ connorbaker@Connors-MacBook-Pro.local"
