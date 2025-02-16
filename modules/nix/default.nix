@@ -13,8 +13,8 @@ let
     mapAttrs
     recursiveUpdate
     ;
-  inherit (lib.strings) concatMapStringsSep versionAtLeast;
-  inherit (lib.trivial) pipe warnIf;
+  inherit (lib.strings) concatMapStringsSep;
+  inherit (lib.trivial) pipe;
 
   nixPrivateKey = "ssh/id_nix_ed25519";
 
@@ -57,13 +57,8 @@ in
   };
 
   nix = {
-    # Choose the version of Nix to use.
-    package =
-      warnIf (versionAtLeast pkgs.nixVersions.latest.version pkgs.nixVersions.nix_2_26.version)
-        ''
-          The version of Nix in use is ${pkgs.nixVersions.nix_2_26.version}, which is older than the latest available (${pkgs.nixVersions.latest.version}).
-        ''
-        pkgs.nixVersions.nix_2_26;
+    # By default, package is pkgs.nix, which is an alias to pkgs.nixVersions.stable.
+    package = pkgs.nixVersions.latest;
 
     buildMachines = pipe hostNameToConfig [
       # AttrSet String (AttrSet String Any) -> AttrSet String (AttrSet String Any)

@@ -4,6 +4,9 @@
   pkgs,
   ...
 }:
+let
+  inherit (lib.modules) mkIf mkMerge;
+in
 {
   imports = [
     ../modules/programs/git.nix
@@ -23,14 +26,17 @@
     ];
   };
 
-  programs.git.config = lib.attrsets.optionalAttrs config.programs.git.enable {
+  programs.git.config = mkIf config.programs.git.enable {
     init.defaultBranch = "main";
     user.name = "Connor Baker";
     user.email = "ConnorBaker01@gmail.com";
   };
   users.users.connorbaker = {
     description = "Connor Baker's user account";
-    extraGroups = [ "wheel" ] ++ lib.optionals config.virtualisation.docker.enable [ "docker" ];
+    extraGroups = mkMerge [
+      [ "wheel" ]
+      (mkIf config.virtualisation.docker.enable [ "docker" ])
+    ];
     hashedPassword = "$y$j9T$ElNzp8jVQBLw00WZda/PR/$ilWJEMkkGBjYPEG.IkiNGp7ngsLgI7hGzsMeyywNYJ.";
     isNormalUser = true;
     openssh.authorizedKeys = {

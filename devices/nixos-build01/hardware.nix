@@ -1,4 +1,4 @@
-{ lib, modulesPath, ... }:
+{ modulesPath, ... }:
 {
   imports = [ "${modulesPath}/installer/scan/not-detected.nix" ];
 
@@ -15,15 +15,6 @@
       efi.canTouchEfiVariables = true;
       systemd-boot.enable = true;
     };
-  };
-
-  nixpkgs = {
-    config = {
-      allowUnfree = lib.modules.mkForce true;
-      cudaSupport = lib.modules.mkForce true;
-      cudaCapabilities = lib.modules.mkForce [ "8.9" ];
-    };
-    hostPlatform.system = "x86_64-linux";
   };
 
   systemd.network.networks."10-ethernet" = {

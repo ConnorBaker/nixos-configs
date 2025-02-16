@@ -1,4 +1,11 @@
+{ pkgs, ... }:
 {
+  assertions = [
+    {
+      assertion = pkgs.config.allowUnfree;
+      message = "Unfree packages must be allowed";
+    }
+  ];
   hardware = {
     cpu = {
       amd.updateMicrocode = true;
@@ -6,6 +13,5 @@
     };
     enableAllFirmware = true;
   };
-  nixpkgs.config.allowUnfree = true;
   powerManagement.cpuFreqGovernor = "performance";
 }

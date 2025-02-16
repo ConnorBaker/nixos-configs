@@ -1,5 +1,15 @@
-{ config, ... }:
+{ config, pkgs, ... }:
 {
+  assertions = [
+    {
+      assertion = pkgs.config.allowUnfree;
+      message = "Unfree packages must be allowed";
+    }
+    {
+      assertion = pkgs.config.cudaSupport;
+      message = "CUDA support must be enabled";
+    }
+  ];
   hardware = {
     graphics.enable = true;
     nvidia = {
@@ -8,10 +18,6 @@
       package = config.boot.kernelPackages.nvidiaPackages.latest;
       powerManagement.enable = true;
     };
-  };
-  nixpkgs.config = {
-    allowUnfree = true;
-    cudaSupport = true;
   };
   services.xserver.videoDrivers = [ "nvidia" ];
 }

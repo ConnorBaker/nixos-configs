@@ -39,6 +39,7 @@
     ++ [
       pkgs.nil
       pkgs.nix-direnv
+      pkgs.nix-eval-jobs
       pkgs.nix-output-monitor
       pkgs.nixfmt-rfc-style
       pkgs.nixpkgs-review

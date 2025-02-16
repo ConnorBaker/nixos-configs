@@ -28,11 +28,6 @@
     };
   };
 
-  nixpkgs = {
-    config.allowUnfree = lib.modules.mkForce true;
-    hostPlatform.system = "x86_64-linux";
-  };
-
   systemd.network.networks."10-ethernet" =
     let
       # When we have multiple addresses, we need to configure a bit more manually.

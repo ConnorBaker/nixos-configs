@@ -1,6 +1,5 @@
 {
   config,
-  lib,
   modulesPath,
   ...
 }:
@@ -40,15 +39,6 @@
       # The other paths include the NVIDIA and Mesa drivers, so we don't need to include them here.
       allowedPatterns.nvidia-gpu.paths = [ thingDriverLinkLinksTo ];
     };
-
-  nixpkgs = {
-    config = {
-      allowUnfree = lib.modules.mkForce true;
-      cudaSupport = lib.modules.mkForce true;
-      cudaCapabilities = lib.modules.mkForce [ "8.9" ];
-    };
-    hostPlatform.system = "x86_64-linux";
-  };
 
   systemd.network.networks."10-ethernet" = {
     linkConfig.MACAddress = "58:11:22:b4:9d:69";
