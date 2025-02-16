@@ -16,10 +16,7 @@
     };
 
     git-hooks-nix = {
-      inputs = {
-        nixpkgs-stable.follows = "";
-        nixpkgs.follows = "nixpkgs";
-      };
+      inputs.nixpkgs.follows = "nixpkgs";
       url = "github:cachix/git-hooks.nix";
     };
 
