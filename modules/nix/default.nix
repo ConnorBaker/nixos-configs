@@ -25,6 +25,7 @@ let
     "ca-derivations"
     "kvm"
     "nixos-test"
+    "recursive-nix"
     "uid-range"
   ];
   # Maps host names to machine architecture.
@@ -88,6 +89,7 @@ in
         "flakes"
         "impure-derivations"
         "nix-command"
+        "recursive-nix"
       ];
       fallback = true;
       fsync-metadata = false;
