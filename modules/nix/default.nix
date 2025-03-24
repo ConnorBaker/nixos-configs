@@ -58,6 +58,9 @@ in
   };
 
   nix = {
+    # Use flakes for everything
+    channel.enable = false;
+
     # By default, package is pkgs.nix, which is an alias to pkgs.nixVersions.stable.
     package = pkgs.nixVersions.latest;
 
