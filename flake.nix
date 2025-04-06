@@ -27,6 +27,16 @@
       url = "github:anduril/jetpack-nixos";
     };
 
+    # We just need nix for the overlay
+    nix = {
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        nixpkgs-regression.follows = "";
+        nixpkgs-23-11.follows = "";
+      };
+      url = "github:NixOS/nix";
+    };
+
     nix-direnv = {
       inputs = {
         flake-parts.follows = "flake-parts";
@@ -87,6 +97,7 @@
             # - nixpkgs-review
             # - nix-output-monitor
             # - nix-eval-jobs
+            inputs.nix.overlays.default # changes only the top-level Nix
             (
               final: prev:
               let
@@ -100,34 +111,20 @@
                     hash = "sha256-fIncQSuI2AqKuVaxFR3+BIDqzpYPKxKSMKomPUWAIc0=";
                   };
                 };
-                # Includes fixes for Nix 2.26.
                 nix-eval-jobs' = prev.nix-eval-jobs.overrideAttrs {
-                  version = "2.26.0";
-                  src = final.fetchFromGitHub {
-                    owner = "nix-community";
-                    repo = "nix-eval-jobs";
-                    rev = "4b392b284877d203ae262e16af269f702df036bc";
-                    hash = "sha256-3wIReAqdTALv39gkWXLMZQvHyBOc3yPkWT2ZsItxedY=";
-                  };
-                  buildInputs = [
-                    final.boost
-                    final.nix.dev.outPath # See https://github.com/nix-community/nix-eval-jobs/pull/352
-                    final.curl
-                    final.nlohmann_json
-                  ];
                   # For some reason, builds with type "plain" and LTO disabled by default.
                   mesonBuildType = "release";
                   mesonFlags = [ (mesonBool "b_lto" true) ];
                 };
               in
               {
-                # By default, nix is an alias to nixVersions.stable.
-                nix = final.nixVersions.latest;
+                # By default, nix is an alias to nixVersions.stable, but the overlay makes this the newest version.
+                # nix = final.nixVersions.latest;
                 nix-output-monitor = warnIfSelectedIsOlderThanDefault nix-output-monitor' prev.nix-output-monitor;
                 nix-eval-jobs = warnIfSelectedIsOlderThanDefault nix-eval-jobs' prev.nix-eval-jobs;
                 nixVersions = prev.nixVersions.extend (
                   _: prevNixVersions: {
-                    latest = warnIfSelectedIsOlderThanDefault prevNixVersions.nix_2_26 prevNixVersions.latest;
+                    latest = warnIfSelectedIsOlderThanDefault final.nix prevNixVersions.nix_2_26;
                   }
                 );
               }
