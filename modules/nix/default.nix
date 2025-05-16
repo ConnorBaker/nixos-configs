@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  pkgs,
   ...
 }:
 let
@@ -62,7 +61,8 @@ in
     channel.enable = false;
 
     # By default, package is pkgs.nix, which is an alias to pkgs.nixVersions.stable.
-    package = pkgs.nixVersions.latest;
+    # NOTE: Set by the determinate nix module.
+    # package = pkgs.nixVersions.latest;
 
     buildMachines = pipe hostNameToConfig [
       # AttrSet String (AttrSet String Any) -> AttrSet String (AttrSet String Any)
@@ -97,6 +97,7 @@ in
       fallback = true;
       fsync-metadata = false;
       http-connections = 32;
+      lazy-trees = true;
       log-lines = 100;
       max-jobs = 2;
       max-substitution-jobs = 32;

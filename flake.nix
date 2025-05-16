@@ -1,5 +1,10 @@
 {
   inputs = {
+    determinate = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:determinateSystems/determinate";
+    };
+
     disko = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nix-community/disko";
@@ -25,16 +30,6 @@
     jetpack-nixos = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:anduril/jetpack-nixos";
-    };
-
-    # We just need nix for the overlay
-    nix = {
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        nixpkgs-regression.follows = "";
-        nixpkgs-23-11.follows = "";
-      };
-      url = "github:NixOS/nix";
     };
 
     nix-direnv = {
@@ -64,7 +59,6 @@
       inherit (inputs.flake-parts.lib) mkFlake;
       inherit (inputs.nixpkgs) lib;
       inherit (lib.attrsets) genAttrs;
-      inherit (lib.filesystem) packagesFromDirectoryRecursive;
       inherit (lib.strings) mesonBool versionOlder;
       inherit (lib.trivial) warnIf;
 
@@ -95,22 +89,11 @@
             # Overlay for newer version of:
             # - Nix
             # - nixpkgs-review
-            # - nix-output-monitor
             # - nix-eval-jobs
-            inputs.nix.overlays.default # changes only the top-level Nix
+            inputs.determinate.inputs.nix.overlays.default # changes only the top-level Nix
             (
               final: prev:
               let
-                # Includes unreleased fixes for flickering.
-                nix-output-monitor' = prev.nix-output-monitor.overrideAttrs {
-                  version = "2.1.4-unstable-2024-11-28";
-                  src = final.fetchFromGitHub {
-                    owner = "maralorn";
-                    repo = "nix-output-monitor";
-                    rev = "3b1ca76b0ff191728073573fa21706da0f003084";
-                    hash = "sha256-fIncQSuI2AqKuVaxFR3+BIDqzpYPKxKSMKomPUWAIc0=";
-                  };
-                };
                 nix-eval-jobs' = prev.nix-eval-jobs.overrideAttrs {
                   # For some reason, builds with type "plain" and LTO disabled by default.
                   mesonBuildType = "release";
@@ -120,21 +103,12 @@
               {
                 # By default, nix is an alias to nixVersions.stable, but the overlay makes this the newest version.
                 # nix = final.nixVersions.latest;
-                nix-output-monitor = warnIfSelectedIsOlderThanDefault nix-output-monitor' prev.nix-output-monitor;
                 nix-eval-jobs = warnIfSelectedIsOlderThanDefault nix-eval-jobs' prev.nix-eval-jobs;
                 nixVersions = prev.nixVersions.extend (
                   _: prevNixVersions: {
                     latest = warnIfSelectedIsOlderThanDefault final.nix prevNixVersions.nix_2_26;
                   }
                 );
-              }
-            )
-            # Overlay for Caddy
-            (
-              final: _:
-              packagesFromDirectoryRecursive {
-                inherit (final) callPackage;
-                directory = ./packages;
               }
             )
           ];
@@ -208,6 +182,7 @@
             inputs.nixpkgs.lib.nixosSystem {
               pkgs = nixpkgsInstances.x86_64-linux;
               modules = [
+                inputs.determinate.nixosModules.default
                 inputs.sops-nix.nixosModules.sops
                 inputs.disko.nixosModules.disko
                 inputs.impermanence.nixosModules.impermanence

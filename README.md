@@ -4,27 +4,27 @@ Configuration for my NixOS machines.
 
 ## To-do
 
-- \[ \] Include `nixos-anywhere` in flake to version control it.
+- [ ] Include `nixos-anywhere` in flake to version control it.
 
-- \[ \] Migrate to use of flake modules
+- [ ] Migrate to use of flake modules
 
-- \[ \] <https://github.com/Mic92/sops-nix/issues/340>
+- [ ] <https://github.com/Mic92/sops-nix/issues/340>
 
 - Factor out the huge amount of duplication for Disko between the devices
 
-> \[!WARNING\]
+> [!WARNING]
 >
 > When using the `--build-on-remote` flag with `nixos-anywhere`, make sure the remote account is one which Nix trusts. In the NixOS installer, this means `root` instead of `nixos`.
 
-> \[!NOTE\]
+> [!NOTE]
 >
 > When using impermanence rooted at `/persist`, it's important that the directory provided to `--extra-files` is has a root of `/persist`. For example, instead of using `--extra-files ./secret_deployment_files/etc/ssh`, `--extra-files ./secret_deployment_files/persist/etc/ssh`.
 
-> \[!NOTE\]
+> [!NOTE]
 >
 > When using `sops`, `/etc/ssh/ssh_host_rsa_key` must be present, as it is needed to create the GPG keyring.
 
-> \[!NOTE\]
+> [!NOTE]
 >
 > After the initial installation, you must run the following on all devices in order to be able to view files encrypted with `sops`:
 >
@@ -33,13 +33,13 @@ Configuration for my NixOS machines.
 > sudo ssh-to-age -private-key -i /etc/ssh/ssh_host_ed25519_key >> ~/.config/sops/age/keys.txt
 > ```
 
-> \[!NOTE\]
+> [!NOTE]
 >
 > When creating files with `sops` which can be read by multiple keys, the device creating the file must have access to all the keys. This is because the device creating the file will encrypt the file with all the keys, and the device reading the file will decrypt the file with the correct key.
 
 ## Binary caches
 
-> \[!NOTE\]
+> [!NOTE]
 >
 > To delete everything:
 >
@@ -48,7 +48,7 @@ Configuration for my NixOS machines.
 > sudo rm -rf /var/log/caddy /var/lib/{atticd,caddy,postgresql}
 > ```
 
-> \[!IMPORTANT\]
+> [!IMPORTANT]
 >
 > Caddy provisions a certificate for the domain, so be aware you will lose that and frequent re-creations will cause Let's Encrypt to rate limit you.
 
@@ -75,7 +75,7 @@ sudo atticd-atticadm make-token --sub cuda-builder --validity 1y \
   --push builder-cache
 ```
 
-> \[!NOTE\]
+> [!NOTE]
 >
 > The `pull` permission is required for the builder token to be able to successfully push to the cache.
 
@@ -86,7 +86,7 @@ sudo atticd-atticadm make-token --sub cuda-user --validity 1y \
   --pull cuda
 ```
 
-> \[!NOTE\]
+> [!NOTE]
 >
 > After creating a cache with the `cuda-admin` token, it is import to log in with the limited token to overwrite the entry in `~/.config/attic/config.toml`. If we do not, the previous token used, the admin token, will remain in effect.
 
@@ -246,7 +246,7 @@ nix run "github:nix-community/nixos-anywhere/242444d228636b1f0e89d3681f04a75254c
 
 TODO:
 
-- \[ \] The normal `aarch64-linux` tarball `kexec` image doesn't work, presumably because the Jetson is ✨special✨.
+- [ ] The normal `aarch64-linux` tarball `kexec` image doesn't work, presumably because the Jetson is ✨special✨.
   - In progress: creating a custom `kexec` image using the Jetpack kernel.
 
 Deploy `nixos-orin` with:
