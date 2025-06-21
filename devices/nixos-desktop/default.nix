@@ -45,11 +45,5 @@
     hostName = "nixos-desktop";
   };
 
-  system = {
-    stateVersion = "24.05";
-    switch = {
-      enable = false;
-      enableNg = true;
-    };
-  };
+  system.stateVersion = "24.05";
 }
