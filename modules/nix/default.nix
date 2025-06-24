@@ -106,6 +106,7 @@ in
       require-drop-supplementary-groups = true;
       system-features =
         hostNameToConfig.${config.networking.hostName}.supportedFeatures or baselineSupportedFeatures;
+      trace-import-from-derivation = true;
       trusted-users = [
         "root"
         "@nixbld"
