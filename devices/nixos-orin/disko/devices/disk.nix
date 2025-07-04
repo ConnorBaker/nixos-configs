@@ -33,35 +33,40 @@ let
   };
 
   # Configuration for rpool disks.
-  rootConfig = {
+  rpoolConfig = {
     type = "gpt";
-    partitions.root = {
+    partitions.rpool = {
       size = "100%";
       content = {
-        type = "filesystem";
-        format = "ext4";
-        mountpoint = "/";
+        type = "zfs";
+        pool = "rpool";
       };
     };
   };
 
-  emmcDrives =
+  samsung990Pro2TBDisk =
     let
       common = {
-        interface = "mmc";
-        model = "G1M15M";
+        interface = "nvme";
+        model = "Samsung_SSD_990_PRO_2TB";
         modelSerialSeparator = "_";
       };
-      disks.rpool-boot = {
-        serial = "0x20565786";
-        contentConfigs = [
-          bootConfig
-          rootConfig
-        ];
+      disks = {
+        rpool-boot = {
+          serial = "S73WNJ0W809592D";
+          contentConfigs = [
+            bootConfig
+            rpoolConfig
+          ];
+        };
+        rpool-data = {
+          serial = "S73WNJ0W809592D";
+          contentConfigs = [ rpoolConfig ];
+        };
       };
     in
     lib.mapAttrs (lib.const (lib.recursiveUpdate common)) disks;
 in
 {
-  config.disko.devices.disk = lib.mapAttrs mkDisk emmcDrives;
+  config.disko.devices.disk = lib.mapAttrs mkDisk samsung990Pro2TBDisk;
 }

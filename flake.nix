@@ -79,62 +79,60 @@
         "x86_64-linux"
       ];
 
+      overlays = [
+        # Misc tools
+        inputs.nix-direnv.overlays.default
+        (final: _: { inherit (inputs.histodu.packages.${final.system}) histodu; })
+        # Overlay for newer version of:
+        # - nil
+        # - Nix
+        # - nixpkgs-review
+        # - nix-eval-jobs
+        inputs.nil.overlays.default
+        inputs.determinate.inputs.nix.overlays.default # changes only the top-level Nix
+        (
+          final: prev:
+          let
+            nix-eval-jobs' = prev.nix-eval-jobs.overrideAttrs {
+              # For some reason, builds with type "plain" and LTO disabled by default.
+              mesonBuildType = "release";
+              mesonFlags = [ (mesonBool "b_lto" true) ];
+            };
+          in
+          {
+            # By default, nix is an alias to nixVersions.stable, but the overlay makes this the newest version.
+            # nix = final.nixVersions.latest;
+            nix-eval-jobs = warnIfSelectedIsOlderThanDefault nix-eval-jobs' prev.nix-eval-jobs;
+            nixVersions = prev.nixVersions.extend (
+              _: prevNixVersions: {
+                latest = warnIfSelectedIsOlderThanDefault final.nix prevNixVersions.nix_2_26;
+              }
+            );
+            # Patch Nil to handle duplicates in builtins attrNames in determinate nix.
+            # Since the output of attrNames is sorted, we can use `dedup` since the duplicates are contiguous.
+            nil = prev.nil.overrideAttrs (prevAttrs: {
+              postPatch =
+                prevAttrs.postPatch or ""
+                + ''
+                  substituteInPlace crates/builtin/build.rs \
+                    --replace-fail \
+                      'let builtins_attr_names: Vec<String>' \
+                      'let mut builtins_attr_names: Vec<String>' \
+                    --replace-fail \
+                      '.expect("Failed to get builtins. Is `nix` accessible?");' \
+                      '.expect("Failed to get builtins. Is `nix` accessible?"); builtins_attr_names.dedup();'
+                '';
+            });
+          }
+        )
+      ];
+
+      config.allowUnfree = true;
+
       mkNixpkgs =
         system:
         import inputs.nixpkgs {
-          inherit system;
-          config = {
-            allowUnfree = true;
-            cudaSupport = true;
-            cudaCapabilities = [ "8.9" ];
-          };
-          overlays = [
-            # Misc tools
-            inputs.nix-direnv.overlays.default
-            (_: _: { inherit (inputs.histodu.packages.${system}) histodu; })
-            # Overlay for newer version of:
-            # - nil
-            # - Nix
-            # - nixpkgs-review
-            # - nix-eval-jobs
-            inputs.nil.overlays.default
-            inputs.determinate.inputs.nix.overlays.default # changes only the top-level Nix
-            (
-              final: prev:
-              let
-                nix-eval-jobs' = prev.nix-eval-jobs.overrideAttrs {
-                  # For some reason, builds with type "plain" and LTO disabled by default.
-                  mesonBuildType = "release";
-                  mesonFlags = [ (mesonBool "b_lto" true) ];
-                };
-              in
-              {
-                # By default, nix is an alias to nixVersions.stable, but the overlay makes this the newest version.
-                # nix = final.nixVersions.latest;
-                nix-eval-jobs = warnIfSelectedIsOlderThanDefault nix-eval-jobs' prev.nix-eval-jobs;
-                nixVersions = prev.nixVersions.extend (
-                  _: prevNixVersions: {
-                    latest = warnIfSelectedIsOlderThanDefault final.nix prevNixVersions.nix_2_26;
-                  }
-                );
-                # Patch Nil to handle duplicates in builtins attrNames in determinate nix.
-                # Since the output of attrNames is sorted, we can use `dedup` since the duplicates are contiguous.
-                nil = prev.nil.overrideAttrs (prevAttrs: {
-                  postPatch =
-                    prevAttrs.postPatch or ""
-                    + ''
-                      substituteInPlace crates/builtin/build.rs \
-                        --replace-fail \
-                          'let builtins_attr_names: Vec<String>' \
-                          'let mut builtins_attr_names: Vec<String>' \
-                        --replace-fail \
-                          '.expect("Failed to get builtins. Is `nix` accessible?");' \
-                          '.expect("Failed to get builtins. Is `nix` accessible?"); builtins_attr_names.dedup();'
-                    '';
-                });
-              }
-            )
-          ];
+          inherit config overlays system;
         };
 
       # Memoization through lambda lifting.
@@ -200,23 +198,56 @@
 
       flake.nixosConfigurations =
         let
-          x86_64-linux-template =
+          mkSystem =
             extraModules:
             inputs.nixpkgs.lib.nixosSystem {
-              pkgs = nixpkgsInstances.x86_64-linux;
               modules = [
                 inputs.determinate.nixosModules.default
                 inputs.sops-nix.nixosModules.sops
                 inputs.disko.nixosModules.disko
                 inputs.impermanence.nixosModules.impermanence
+                {
+                  nixpkgs = { inherit config overlays; };
+                }
               ] ++ extraModules;
             };
         in
         {
-          nixos-build01 = x86_64-linux-template [ ./devices/nixos-build01 ];
-          # nixos-cantcache-me = x86_64-linux-template [ ./devices/nixos-cantcache-me ];
-          nixos-desktop = x86_64-linux-template [ ./devices/nixos-desktop ];
-          nixos-ext = x86_64-linux-template [ ./devices/nixos-ext ];
+          nixos-build01 = mkSystem [
+            { nixpkgs.hostPlatform.system = "x86_64-linux"; }
+            ./devices/nixos-build01
+          ];
+
+          # nixos-cantcache-me = mkSystem [ ./devices/nixos-cantcache-me ];
+
+          nixos-desktop = mkSystem [
+            {
+              nixpkgs = {
+                config = {
+                  cudaSupport = true;
+                  cudaCapabilities = [ "8.9" ];
+                };
+                hostPlatform.system = "x86_64-linux";
+              };
+            }
+            ./devices/nixos-desktop
+          ];
+
+          nixos-ext = mkSystem [
+            { nixpkgs.hostPlatform.system = "x86_64-linux"; }
+            ./devices/nixos-ext
+          ];
+
+          nixos-orin = mkSystem [
+            {
+              nixpkgs.config = {
+                cudaSupport = true;
+                cudaCapabilities = [ "8.7" ];
+              };
+            }
+            inputs.jetpack-nixos.nixosModules.default
+            ./devices/nixos-orin
+          ];
         };
     };
 }

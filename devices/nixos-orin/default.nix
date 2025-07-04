@@ -13,8 +13,7 @@
 
     # Configure system
     ../../modules/boot.nix
-    ../../modules/cpu-hardware.nix
-    ../../modules/cuda.nix
+    # ../../modules/cpu-hardware.nix # ARM hardware
     ../../modules/headless.nix
     # Boehm GC, a dependency of mimalloc, doesn't pass test cases when run inside qemu
     # ../../modules/mimalloc.nix
@@ -40,11 +39,5 @@
     hostName = "nixos-orin";
   };
 
-  system = {
-    stateVersion = "24.05";
-    switch = {
-      enable = false;
-      enableNg = true;
-    };
-  };
+  system.stateVersion = "25.05";
 }
