@@ -158,6 +158,13 @@
 
           legacyPackages = pkgs;
 
+          packages = lib.mkIf (system == "x86_64-linux") {
+            orin-flash-script =
+              (inputs.self.nixosConfigurations.nixos-orin.extendModules {
+                modules = [ { nixpkgs.buildPlatform = { inherit system; }; } ];
+              }).config.system.build.flashScript;
+          };
+
           pre-commit.settings.hooks = {
             # Formatter checks
             treefmt = {
