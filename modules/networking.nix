@@ -3,7 +3,6 @@ let
   inherit (builtins) toString;
   inherit (lib.strings)
     concatMapStringsSep
-    hasSuffix
     isString
     removeSuffix
     ;
@@ -16,13 +15,6 @@ let
   inherit (ethernetCfg.linkConfig) MACAddress;
 in
 {
-  assertions = [
-    {
-      assertion = hasSuffix "/24" Address;
-      message = ''systemd.network.networks."10-ethernet".networkConfig.Address must end in /24'';
-    }
-  ];
-
   boot.kernel.sysctl =
     let
       KB = 1024;
@@ -112,7 +104,7 @@ in
       # This avoids having a NetGear repeater blackhole all your traffic.
       dhcpV4Config.UseDNS = false;
       # IPv4 Static Leases
-      dhcpServerStaticLeases = [
+      dhcpServerStaticLeases = lib.mkIf (ethernetCfg.networkConfig.DHCP != "yes") [
         {
           inherit MACAddress;
           Address = removeSuffix "/24" Address;
@@ -143,7 +135,7 @@ in
 
       # Larger TCP window sizes, courtesy of
       # https://wiki.archlinux.org/title/Systemd-networkd#Speeding_up_TCP_slow-start
-      routes = [
+      routes = lib.mkIf (ethernetCfg.networkConfig.DHCP != "yes") [
         {
           inherit Gateway;
           GatewayOnLink = true;
