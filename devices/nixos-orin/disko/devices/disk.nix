@@ -51,18 +51,12 @@ let
         model = "Samsung_SSD_990_PRO_2TB";
         modelSerialSeparator = "_";
       };
-      disks = {
-        rpool-boot = {
-          serial = "S73WNJ0W809592D";
-          contentConfigs = [
-            bootConfig
-            rpoolConfig
-          ];
-        };
-        rpool-data = {
-          serial = "S73WNJ0W809592D";
-          contentConfigs = [ rpoolConfig ];
-        };
+      disks.rpool = {
+        serial = "S73WNJ0W809592D";
+        contentConfigs = [
+          bootConfig
+          rpoolConfig
+        ];
       };
     in
     lib.mapAttrs (lib.const (lib.recursiveUpdate common)) disks;

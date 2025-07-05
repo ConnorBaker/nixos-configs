@@ -20,6 +20,7 @@
     ../../modules/networking.nix
     ../../modules/sudo.nix
     ../../modules/users.nix
+    ../../modules/zfs.nix
     ../../modules/zram.nix
 
     # Configure services

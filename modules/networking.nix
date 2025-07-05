@@ -102,7 +102,10 @@ in
       # Match on ethernet interfaces and MAC address
       matchConfig = {
         inherit MACAddress;
-        Name = "en*";
+        Name = [
+          "en*"
+          "eth*"
+        ];
       };
 
       # Configure DHCP to get dynamic addresses, but accept only those coming from the primary router on the network.

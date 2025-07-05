@@ -252,10 +252,13 @@ TODO:
 Deploy `nixos-orin` with:
 
 ```bash
-nix run github:numtide/nixos-anywhere/17efd86530884d11bff52148a5ff2259e2e869ed -- \
-  root@192.168.1.204 \
+nix run github:numtide/nixos-anywhere -- \
+  root@192.168.0.95 \
   -i ~/.ssh/id_ed25519 \
-  --flake .#nixos-ext \
+  --kexec /Users/connorbaker/Packages/nixos-configs/kexec-installer-aarch64-linux.tar.gz \
+  --flake .#nixos-orin \
   --build-on-remote \
+  --print-build-logs \
+  --debug \
   --extra-files /Volumes/nixos-orin
 ```
