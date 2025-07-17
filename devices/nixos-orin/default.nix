@@ -30,6 +30,7 @@
 
     # Users
     ../../users/connorbaker.nix
+    ./packages.nix
   ];
 
   environment.etc = {
