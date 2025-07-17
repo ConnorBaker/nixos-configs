@@ -8,23 +8,23 @@ creation_rules:
   - path_regex: modules/nix/secrets\.yaml$
     key_groups:
       - age:
-          - *nixos-build01 
-          - *nixos-desktop 
-          - *nixos-ext 
-          - *nixos-orin 
+          - *nixos-build01
+          - *nixos-desktop
+          - *nixos-ext
+          - *nixos-orin
   - path_regex: devices/nixos-build01/secrets\.yaml$
     key_groups:
       - age:
-          - *nixos-build01 
+          - *nixos-build01
   - path_regex: devices/nixos-desktop/secrets\.yaml$
     key_groups:
       - age:
-          - *nixos-desktop 
+          - *nixos-desktop
   - path_regex: devices/nixos-ext/secrets\.yaml$
     key_groups:
       - age:
-          - *nixos-ext 
+          - *nixos-ext
   - path_regex: devices/nixos-orin/secrets\.yaml$
     key_groups:
       - age:
-          - *nixos-orin 
+          - *nixos-orin

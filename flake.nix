@@ -108,21 +108,6 @@
                 latest = warnIfSelectedIsOlderThanDefault final.nix prevNixVersions.nix_2_26;
               }
             );
-            # Patch Nil to handle duplicates in builtins attrNames in determinate nix.
-            # Since the output of attrNames is sorted, we can use `dedup` since the duplicates are contiguous.
-            nil = prev.nil.overrideAttrs (prevAttrs: {
-              postPatch =
-                prevAttrs.postPatch or ""
-                + ''
-                  substituteInPlace crates/builtin/build.rs \
-                    --replace-fail \
-                      'let builtins_attr_names: Vec<String>' \
-                      'let mut builtins_attr_names: Vec<String>' \
-                    --replace-fail \
-                      '.expect("Failed to get builtins. Is `nix` accessible?");' \
-                      '.expect("Failed to get builtins. Is `nix` accessible?"); builtins_attr_names.dedup();'
-                '';
-            });
           }
         )
       ];
