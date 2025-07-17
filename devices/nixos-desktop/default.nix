@@ -26,7 +26,6 @@
     ../../modules/zram.nix
 
     # Configure services
-    # ../../modules/services/binary-cache/attic-watch-store
     ../../modules/services/openssh.nix
     ../../modules/services/prometheus-exporters.nix
     ../../modules/services/tailscale.nix

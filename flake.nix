@@ -225,8 +225,6 @@
             ./devices/nixos-build01
           ];
 
-          # nixos-cantcache-me = mkSystem [ ./devices/nixos-cantcache-me ];
-
           nixos-desktop = mkSystem [
             {
               nixpkgs = {

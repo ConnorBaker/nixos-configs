@@ -28,7 +28,9 @@ in
         "zfs"
       ];
     };
-    kernelPackages = lib.mkIf (!config.hardware.nvidia-jetpack.enable or false) pkgs.linuxKernel.packages.linux_6_14;
+    kernelPackages = lib.mkIf (
+      !config.hardware.nvidia-jetpack.enable or false
+    ) pkgs.linuxKernel.packages.linux_6_14;
     kernelParams = [
       "nohibernate"
 
