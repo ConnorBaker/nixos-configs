@@ -7,10 +7,15 @@
     systemd-boot.enable = true;
   };
 
-  hardware.nvidia-jetpack = {
-    enable = true;
-    som = "orin-agx";
-    carrierBoard = "devkit";
+  hardware = {
+    # TODO: graphics.enable shouldn't need to be set by us; it should happen through jetpack nixos.
+    graphics.enable = true;
+    nvidia-jetpack = {
+      enable = true;
+      maxClock = true;
+      som = "orin-agx";
+      carrierBoard = "devkit";
+    };
   };
 
   systemd.network.networks."10-ethernet" = {
