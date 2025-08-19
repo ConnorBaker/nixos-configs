@@ -43,7 +43,10 @@
   };
 
   # Need to add our user to the i2c and video groups to access the GPU.
-  users.users.connorbaker.extraGroups = [ "i2c" "video" ];
+  users.users.connorbaker.extraGroups = [
+    "i2c"
+    "video"
+  ];
 
   system.stateVersion = "25.05";
 }

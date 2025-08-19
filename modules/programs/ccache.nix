@@ -1,27 +1,28 @@
 { config, ... }:
+# NOTE: See
+# https://github.com/NixOS/nixpkgs/pull/412241
+# and associated issues and tickets.
 builtins.throw "This module does not currently work as desired." {
   nixpkgs.overlays = [
     (_: prev: {
       ccache = prev.ccache.overrideAttrs (oldAttrs: {
-        postInstall =
-          (oldAttrs.postInstall or "")
-          + ''
-            mkdir -p $out/etc
-            cat > $out/etc/ccache.conf <<EOF
-            base_dir = $NIX_BUILD_TOP
-            compiler_check = content
-            compression = true
-            cache_dir = /var/cache/ccache
-            max_size = 1T
-            run_second_cpp = false
-            depend_mode = false
-            direct_mode = false
-            hash_dir = false
-            inode_cache = false
-            sloppiness = include_file_ctime,include_file_mtime,time_macros,pch_defines,random_seed
-            umask = 007
-            EOF
-          '';
+        postInstall = (oldAttrs.postInstall or "") + ''
+          mkdir -p $out/etc
+          cat > $out/etc/ccache.conf <<EOF
+          base_dir = $NIX_BUILD_TOP
+          compiler_check = content
+          compression = true
+          cache_dir = /var/cache/ccache
+          max_size = 1T
+          run_second_cpp = false
+          depend_mode = false
+          direct_mode = false
+          hash_dir = false
+          inode_cache = false
+          sloppiness = include_file_ctime,include_file_mtime,time_macros,pch_defines,random_seed
+          umask = 007
+          EOF
+        '';
       });
     })
   ];

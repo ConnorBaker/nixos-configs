@@ -64,14 +64,7 @@
       inherit (inputs.flake-parts.lib) mkFlake;
       inherit (inputs.nixpkgs) lib;
       inherit (lib.attrsets) genAttrs;
-      inherit (lib.strings) mesonBool versionOlder;
-      inherit (lib.trivial) warnIf;
-
-      warnIfSelectedIsOlderThanDefault =
-        selected: default:
-        warnIf (versionOlder selected.version default.version) ''
-          The version of ${selected.pname} in use is ${selected.version}, which is older than the latest available (${default.version}).
-        '' selected;
+      inherit (lib.strings) mesonBool;
 
       systems = [
         "aarch64-darwin"
@@ -90,26 +83,22 @@
         # - nix-eval-jobs
         inputs.nil.overlays.default
         inputs.determinate.inputs.nix.overlays.default # changes only the top-level Nix
-        (
-          final: prev:
-          let
-            nix-eval-jobs' = prev.nix-eval-jobs.overrideAttrs {
-              # For some reason, builds with type "plain" and LTO disabled by default.
-              mesonBuildType = "release";
-              mesonFlags = [ (mesonBool "b_lto" true) ];
-            };
-          in
-          {
-            # By default, nix is an alias to nixVersions.stable, but the overlay makes this the newest version.
-            # nix = final.nixVersions.latest;
-            nix-eval-jobs = warnIfSelectedIsOlderThanDefault nix-eval-jobs' prev.nix-eval-jobs;
-            nixVersions = prev.nixVersions.extend (
-              _: prevNixVersions: {
-                latest = warnIfSelectedIsOlderThanDefault final.nix prevNixVersions.nix_2_26;
-              }
-            );
-          }
-        )
+        (final: prev: {
+          # By default, nix is an alias to nixVersions.stable, but the overlay makes this the newest version.
+          # nix = final.nixVersions.latest;
+          nix-eval-jobs = prev.nix-eval-jobs.overrideAttrs {
+            # For some reason, builds with type "plain" and LTO disabled by default.
+            mesonBuildType = "release";
+            mesonFlags = [ (mesonBool "b_lto" true) ];
+          };
+          nixVersions = prev.nixVersions.extend (
+            finalNixVersions: _: {
+              latest = final.nix;
+              stable = finalNixVersions.latest;
+              unstable = finalNixVersions.latest;
+            }
+          );
+        })
       ];
 
       config.allowUnfree = true;
@@ -201,7 +190,8 @@
                 {
                   nixpkgs = { inherit config overlays; };
                 }
-              ] ++ extraModules;
+              ]
+              ++ extraModules;
             };
         in
         {
