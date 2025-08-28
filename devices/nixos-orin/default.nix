@@ -14,6 +14,7 @@
     # Configure system
     ../../modules/boot.nix
     # ../../modules/cpu-hardware.nix # ARM hardware
+    ../../modules/docker.nix
     ../../modules/headless.nix
     ../../modules/impermanence.nix
     # Boehm GC, a dependency of mimalloc, doesn't pass test cases when run inside qemu
