@@ -1,0 +1,203 @@
+diff --git a/flake.nix b/flake.nix
+index c8b1360..6d5807a 100644
+--- a/flake.nix
++++ b/flake.nix
+@@ -245,6 +245,71 @@
+             ./devices/nixos-ext
+           ];
+ 
++          nixos-orin-installer = mkSystem [
++            (
++              {
++                config,
++                lib,
++                pkgs,
++                modulesPath,
++                ...
++              }:
++              {
++                imports = [ "${modulesPath}/installer/netboot/netboot.nix" ];
++
++                nixpkgs.buildPlatform = "x86_64-linux";
++
++                services.openssh = {
++                  enable = true;
++                  settings.PermitRootLogin = "yes";
++                };
++                users.users.root = {
++                  password = "root";
++                  openssh.authorizedKeys.keys = [ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJXpenPZWADrxK4+6nFmPspmYPPniI3m+3PxAfjbslg+ connorbaker@Connors-MacBook-Pro.local" ];
++                };
++
++                hardware.nvidia-jetpack = {
++                  enable = true;
++                  som = "orin-agx";
++                  carrierBoard = "devkit";
++                };
++                boot.initrd.compressor = "xz";
++                # This is a variant of the upstream kexecScript that also allows embedding
++                # a ssh key.
++                system.build.kexecRun = pkgs.runCommand "kexec-run" { } ''
++                  install -D -m 0755 ${./kexec-run.sh} $out
++
++                  sed -i \
++                    -e 's|@init@|${config.system.build.toplevel}/init|' \
++                    -e 's|@kernelParams@|${lib.escapeShellArgs config.boot.kernelParams}|' \
++                    $out
++                '';
++
++                system.build.kexec-tools = pkgs.kexec-tools.overrideAttrs (old: {
++                  buildInputs = lib.filter (drv: drv.pname != "zstd") old.buildInputs;
++                });
++
++                boot.supportedFilesystems = [
++                  "vfat"
++                  "zfs"
++                ];
++
++                networking.hostId = "deadba55";
++
++                system.build.kexecInstallerTarball = pkgs.runCommand "kexec-tarball" { } ''
++                  mkdir kexec $out
++                  cp "${config.system.build.netbootRamdisk}/initrd" kexec/initrd
++                  cp "${config.system.build.kernel}/${config.system.boot.loader.kernelFile}" kexec/bzImage
++                  cp "${config.system.build.kexecRun}" kexec/run
++                  cp "/nix/store/gwsrlclaa1lrdw3x8ss005nwjw8rr1h4-kexec-tools-static-aarch64-unknown-linux-musl-2.0.31/bin/kexec" kexec/kexec
++                  cp "${pkgs.pkgsStatic.iproute2.override { iptables = null; }}/bin/ip" kexec/ip
++                  tar -czvf $out/kexec-installer-${pkgs.stdenv.hostPlatform.system}.tar.gz kexec
++                '';
++              }
++            )
++            inputs.jetpack-nixos.nixosModules.default
++          ];
++
+           nixos-orin = mkSystem [
+             {
+               nixpkgs.config = {
+diff --git a/kexec-run.sh b/kexec-run.sh
+new file mode 100755
+index 0000000..efc69b1
+--- /dev/null
++++ b/kexec-run.sh
+@@ -0,0 +1,108 @@
++#!/bin/sh
++
++# Set pipefail if the shell supports it.
++if set -o | grep -q pipefail; then
++  # shellcheck disable=SC3040
++  set -o pipefail
++fi
++set -eux
++
++
++kexec_extra_flags=""
++
++while [ $# -gt 0 ]; do
++  case "$1" in
++  --kexec-extra-flags)
++    kexec_extra_flags="$2"
++    shift
++    ;;
++  esac
++  shift
++done
++
++# provided by nix
++init="@init@"
++kernelParams="@kernelParams@"
++
++SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
++INITRD_TMP=$(TMPDIR=$SCRIPT_DIR mktemp -d)
++
++cd "$INITRD_TMP"
++cleanup() {
++  rm -rf "$INITRD_TMP"
++}
++trap cleanup EXIT
++mkdir -p ssh
++
++extractPubKeys() {
++  home="$1"
++  for file in .ssh/authorized_keys .ssh/authorized_keys2; do
++    key="$home/$file"
++    if test -e "$key"; then
++      # workaround for debian shenanigans
++      grep -o '\(\(ssh\|ecdsa\|sk\)-[^ ]* .*\)' "$key" >> ssh/authorized_keys || true
++    fi
++  done
++}
++extractPubKeys /root
++
++if test -n "${DOAS_USER-}"; then
++  SUDO_USER="$DOAS_USER"
++fi
++
++if test -n "${SUDO_USER-}"; then
++  sudo_home=$(sh -c "echo ~$SUDO_USER")
++  extractPubKeys "$sudo_home"
++fi
++
++# Typically for NixOS
++if test -e /etc/ssh/authorized_keys.d/root; then
++  cat /etc/ssh/authorized_keys.d/root >> ssh/authorized_keys
++fi
++if test -n "${SUDO_USER-}" && test -e "/etc/ssh/authorized_keys.d/$SUDO_USER"; then
++  cat "/etc/ssh/authorized_keys.d/$SUDO_USER" >> ssh/authorized_keys
++fi
++for p in /etc/ssh/ssh_host_*; do
++  test -e "$p" || continue
++  cp -a "$p" ssh
++done
++
++# save the networking config for later use
++"$SCRIPT_DIR/ip" --json addr > addrs.json
++
++"$SCRIPT_DIR/ip" -4 --json route > routes-v4.json
++"$SCRIPT_DIR/ip" -6 --json route > routes-v6.json
++
++[ -f /etc/machine-id ] && cp /etc/machine-id machine-id
++
++find . | cpio -o -H newc | gzip -9 >> "$SCRIPT_DIR/initrd"
++
++kexecSyscallFlags=""
++# only do kexec-syscall-auto on kernels newer than 6.0.
++# On older kernel we often get errors like: https://github.com/nix-community/nixos-anywhere/issues/264
++if printf "%s\n" "6.1" "$(uname -r)" | sort -c -V 2>&1; then
++  kexecSyscallFlags="--kexec-syscall-auto"
++fi
++
++if ! sh -c "'$SCRIPT_DIR/kexec' --load '$SCRIPT_DIR/bzImage' \
++  $kexecSyscallFlags \
++  $kexec_extra_flags \
++  --initrd='$SCRIPT_DIR/initrd' --no-checks \
++  --command-line 'init=$init $kernelParams'"
++then
++  echo "kexec failed, dumping dmesg"
++  dmesg | tail -n 100
++  exit 1
++fi
++
++# Disconnect our background kexec from the terminal
++echo "machine will boot into nixos in 6s..."
++if test -e /dev/kmsg; then
++  # this makes logging visible in `dmesg`, or the system console or tools like journald
++  exec > /dev/kmsg 2>&1
++else
++  exec > /dev/null 2>&1
++fi
++# We will kexec in background so we can cleanly finish the script before the hosts go down.
++# This makes integration with tools like terraform easier.
++nohup sh -c "sleep 6 && '$SCRIPT_DIR/kexec' -e ${kexec_extra_flags}" &
+diff --git a/modules/zfs.nix b/modules/zfs.nix
+index 5980855..229cf2e 100644
+--- a/modules/zfs.nix
++++ b/modules/zfs.nix
+@@ -28,7 +28,7 @@ in
+         "zfs"
+       ];
+     };
+-    kernelPackages = pkgs.linuxKernel.packages.linux_6_14;
++    # kernelPackages = pkgs.linuxKernel.packages.linux_6_14;
+     kernelParams = [
+       "nohibernate"
+ 
