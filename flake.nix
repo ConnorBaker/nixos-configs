@@ -132,12 +132,12 @@
 
           legacyPackages = pkgs;
 
-          packages = lib.mkIf (system == "x86_64-linux") {
-            orin-flash-script =
-              (inputs.self.nixosConfigurations.nixos-orin.extendModules {
-                modules = [ { nixpkgs.buildPlatform = { inherit system; }; } ];
-              }).config.system.build.flashScript;
-          };
+          # packages = lib.mkIf (system == "x86_64-linux") {
+          #   orin-flash-script =
+          #     (inputs.self.nixosConfigurations.nixos-orin.extendModules {
+          #       modules = [ { nixpkgs.buildPlatform = { inherit system; }; } ];
+          #     }).config.system.build.flashScript;
+          # };
 
           pre-commit.settings.hooks = {
             # Formatter checks
@@ -218,16 +218,16 @@
             ./devices/nixos-ext
           ];
 
-          nixos-orin = mkSystem [
-            {
-              nixpkgs.config = {
-                cudaSupport = true;
-                cudaCapabilities = [ "8.7" ];
-              };
-            }
-            inputs.jetpack-nixos.nixosModules.default
-            ./devices/nixos-orin
-          ];
+          # nixos-orin = mkSystem [
+          #   {
+          #     nixpkgs.config = {
+          #       cudaSupport = true;
+          #       cudaCapabilities = [ "8.7" ];
+          #     };
+          #   }
+          #   inputs.jetpack-nixos.nixosModules.default
+          #   ./devices/nixos-orin
+          # ];
         };
     };
 }
