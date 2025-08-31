@@ -42,7 +42,7 @@ let
     recursiveUpdate {
       inherit hostName;
       supportedFeatures = baselineSupportedFeatures;
-      maxJobs = 8;
+      maxJobs = 4;
       protocol = "ssh-ng";
       speedFactor = 1;
       sshKey = config.sops.secrets.${nixPrivateKey}.path;
