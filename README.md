@@ -62,6 +62,27 @@ nix run "github:nix-community/nixos-anywhere/242444d228636b1f0e89d3681f04a75254c
   --extra-files /Volumes/nixos-desktop
 ```
 
+## `nixos-azure01`
+
+Deploy `nixos-azure01` with:
+
+```bash
+nix run "github:nix-community/nixos-anywhere" --builders '' -- \
+  azureuser@20.42.83.254 \
+  -i ~/.ssh/id_ed25519 \
+  --flake .#nixos-azure01 \
+  --build-on-remote \
+  --print-build-logs \
+  --debug \
+  --extra-files /Volumes/nixos-azure01
+```
+
+TODO:
+
+- [ ] Networking so it's able to connect to my other remote builders
+  - Since it's not on the same network as them it'll likely have to indirect through tailscale -- can we use tailscale to handle discovery and connect via DNS names?
+- Figure out ZFS rollback not working (see comment in zfs.nix)
+
 ## `nixos-build01`
 
 Deploy `nixos-build01` with:

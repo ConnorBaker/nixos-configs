@@ -1,5 +1,6 @@
 keys:
   machines:
+    - &nixos-azure01 age1n97vkmmwh0zghrh67xzlvs35xyy64dxvt9z6e3x53krt2lt9w5fss2lm3n
     - &nixos-build01 age1lmcvfc07ggerxgsrzq2nvc8t6hm44n68ajsh0qr7rs32r6pez5asshkyvf
     - &nixos-desktop age1azuwgsgd2vhgkcuqagxefjt4peh9hz9ddmpcxd8p763qrefd8ddqas32ef
     - &nixos-ext age12z4wlayqratlswq0gq43ps6sp084r7mxh9ukjcczv09cry4skemqr9ekdr
@@ -8,10 +9,15 @@ creation_rules:
   - path_regex: modules/nix/secrets\.yaml$
     key_groups:
       - age:
+          - *nixos-azure01
           - *nixos-build01
           - *nixos-desktop
           - *nixos-ext
           - *nixos-orin
+  - path_regex: devices/nixos-azure01/secrets\.yaml$
+    key_groups:
+      - age:
+          - *nixos-azure01
   - path_regex: devices/nixos-build01/secrets\.yaml$
     key_groups:
       - age:
