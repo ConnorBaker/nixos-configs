@@ -29,7 +29,8 @@
 
     jetpack-nixos = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:anduril/jetpack-nixos";
+      # TODO: https://github.com/anduril/jetpack-nixos/pull/344
+      url = "github:anduril/jetpack-nixos/pull/344/merge";
     };
 
     nil = {
@@ -218,16 +219,16 @@
             ./devices/nixos-ext
           ];
 
-          # nixos-orin = mkSystem [
-          #   {
-          #     nixpkgs.config = {
-          #       cudaSupport = true;
-          #       cudaCapabilities = [ "8.7" ];
-          #     };
-          #   }
-          #   inputs.jetpack-nixos.nixosModules.default
-          #   ./devices/nixos-orin
-          # ];
+          nixos-orin = mkSystem [
+            {
+              nixpkgs.config = {
+                cudaSupport = true;
+                cudaCapabilities = [ "8.7" ];
+              };
+            }
+            inputs.jetpack-nixos.nixosModules.default
+            ./devices/nixos-orin
+          ];
         };
     };
 }

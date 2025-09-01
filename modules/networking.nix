@@ -94,6 +94,7 @@ in
       # Match on ethernet interfaces and MAC address
       matchConfig = {
         inherit MACAddress;
+        # TODO: Find out whether systemd matches on any name or requires all names to match.
         Name = [
           "en*"
           "eth*"
