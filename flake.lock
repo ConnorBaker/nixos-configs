@@ -268,16 +268,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1756201234,
-        "narHash": "sha256-s7PpdGHIF3H2YmjgIiCMUaVfwPnKNdWZXLLMlbNV/70=",
-        "owner": "anduril",
+        "lastModified": 1756738608,
+        "narHash": "sha256-bJrt/fRz/ZTvySO6iIrfWmUNiDloO4fIt23ppAoZrHA=",
+        "owner": "ConnorBaker",
         "repo": "jetpack-nixos",
-        "rev": "9f55bf746f62b80152c73507e0ea20967ae643e8",
+        "rev": "bac0be88fdf5cd4b23451ede1208d17bdceeb25b",
         "type": "github"
       },
       "original": {
-        "owner": "anduril",
-        "ref": "pull/344/merge",
+        "owner": "ConnorBaker",
+        "ref": "feat/updates-for-master",
         "repo": "jetpack-nixos",
         "type": "github"
       }

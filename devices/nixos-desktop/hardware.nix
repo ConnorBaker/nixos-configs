@@ -1,5 +1,6 @@
 {
   config,
+  lib,
   modulesPath,
   ...
 }:
@@ -40,11 +41,33 @@
       allowedPatterns.nvidia-gpu.paths = [ thingDriverLinkLinksTo ];
     };
 
-  systemd.network.networks."10-ethernet" = {
-    linkConfig.MACAddress = "58:11:22:b4:9d:69";
-    networkConfig = {
-      Address = "192.168.1.12/24";
-      Gateway = "192.168.1.1";
+  systemd.network.networks."10-ether" =
+    let
+      cfg = config.systemd.network.networks."10-ether";
+    in
+    {
+      linkConfig.MACAddress = "58:11:22:b4:9d:69";
+
+      networkConfig = {
+        Address = "192.168.1.12/24";
+        Gateway = "192.168.1.1";
+        DHCP = lib.mkForce "ipv6";
+      };
+
+      # IPv4 Static Leases
+      dhcpServerStaticLeases = [
+        {
+          inherit (cfg.linkConfig) MACAddress;
+          Address = lib.removeSuffix "/24" cfg.networkConfig.Address;
+        }
+      ];
+
+      routes = lib.mkBefore [
+        {
+          inherit (cfg.networkConfig) Gateway;
+          GatewayOnLink = true;
+        }
+        { Destination = cfg.networkConfig.Gateway; }
+      ];
     };
-  };
 }

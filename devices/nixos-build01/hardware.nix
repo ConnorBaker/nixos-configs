@@ -1,4 +1,9 @@
-{ modulesPath, ... }:
+{
+  config,
+  lib,
+  modulesPath,
+  ...
+}:
 {
   imports = [ "${modulesPath}/installer/scan/not-detected.nix" ];
 
@@ -17,11 +22,33 @@
     };
   };
 
-  systemd.network.networks."10-ethernet" = {
-    linkConfig.MACAddress = "e8:9c:25:5e:3b:92";
-    networkConfig = {
-      Address = "192.168.1.14/24";
-      Gateway = "192.168.1.1";
+  systemd.network.networks."10-ether" =
+    let
+      cfg = config.systemd.network.networks."10-ether";
+    in
+    {
+      linkConfig.MACAddress = "e8:9c:25:5e:3b:92";
+
+      networkConfig = {
+        Address = "192.168.1.14/24";
+        Gateway = "192.168.1.1";
+        DHCP = lib.mkForce "ipv6";
+      };
+
+      # IPv4 Static Leases
+      dhcpServerStaticLeases = [
+        {
+          inherit (cfg.linkConfig) MACAddress;
+          Address = lib.removeSuffix "/24" cfg.networkConfig.Address;
+        }
+      ];
+
+      routes = lib.mkBefore [
+        {
+          inherit (cfg.networkConfig) Gateway;
+          GatewayOnLink = true;
+        }
+        { Destination = cfg.networkConfig.Gateway; }
+      ];
     };
-  };
 }
