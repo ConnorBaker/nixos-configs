@@ -62,6 +62,21 @@ nix run "github:nix-community/nixos-anywhere/242444d228636b1f0e89d3681f04a75254c
   --extra-files /Volumes/nixos-desktop
 ```
 
+## `nixos-azure01`
+
+Deploy `nixos-azure01` with:
+
+```bash
+nix run "github:nix-community/nixos-anywhere" --builders '' -- \
+  azureuser@20.42.83.254 \
+  -i ~/.ssh/id_ed25519 \
+  --flake .#nixos-azure01 \
+  --build-on-remote \
+  --print-build-logs \
+  --debug \
+  --extra-files /Volumes/nixos-build01
+```
+
 ## `nixos-build01`
 
 Deploy `nixos-build01` with:

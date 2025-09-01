@@ -195,6 +195,11 @@
             };
         in
         {
+          nixos-azure01 = mkSystem [
+            { nixpkgs.hostPlatform.system = "x86_64-linux"; }
+            ./devices/nixos-azure01
+          ];
+
           nixos-build01 = mkSystem [
             { nixpkgs.hostPlatform.system = "x86_64-linux"; }
             ./devices/nixos-build01
