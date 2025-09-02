@@ -45,7 +45,10 @@
   };
 
   networking = {
-    firewall.interfaces.usb0.allowedUDPPorts = [ 5353 ]; # mDNS traffic
+    firewall.interfaces.usb0.allowedUDPPorts = [
+      67 # DHCPv4
+      5353 # mDNS
+    ];
     wireless.iwd.enable = true;
   };
 
@@ -56,7 +59,11 @@
       "20-wlan-station".networkConfig.DNSOverTLS = lib.mkForce false;
       "30-usb-gadget" = {
         matchConfig.Name = "usb0";
-        networkConfig.MulticastDNS = true;
+        networkConfig = {
+          MulticastDNS = true;
+          DHCPServer = true;
+          Address = "192.168.128.129/30";
+        };
       };
     };
 
