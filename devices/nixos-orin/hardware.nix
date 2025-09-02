@@ -64,6 +64,11 @@
           DHCPServer = true;
           Address = "192.168.128.129/30";
         };
+        dhcpServerConfig = {
+          UplinkInterface = ":none";
+          EmitDNS = false;
+          EmitRouter = false;
+        };
       };
     };
 
