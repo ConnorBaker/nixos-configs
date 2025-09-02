@@ -76,6 +76,8 @@
       wants = [ "modprobe@g_cdc.service" ];
       after = [ "modprobe@g_cdc.service" ];
       wantedBy = [ "multi-user.target" ];
+      # macOS going to sleep causes the service to die
+      serviceConfig.Restart = "always";
     };
   };
 }
