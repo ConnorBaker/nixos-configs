@@ -1,6 +1,7 @@
 {
   inputs = {
     determinate = {
+      inputs.nix.follows = "nix";
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:determinateSystems/determinate";
     };
@@ -36,6 +37,15 @@
     nil = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:oxalica/nil";
+    };
+
+    nix = {
+      inputs.flake-parts.follows = "flake-parts";
+      inputs.git-hooks-nix.follows = "git-hooks-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nixpkgs-regression.follows = "";
+      inputs.nixpkgs-23-11.follows = "";
+      url = "github:DeterminateSystems/nix-src";
     };
 
     nix-direnv = {
