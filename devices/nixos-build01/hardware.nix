@@ -22,6 +22,13 @@
     };
   };
 
+  hardware = {
+    cpu.amd.updateMicrocode = true;
+    enableAllFirmware = true;
+  };
+
+  powerManagement.cpuFreqGovernor = "performance";
+
   systemd.network.networks."10-ether" =
     let
       cfg = config.systemd.network.networks."10-ether";

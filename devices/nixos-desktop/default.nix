@@ -13,13 +13,11 @@
 
     # Configure system
     ../../modules/boot.nix
-    ../../modules/cpu-hardware.nix
     ../../modules/docker.nix
     ../../modules/headless.nix
     ../../modules/impermanence.nix
     ../../modules/mimalloc.nix
     ../../modules/networking.nix
-    ../../modules/nvidia.nix
     ../../modules/sudo.nix
     ../../modules/users.nix
     ../../modules/zfs.nix
@@ -32,7 +30,6 @@
 
     # Users
     ../../users/connorbaker.nix
-    ./packages.nix
   ];
 
   environment.etc = {

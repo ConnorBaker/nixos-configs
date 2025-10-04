@@ -13,7 +13,6 @@
 
     # Configure system
     ../../modules/boot.nix
-    ../../modules/cpu-hardware.nix
     ../../modules/docker.nix
     ../../modules/headless.nix
     ../../modules/impermanence.nix

@@ -23,6 +23,20 @@
     };
   };
 
+  hardware = {
+    cpu.intel.updateMicrocode = true;
+    enableAllFirmware = true;
+    graphics.enable = true;
+    nvidia = {
+      nvidiaPersistenced = false;
+      open = true;
+      package = config.boot.kernelPackages.nvidiaPackages.beta;
+      powerManagement.enable = true;
+    };
+  };
+
+  powerManagement.cpuFreqGovernor = "performance";
+
   programs.nix-required-mounts =
     let
       thingDriverLinkLinksTo =
@@ -40,6 +54,8 @@
       # The other paths include the NVIDIA and Mesa drivers, so we don't need to include them here.
       allowedPatterns.nvidia-gpu.paths = [ thingDriverLinkLinksTo ];
     };
+
+  services.xserver.videoDrivers = [ "nvidia" ];
 
   systemd.network.networks."10-ether" =
     let

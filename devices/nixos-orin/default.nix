@@ -13,7 +13,6 @@
 
     # Configure system
     ../../modules/boot.nix
-    # ../../modules/cpu-hardware.nix # ARM hardware
     ../../modules/docker.nix
     ../../modules/headless.nix
     ../../modules/impermanence.nix
@@ -31,7 +30,6 @@
 
     # Users
     ../../users/connorbaker.nix
-    ./packages.nix
   ];
 
   environment.etc = {
