@@ -112,7 +112,7 @@ in
       use-cgroups = true;
       use-xdg-base-directories = true;
       warn-dirty = false;
-      warn-short-path-literals = true;
+      warn-short-path-literals = false; # Too annoying.
     };
   };
 
