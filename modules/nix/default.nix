@@ -7,13 +7,10 @@ let
   inherit (lib.attrsets)
     attrNames
     attrValues
-    filterAttrs
     genAttrs
     mapAttrs
-    recursiveUpdate
     ;
   inherit (lib.strings) concatMapStringsSep;
-  inherit (lib.trivial) pipe;
 
   nixPrivateKey = "ssh/id_nix_ed25519";
 
@@ -27,26 +24,27 @@ let
     "recursive-nix"
     "uid-range"
   ];
+
   # Maps host names to machine architecture.
+  # NOTE: Hard-coding this here allows us avoiding evaluating multiple system closures
+  # to get their configurations.
   # hostNameToSystem :: AttrSet String (AttrSet String Any)
-  hostNameToConfig = {
-    nixos-build01 = { };
-    nixos-desktop.supportedFeatures = baselineSupportedFeatures ++ [ "cuda" ];
-    nixos-ext = { };
-  };
-  # Functions to generate machine-specific configuration.
-  # Attributes defined in the hostNameToConfig map override these defaults.
-  # machineBoilerplate :: String -> AttrSet String Any -> AttrSet String Any
-  machineBoilerplate =
-    hostName:
-    recursiveUpdate {
-      inherit hostName;
-      supportedFeatures = baselineSupportedFeatures;
-      maxJobs = 4;
-      protocol = "ssh-ng";
-      speedFactor = 1;
-      sshKey = config.sops.secrets.${nixPrivateKey}.path;
-      systems = [ "x86_64-linux" ];
+  hostNameToBuildMachineConfig =
+    let
+      mkBuildMachineConfig = hostName: extraSupportedFeatures: {
+        inherit hostName;
+        supportedFeatures = baselineSupportedFeatures ++ extraSupportedFeatures;
+        maxJobs = 4;
+        protocol = "ssh-ng";
+        speedFactor = 1;
+        sshKey = config.sops.secrets.${nixPrivateKey}.path;
+        systems = [ "x86_64-linux" ];
+      };
+    in
+    mapAttrs mkBuildMachineConfig {
+      nixos-build01 = [ ];
+      nixos-desktop = [ "cuda" ];
+      nixos-ext = [ ];
     };
 in
 {
@@ -64,34 +62,32 @@ in
     # NOTE: Set by the determinate nix module.
     # package = pkgs.nixVersions.latest;
 
-    buildMachines = pipe hostNameToConfig [
-      # AttrSet String (AttrSet String Any) -> AttrSet String (AttrSet String Any)
-      # A machine should not have itself as a remote builder.
-      (filterAttrs (hostName: _: hostName != config.networking.hostName))
-      # AttrSet String (AttrSet String Any) -> AttrSet String (AttrSet String Any)
-      (mapAttrs machineBoilerplate)
-      # AttrSet String (AttrSet String Any) -> List (AttrSet String Any)
-      attrValues
-    ];
+    buildMachines = attrValues (
+      removeAttrs hostNameToBuildMachineConfig [ config.networking.hostName ]
+    );
+
     distributedBuilds = true;
+
     settings = {
       accept-flake-config = true;
       auto-allocate-uids = true;
-      auto-optimise-store = true; # With ZFS ARC, might increase hit ratio relative to amount of memory used
+      auto-optimise-store = false; # Do it manually or on a schedule to avoid a slowdown per-build.
       builders-use-substitutes = true;
       connect-timeout = 5; # Don't wait forever for a remote builder to respond.
       # Since these machines are builders for CUDA packages, makes sense to allow a larger buffer for curl because we
       # have lots of memory and will be downloading large tarballs.
       # NOTE: https://github.com/NixOS/nix/pull/11171
       download-buffer-size = 256 * 1024 * 1024; # 256 MB
+      eval-cores = 0;
       experimental-features = [
         "auto-allocate-uids"
         "ca-derivations"
         "cgroups"
         "dynamic-derivations"
         "flakes"
-        "impure-derivations"
+        "git-hashing"
         "nix-command"
+        "parallel-eval"
         "recursive-nix"
       ];
       fallback = true;
@@ -105,7 +101,8 @@ in
       nar-buffer-size = 1 * 1024 * 1024 * 1024; # 1 GB
       require-drop-supplementary-groups = true;
       system-features =
-        hostNameToConfig.${config.networking.hostName}.supportedFeatures or baselineSupportedFeatures;
+        hostNameToBuildMachineConfig.${config.networking.hostName}.supportedFeatures
+          or baselineSupportedFeatures;
       trace-import-from-derivation = true;
       trusted-users = [
         "root"
@@ -115,6 +112,7 @@ in
       use-cgroups = true;
       use-xdg-base-directories = true;
       warn-dirty = false;
+      warn-short-path-literals = true;
     };
   };
 
@@ -125,8 +123,8 @@ in
         ServerAliveInterval 60
         IPQoS throughput
         IdentityFile ${config.sops.secrets.${nixPrivateKey}.path}
-    '') (attrNames hostNameToConfig);
-    knownHosts = genAttrs (attrNames hostNameToConfig) (hostName: {
+    '') (attrNames hostNameToBuildMachineConfig);
+    knownHosts = genAttrs (attrNames hostNameToBuildMachineConfig) (hostName: {
       publicKeyFile = ../.. + "/devices/${hostName}/keys/ssh_host_ed25519_key.pub";
     });
   };
