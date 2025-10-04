@@ -32,8 +32,7 @@
 
     jetpack-nixos = {
       inputs.nixpkgs.follows = "nixpkgs";
-      # TODO: https://github.com/anduril/jetpack-nixos/pull/344
-      url = "github:ConnorBaker/jetpack-nixos/feat/updates-for-master";
+      url = "github:anduril/jetpack-nixos";
     };
 
     nil = {
