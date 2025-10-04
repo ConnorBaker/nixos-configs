@@ -1,8 +1,10 @@
 {
   inputs = {
     determinate = {
-      inputs.nix.follows = "nix";
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs = {
+        nix.follows = "nix";
+        nixpkgs.follows = "nixpkgs";
+      };
       url = "github:determinateSystems/determinate";
     };
 
@@ -40,11 +42,13 @@
     };
 
     nix = {
-      inputs.flake-parts.follows = "flake-parts";
-      inputs.git-hooks-nix.follows = "git-hooks-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.nixpkgs-regression.follows = "";
-      inputs.nixpkgs-23-11.follows = "";
+      inputs = {
+        flake-parts.follows = "flake-parts";
+        git-hooks-nix.follows = "git-hooks-nix";
+        nixpkgs.follows = "nixpkgs";
+        nixpkgs-regression.follows = "";
+        nixpkgs-23-11.follows = "";
+      };
       url = "github:DeterminateSystems/nix-src";
     };
 
