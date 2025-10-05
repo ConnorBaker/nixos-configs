@@ -34,7 +34,7 @@ let
       mkBuildMachineConfig = hostName: extraSupportedFeatures: {
         inherit hostName;
         supportedFeatures = baselineSupportedFeatures ++ extraSupportedFeatures;
-        maxJobs = 4;
+        maxJobs = 3;
         protocol = "ssh-ng";
         speedFactor = 1;
         sshKey = config.sops.secrets.${nixPrivateKey}.path;
@@ -95,7 +95,7 @@ in
       http-connections = 32;
       lazy-trees = true;
       log-lines = 100;
-      max-jobs = 8;
+      max-jobs = 3;
       max-substitution-jobs = 32;
       # See: https://github.com/NixOS/nix/blob/1cd48008f0e31b0d48ad745b69256d881201e5ee/src/libstore/local-store.cc#L1172
       nar-buffer-size = 1 * 1024 * 1024 * 1024; # 1 GB
