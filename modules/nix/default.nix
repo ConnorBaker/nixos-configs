@@ -88,6 +88,7 @@ in
         "git-hashing"
         "nix-command"
         "parallel-eval"
+        "read-only-local-store"
         "recursive-nix"
       ];
       fallback = true;
