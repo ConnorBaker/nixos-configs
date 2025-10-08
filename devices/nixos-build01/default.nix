@@ -3,7 +3,7 @@
     ./hardware.nix
 
     # Disks and formatting
-    ./disko
+    ./disko.nix
 
     # Secrets
     ./secrets.nix
