@@ -218,7 +218,8 @@
             {
               nixpkgs = {
                 config = {
-                  cudaSupport = true;
+                  # Globally set cudaSupport changes hwloc which causes Nix rebuilds
+                  # cudaSupport = true;
                   cudaCapabilities = [ "8.9" ];
                 };
                 hostPlatform.system = "x86_64-linux";
