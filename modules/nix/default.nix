@@ -22,7 +22,6 @@ let
     "kvm"
     "nixos-test"
     "recursive-nix"
-    "uid-range"
   ];
 
   # Maps host names to machine architecture.
@@ -69,8 +68,6 @@ in
     distributedBuilds = true;
 
     settings = {
-      accept-flake-config = true;
-      auto-allocate-uids = true;
       auto-optimise-store = false; # Do it manually or on a schedule to avoid a slowdown per-build.
       builders-use-substitutes = true;
       connect-timeout = 5; # Don't wait forever for a remote builder to respond.
@@ -80,9 +77,7 @@ in
       download-buffer-size = 256 * 1024 * 1024; # 256 MB
       eval-cores = 0;
       experimental-features = [
-        "auto-allocate-uids"
         "ca-derivations"
-        "cgroups"
         "dynamic-derivations"
         "flakes"
         "git-hashing"
@@ -110,7 +105,6 @@ in
         "@nixbld"
         "@wheel"
       ];
-      use-cgroups = true;
       use-xdg-base-directories = true;
       warn-dirty = false;
       warn-short-path-literals = false; # Too annoying.
