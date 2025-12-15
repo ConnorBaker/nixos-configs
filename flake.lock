@@ -1,67 +1,5 @@
 {
   "nodes": {
-    "determinate": {
-      "inputs": {
-        "determinate-nixd-aarch64-darwin": "determinate-nixd-aarch64-darwin",
-        "determinate-nixd-aarch64-linux": "determinate-nixd-aarch64-linux",
-        "determinate-nixd-x86_64-linux": "determinate-nixd-x86_64-linux",
-        "nix": [
-          "nix"
-        ],
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1765254444,
-        "narHash": "sha256-kAO/ZeBnjaF+uqOP6qweXlRk2ylocLuv/9Dn8FsuPlU=",
-        "owner": "determinateSystems",
-        "repo": "determinate",
-        "rev": "3ccc0297525e51ac3d7905509e0616c9c8350108",
-        "type": "github"
-      },
-      "original": {
-        "owner": "determinateSystems",
-        "repo": "determinate",
-        "type": "github"
-      }
-    },
-    "determinate-nixd-aarch64-darwin": {
-      "flake": false,
-      "locked": {
-        "narHash": "sha256-6PWoqx52nvlWzlElTjcn7KAPKitfcKZYEFSsC3PoEoE=",
-        "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.14.0/macOS"
-      },
-      "original": {
-        "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.14.0/macOS"
-      }
-    },
-    "determinate-nixd-aarch64-linux": {
-      "flake": false,
-      "locked": {
-        "narHash": "sha256-b1e25BUPL7Qf0QVbYlfZ/+QiClrP/SHIjMPtA47aOLc=",
-        "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.14.0/aarch64-linux"
-      },
-      "original": {
-        "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.14.0/aarch64-linux"
-      }
-    },
-    "determinate-nixd-x86_64-linux": {
-      "flake": false,
-      "locked": {
-        "narHash": "sha256-8EI2f8IftPcRFlR6K4+cpIEAVf5UIeMCjHysEtVqDw0=",
-        "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.14.0/x86_64-linux"
-      },
-      "original": {
-        "type": "file",
-        "url": "https://install.determinate.systems/determinate-nixd/tag/v3.14.0/x86_64-linux"
-      }
-    },
     "disko": {
       "inputs": {
         "nixpkgs": [
@@ -236,34 +174,6 @@
         "type": "github"
       }
     },
-    "nix": {
-      "inputs": {
-        "flake-parts": [
-          "flake-parts"
-        ],
-        "git-hooks-nix": [
-          "git-hooks-nix"
-        ],
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "nixpkgs-23-11": [],
-        "nixpkgs-regression": []
-      },
-      "locked": {
-        "lastModified": 1765296217,
-        "narHash": "sha256-6gJEMfxKXblYNFWTCWTK4bnLzxoqIeUPM2lK7MtW+xc=",
-        "owner": "DeterminateSystems",
-        "repo": "nix-src",
-        "rev": "52ea2931b2dca25867249f80a8c2421f387cb547",
-        "type": "github"
-      },
-      "original": {
-        "owner": "DeterminateSystems",
-        "repo": "nix-src",
-        "type": "github"
-      }
-    },
     "nix-direnv": {
       "inputs": {
         "flake-parts": [
@@ -306,7 +216,6 @@
     },
     "root": {
       "inputs": {
-        "determinate": "determinate",
         "disko": "disko",
         "flake-parts": "flake-parts",
         "git-hooks-nix": "git-hooks-nix",
@@ -314,7 +223,6 @@
         "impermanence": "impermanence",
         "jetpack-nixos": "jetpack-nixos",
         "nil": "nil",
-        "nix": "nix",
         "nix-direnv": "nix-direnv",
         "nixpkgs": "nixpkgs",
         "sops-nix": "sops-nix",

@@ -58,7 +58,6 @@ in
     channel.enable = false;
 
     # By default, package is pkgs.nix, which is an alias to pkgs.nixVersions.stable.
-    # NOTE: Set by the determinate nix module.
     # package = pkgs.nixVersions.latest;
 
     buildMachines = attrValues (
@@ -75,21 +74,18 @@ in
       # have lots of memory and will be downloading large tarballs.
       # NOTE: https://github.com/NixOS/nix/pull/11171
       download-buffer-size = 256 * 1024 * 1024; # 256 MB
-      eval-cores = 0;
       experimental-features = [
         "ca-derivations"
         "dynamic-derivations"
         "flakes"
         "git-hashing"
         "nix-command"
-        "parallel-eval"
         "read-only-local-store"
         "recursive-nix"
       ];
       fallback = true;
       fsync-metadata = false;
       http-connections = 32;
-      lazy-trees = true;
       log-lines = 100;
       max-jobs = 3;
       max-substitution-jobs = 32;
@@ -99,7 +95,6 @@ in
       system-features =
         hostNameToBuildMachineConfig.${config.networking.hostName}.supportedFeatures
           or baselineSupportedFeatures;
-      trace-import-from-derivation = true;
       trusted-users = [
         "root"
         "@nixbld"
@@ -107,7 +102,6 @@ in
       ];
       use-xdg-base-directories = true;
       warn-dirty = false;
-      warn-short-path-literals = false; # Too annoying.
     };
   };
 

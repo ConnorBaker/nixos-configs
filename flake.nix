@@ -1,13 +1,5 @@
 {
   inputs = {
-    determinate = {
-      inputs = {
-        nix.follows = "nix";
-        nixpkgs.follows = "nixpkgs";
-      };
-      url = "github:determinateSystems/determinate";
-    };
-
     disko = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nix-community/disko";
@@ -38,17 +30,6 @@
     nil = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:oxalica/nil";
-    };
-
-    nix = {
-      inputs = {
-        flake-parts.follows = "flake-parts";
-        git-hooks-nix.follows = "git-hooks-nix";
-        nixpkgs.follows = "nixpkgs";
-        nixpkgs-regression.follows = "";
-        nixpkgs-23-11.follows = "";
-      };
-      url = "github:DeterminateSystems/nix-src";
     };
 
     nix-direnv = {
@@ -90,29 +71,7 @@
         # Misc tools
         inputs.nix-direnv.overlays.default
         (final: _: { inherit (inputs.histodu.packages.${final.system}) histodu; })
-        # Overlay for newer version of:
-        # - nil
-        # - Nix
-        # - nixpkgs-review
-        # - nix-eval-jobs
         inputs.nil.overlays.default
-        inputs.determinate.inputs.nix.overlays.default # changes only the top-level Nix
-        (final: prev: {
-          # By default, nix is an alias to nixVersions.stable, but the overlay makes this the newest version.
-          # nix = final.nixVersions.latest;
-          nix-eval-jobs = prev.nix-eval-jobs.overrideAttrs {
-            # For some reason, builds with type "plain" and LTO disabled by default.
-            mesonBuildType = "release";
-            mesonFlags = [ (mesonBool "b_lto" true) ];
-          };
-          nixVersions = prev.nixVersions.extend (
-            finalNixVersions: _: {
-              latest = final.nix;
-              stable = finalNixVersions.latest;
-              unstable = finalNixVersions.latest;
-            }
-          );
-        })
       ];
 
       config.allowUnfree = true;
@@ -197,7 +156,6 @@
             extraModules:
             inputs.nixpkgs.lib.nixosSystem {
               modules = [
-                inputs.determinate.nixosModules.default
                 inputs.sops-nix.nixosModules.sops
                 inputs.disko.nixosModules.disko
                 inputs.impermanence.nixosModules.impermanence
