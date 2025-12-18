@@ -72,6 +72,9 @@
         inputs.nix-direnv.overlays.default
         (final: _: { inherit (inputs.histodu.packages.${final.system}) histodu; })
         inputs.nil.overlays.default
+        (final: prev: {
+          nixVersions = prev.nixVersions.extend (finalNixVersions: _: { stable = finalNixVersions.latest; });
+        })
       ];
 
       config.allowUnfree = true;
