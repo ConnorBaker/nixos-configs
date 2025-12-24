@@ -30,7 +30,7 @@ in
     };
     kernelPackages = lib.mkIf (
       !config.hardware.nvidia-jetpack.enable or false
-    ) pkgs.linuxKernel.packages.linux_6_16;
+    ) pkgs.linuxKernel.packages.linux_6_18;
     kernelParams = [
       "nohibernate"
 
