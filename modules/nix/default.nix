@@ -31,7 +31,7 @@ let
   hostNameToBuildMachineConfig =
     let
       mkBuildMachineConfig = hostName: extraSupportedFeatures: {
-        hostName = hostName + "?max-connections=16&want-mass-query=true";
+        hostName = hostName + "?max-connections=1&want-mass-query=true";
         supportedFeatures = baselineSupportedFeatures ++ extraSupportedFeatures;
         maxJobs = 3;
         protocol = "ssh-ng";
