@@ -98,8 +98,13 @@ in
       pkgs.nixfmt-rfc-style
       pkgs.nixpkgs-review
 
+      # Node
+      pkgs.nodePackages_latest.nodejs
+      pkgs.pnpm
+
       # Python
       pkgs.ruff
+      pkgs.uv
 
       # Rust unix tools
       pkgs.histodu
@@ -125,7 +130,9 @@ in
       pkgs.iperf
       pkgs.jq
       pkgs.micromamba
+      pkgs.patchelf
       pkgs.parallel-full
+      pkgs.perf
       pkgs.tmux
       pkgs.vim
       (mkIf config.hardware.nvidia.enabled pkgs.nvitop)
