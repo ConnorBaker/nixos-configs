@@ -8,6 +8,7 @@
   imports = [ "${modulesPath}/installer/scan/not-detected.nix" ];
 
   boot = {
+    extraModprobeConfig = "options nvidia NVreg_RestrictProfilingToAdminUsers=0";
     initrd.availableKernelModules = [
       "ahci"
       "nvme"
