@@ -95,11 +95,11 @@ in
       pkgs.nix-direnv
       pkgs.nix-eval-jobs
       pkgs.nix-output-monitor
-      pkgs.nixfmt-rfc-style
+      pkgs.nixfmt
       pkgs.nixpkgs-review
 
       # Node
-      pkgs.nodePackages_latest.nodejs
+      pkgs.nodejs_latest
       pkgs.pnpm
 
       # Python

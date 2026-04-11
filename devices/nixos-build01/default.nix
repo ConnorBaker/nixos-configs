@@ -16,7 +16,6 @@
     ../../modules/docker.nix
     ../../modules/headless.nix
     ../../modules/impermanence.nix
-    ../../modules/mimalloc.nix
     ../../modules/networking.nix
     ../../modules/sudo.nix
     ../../modules/users.nix

@@ -1,9 +1,9 @@
 {
   environment.variables.BROWSER = "echo";
   fonts.fontconfig.enable = false;
-  systemd.sleep.extraConfig = ''
-    AllowHibernation=no
-    AllowSuspend=no
-  '';
+  systemd.sleep.settings.Sleep = {
+    AllowHibernation = "no";
+    AllowSuspend = "no";
+  };
   time.timeZone = "UTC";
 }

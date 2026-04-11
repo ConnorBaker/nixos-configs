@@ -24,7 +24,7 @@
 
     jetpack-nixos = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:anduril/jetpack-nixos";
+      url = "github:ConnorBaker/jetpack-nixos";
     };
 
     nil = {
@@ -135,10 +135,7 @@
               mdformat.enable = true;
 
               # Nix
-              nixfmt = {
-                enable = true;
-                package = pkgs.nixfmt-rfc-style;
-              };
+              nixfmt.enable = true;
 
               # Shell
               shellcheck.enable = true;
