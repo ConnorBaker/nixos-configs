@@ -32,6 +32,8 @@
       url = "github:oxalica/nil";
     };
 
+    nix.url = "github:NixOS/nix";
+
     nix-direnv = {
       inputs = {
         flake-parts.follows = "flake-parts";
@@ -70,10 +72,19 @@
       overlays = [
         # Misc tools
         inputs.nix-direnv.overlays.default
-        (final: _: { inherit (inputs.histodu.packages.${final.system}) histodu; })
+        (final: _: { inherit (inputs.histodu.packages.${final.stdenv.hostPlatform.system}) histodu; })
         inputs.nil.overlays.default
         (final: prev: {
-          nixVersions = prev.nixVersions.extend (finalNixVersions: _: { stable = finalNixVersions.latest; });
+          nil = prev.nil.overrideAttrs (_: {
+            doCheck = false;
+          });
+        })
+        inputs.nix.overlays.default
+        (final: prev: {
+          nixVersions = prev.nixVersions.extend (finalNixVersions: _: {
+            latest = final.nix; # Provided by nix overlay
+            stable = finalNixVersions.latest;
+          });
         })
       ];
 
@@ -82,7 +93,8 @@
       mkNixpkgs =
         system:
         import inputs.nixpkgs {
-          inherit config overlays system;
+          inherit config overlays;
+          localSystem.system = system;
         };
 
       # Memoization through lambda lifting.

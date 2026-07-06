@@ -20,9 +20,26 @@ in
     '';
     initrd = {
       # Use ZFS to reset the root pool.
-      postDeviceCommands = lib.mkAfter ''
-        zfs rollback -r rpool/root@blank
-      '';
+      systemd.services.zfs-rollback-root = {
+        description = "Rollback ZFS root dataset";
+        after = [ "zfs-import-rpool.service" ];
+        before = [
+          "sysroot.mount"
+          "zfs-import.target"
+        ];
+        requiredBy = [
+          "sysroot.mount"
+          "zfs-import.target"
+        ];
+        unitConfig.DefaultDependencies = "no";
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+        };
+        script = ''
+          ${zfsPkg}/sbin/zfs rollback -r rpool/root@blank
+        '';
+      };
       supportedFilesystems = [
         "vfat"
         "zfs"
@@ -42,6 +59,9 @@ in
       "vfat"
       "zfs"
     ];
+    # Prefer availability for remote hosts without KVM access: force-import
+    # root after unclean shutdowns or installer boots that did not export pools.
+    zfs.forceImportRoot = true;
     zfs.package = pkgs.zfs_unstable;
   };
 

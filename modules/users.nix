@@ -1,5 +1,5 @@
 {
   users.mutableUsers = false;
   # TODO: Is this necessary?
-  systemd.user.extraConfig = "DefaultLimitNOFILE=32000";
+  systemd.user.settings.Manager.DefaultLimitNOFILE = "32000";
 }
