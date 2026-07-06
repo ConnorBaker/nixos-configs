@@ -31,7 +31,7 @@
     nvidia = {
       nvidiaPersistenced = false;
       open = true;
-      package = config.boot.kernelPackages.nvidiaPackages.beta;
+      package = config.boot.kernelPackages.nvidiaPackages.latest;
       powerManagement.enable = true;
     };
   };
