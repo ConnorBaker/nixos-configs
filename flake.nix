@@ -53,6 +53,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:numtide/treefmt-nix";
     };
+
+    tribuchet = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.treefmt-nix.follows = "treefmt-nix";
+      url = "github:Mic92/tribuchet";
+    };
   };
 
   outputs =
@@ -173,6 +179,7 @@
                 inputs.sops-nix.nixosModules.sops
                 inputs.disko.nixosModules.disko
                 inputs.impermanence.nixosModules.impermanence
+                inputs.tribuchet.nixosModules.default
                 {
                   nixpkgs = { inherit config overlays; };
                 }
