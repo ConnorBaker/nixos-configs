@@ -1,0 +1,115 @@
+Nix patches and upstream follow-up — 2026-10-14 18:45 UTC
+
+Current source inventory
+Pinned upstream Nix a9f38ea0ee89f550616f342386f45e896f4abd18, with four
+source patch files applied to optimized and profiling components:
+1. default-eval-store.patch adds an eval-store setting honored by modern
+commands and legacy nix-build/nix-instantiate (nix-shell shares nix-build).
+2. append-plugin-files.patch enables appendable filesystem-path lists, so
+extra-plugin-files can retain gRPC while adding Tarmac.
+3. upstream-clang-vtables.patch moves TarSink/DirectorySink destructors out
+of headers, giving their virtual tables a definition usable by our Clang/LTO
+build and dynamically loaded plugins.
+4. tribuchet-external-builders.patch bundles uid-range sandbox delegation,
+exit222 local fallback when an external builder declines, recursive-Nix
+output-reference registration, remote output closure copying, and importing
+an eval-store derivation closure before invoking a remote build hook.
+The hook import addresses #13179, not the earlier queryMissing reporting
+and flake-check selection path. Core patches live in nix-optimization.
+
+Selected variant is PGO, built with Clang22, O3/LTO and profiles from GNOME
+NixOS closure evaluation, retaining upstream GC tuning and using Boost1.89.
+BOLT/CSPGO variants are available but not selected for system Nix.
+Packaging also uses a non-conflicting Meson build directory and preserves
+unit-test executable names. The CLI wrapper loads Tarmac/defaults eval-store,
+but explicitly existing .drv targets valid in the ordinary store use auto.
+Nix-eval-jobs has a separate package API port and its own Tarmac wrapper.
+
+Remaining relevant Nix issues/PRs (not applied here)
+#16433: queryMissing reads .drv from a supplied eval store. Applies after our
+patches, but changes Store::queryMissing and needs gRPC declaration/implementation
+adaptation plus passing getEvalStore() into the flake-check builder.
+https://github.com/NixOS/nix/pull/16433
+#16125: narrower alternative for skipped flake checks. Unknown .drv paths are
+built rather than skipped; builder receives the eval store. No queryMissing
+API change, but its older buildPathsWithResults call needs porting to our
+getBuilder(getEvalStore())->buildPathsWithResults API. Current diff fails
+application at flake.cc. Only labels/dpulls checks were exposed at inspection,
+so do not claim compilation CI coverage or runtime validation.
+https://github.com/NixOS/nix/pull/16125
+#16298: copies source inputs from eval store for legacy nix-shell, fixing#16297.
+Applies cleanly to exact pinned source plus four local patches. Upstream Ubuntu,
+macOS and sanitizer CI passes. This is textual applicability only locally;
+no local build/runtime test of this Nix PR was performed.
+https://github.com/NixOS/nix/pull/16298
+https://github.com/NixOS/nix/issues/16297
+Our hook/default-setting patches correspond to still-open #13179/#13859.
+https://github.com/NixOS/nix/issues/13179
+https://github.com/NixOS/nix/issues/13859
+No open Mic92 Tarmac/gRPC/Tribuchet PR found supplies the queryMissing fix.
+
+Sergei Zimmerman's draft#16427
+https://github.com/NixOS/nix/pull/16427
+Still open/draft. Disables redundant Git object hash verification on reads,
+uses patched libgit22.0RC with zlib-ng, and disables expensive delta search
+for tarball-cache packs, including libgit2 configuration fixes. Author reports
+~3x less CPU time and wall time5.55s->3.04s on his cold-cache benchmark; no
+measurement on our hosts. Not included in current upstream pin, four core
+patches, or plugin source/package overrides. Our libgit2 is1.9.7, without
+these patches, linked to zlib1.3.2 rather than zlib-ng.
+
+Historical correction: the earlier Determinate3.23.1 pin ea7e9be2050705f62414cd8657bb656b52477d40
+DOES include this work through merged Determinate PR627. Merge8a5cc816 is
+an ancestor (326commits ahead, zero behind). Historical git-utils.cc contains
+strict-hash disabling and dontFindDeltas/pack.window=0. Switching to upstream
+Nix dropped those source changes; Tarmac did not import them indirectly.
+https://github.com/DeterminateSystems/nix-src/pull/627
+
+Tarmac replaces the tarball InputScheme with its own libarchive ingestion,
+BLAKE3/LZ4/LMDB pack store, avoiding that Git-cache work for ordinary tarball
+inputs. It does NOT replace github/gitlab/sourcehut/git InputSchemes. Our
+pinned github.cc directly obtains getTarballWriterPool/getTarballCache and
+unpacks archives into the Git cache, bypassing the tarball InputScheme registry.
+Thus the draft remains relevant to our predominantly github: flake inputs,
+even with Tarmac, but is not a Tarmac compatibility prerequisite.
+No #16427 prerequisite reference found in pinned Mic92 README/source,
+non-shallow available history, or issue searches of the three projects.
+Tribuchet explicitly requires its uid-range patch, which we already carry.
+
+libgit2#7366 (exposing in-memory config backend functions) merged on2026-10-14,
+but that alone does not provide the complete draft's zlib-ng and pack-window
+patches. The Nix draft needs rebasing to our newer fetcher/dependency packaging
+before adoption. No Sergei/libgit2 performance patch was added by this follow-up.
+https://github.com/libgit2/libgit2/pull/7366
+
+Other gRPC reliability issue
+#200 is a separate stale-positive-cache problem: inputs advertised substitutable
+but unavailable cause repeated rescheduling instead of building the missing
+input. It remains open and is not addressed by PR204.
+https://github.com/Mic92/nix-grpc-store/issues/200
+
+gRPC PR204 integrated and validated
+https://github.com/Mic92/nix-grpc-store/pull/204
+Reviewed head62b2c8bc0bdf055130fd17f935f3e3210fe8c737 is applied through
+overlays/infrastructure.nix to the caller-pkgs daemon/plugin/default/image
+recipes. It retains active uploads during drain, keeps upload assignments
+alive, reattaches clients to already-running builds on draining workers,
+and reschedules when a worker disappears. Source pin1136edc's newer
+StorePathSet upload API is preserved by a small fetchpatch adaptation;
+the PR was based before that change. The ordinary flake input still follows
+upstream main through flake.lock; remove the temporary patch after merging.
+
+Local validation: all13 Meson tests passed, root pre-commit checks passed,
+and desktop/ext NixOS system closures built successfully. An isolated
+16MiB throttled upload used temporary stores/state and loopback-only test
+daemons, without touching live services. SIGTERM during AddMultipleToStore
+made the baseline1136 daemon's copy exit1; patched copy exited0 and its
+daemon drained normally. This establishes the upload-drain regression fix,
+not the entire multi-worker farm retry matrix. No farm VM suite run locally.
+Evidence: /tmp/grpc-upload-drain-regression-bounded.log and fixture
+/tmp/grpc-upload-drain-5cr4jqv7; package build log
+/tmp/grpc-pr204-ported-build.log; system logs /tmp/grpc-pr204-systems.log.
+Patched package: /nix/store/jmdlz14k2cnlchqnd6qchmycabwl9l6f-nix-grpc-store-0.2.0
+Desktop: /nix/store/hinx7bcr49kwiziz34c0rn2v644v1fvx-nixos-system-nixos-desktop-26.11.20261011.7fd4004
+Ext: /nix/store/ji0ddmg5902dnvqdxwx3iadp608ik26j-nixos-system-nixos-ext-26.11.20261011.7fd4004
+Activation remains pending while the current build workloads run.
