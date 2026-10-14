@@ -1,0 +1,57 @@
+Pre-push review — 2026-10-14
+
+Scope: configuration branch changes since remote tip
+68b212f6e66a1be91a58bfdcd8eeb3093c70a9c6, plus the already-published
+nix-optimization change at bcacbe17f37b1265db2764a546465d44ad1a671c.
+
+Review corrections
+1. modules/nix/default.nix still constructed SSH known-host key paths from
+   host names while inventory.nix already owned those paths. Use the inventory
+   value, matching the authorized-key inventory consumer and avoiding drift.
+2. Remove ext's obsolete commented dpool rollback snippet. No dpool exists;
+   the active root rollback remains in the common ZFS module.
+3. Correct minor spacing in the implementation/activation reports.
+
+Validation of the final corrections
+All four evaluated system.build.toplevel output paths are identical before
+and after the two source corrections. The selected SSH known-host names and
+key files are identical. This proves no resulting system closure or deployed
+SSH policy change; another live switch is unnecessary. Offline build01/Orin
+were evaluated only. Final pre-commit checks passed after the source edits.
+
+Reviewed behavior
+- Overlays call recipes with the caller's package set; nix-optimization follows
+  the root Nix/Nixpkgs inputs. System Nix, embedded evaluator and Tarmac/gRPC
+  components share the selected patched Nix scope. No per-host unpatched Nix.
+- Sergei's complete companion dependency stack is scoped to Nix. The parallel
+  tarball writer pool receives the delta-search setting. Git hash-on-read
+  corruption-detection changes are explicitly documented; NAR checks remain.
+- nix-eval-jobs API adaptations retain main's separate-store and scheduling
+  fixes, handle the new derivation-input representation, and respect Logger's
+  noexcept/span contract. Raw and wrapped functional gates passed previously.
+- Tarmac sandbox-cache fallback preserves explicit XDG configuration and
+  caller-supplied homes. Existing ordinary-store derivation builds retain their
+  tested bypass. The sandbox instantiation regression passed.
+- Primary permanent-MAC matches preserve verified identities and current
+  IPv4/DHCPv6/SLAAC settings. Backup DHCP/RA metrics avoid taking the primary
+  route. Uplink policy no longer leaks into Tailscale or Orin's USB server.
+  Production rendering is exercised by the network reload VM check and both
+  live hosts retained addresses, networkd PIDs, fresh SSH/DNS and direct paths.
+- Common filesystem/secret/profile declarations preserve disk topology,
+  datasets, persistence, host IDs, stateVersion and builder scheduling.
+  Prometheus and the tailnet policy remain unchanged.
+- gRPC PR204's immutable source patch is adapted to the pinned upload API.
+  The new package's 13 tests passed. Both live daemon generations are now
+  running it; ext's prior requests completed before a clean natural handover.
+- No private keys or decrypted secrets were introduced in the diff. Secret
+  module edits only consolidate declarations; encrypted secret files unchanged.
+
+No remaining blocking findings. Existing limits remain recorded: no hardware
+reboot of the new initrd; offline-host deployment still requires target checks;
+no representative fleet performance benchmark; optional boot-assessment and
+further package-sharing migrations were not part of this cleanup.
+
+Whitespace checking passes for code/docs. Blank context lines beginning with
+one space in the unified nix-eval-jobs patch are required patch syntax, not
+source trailing whitespace; preserve them. Prior compiled/tested application
+of that patch remains valid.

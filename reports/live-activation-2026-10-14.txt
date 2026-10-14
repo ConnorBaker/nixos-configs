@@ -25,7 +25,7 @@ IPv4 default remains on each host; connected /24 route still connects the peers
 without a gateway. Both inactive NICs now have their distinct factory MACs.
 Fresh bidirectional SSH worked over LAN and Tailscale. Tailscale ping reported
 192.168.1.12/13:41641 direct paths. DNS resolution and IPv6 peer pings passed.
-Desktop continuous337-ping reload window had 0 loss. Both bpftune daemons retained
+Desktop continuous 337-ping reload window had 0 loss. Both bpftune daemons retained
 all 9 active tuners; no tuner-disable event was logged during activation.
 See live-network-validation-2026-10-14.json for condensed runtime identity data
 and network-change-validation-2026-10-14.txt for source/reload/VM reasoning.
@@ -37,7 +37,7 @@ containers. Live restore stays enabled on both hosts.
 Tribuchet hub PID 1286295 and worker PIDs 805984/864705 remained unchanged/connected.
 Build agents continued normally, with exit0 and result acknowledgements for jobs
 spanning the switches. Their changing PIDs reflect ordinary lease turnover,
-not a forced agent restart. New Nix-daemon accept loops use+5 while pre-existing
+not a forced agent restart. New Nix-daemon accept loops use +5 while pre-existing
 connection children remain alive per KillMode=process.
 One nvcc-compiler-bug job failed before ext activation, so no evidence attributes
 that pre-existing workload failure to this switch. No failed systemd units on
@@ -53,8 +53,8 @@ failure pattern. A build through grpc://nixos-desktop... passed using its new
 jg64g4l3xbv4ls03ablr5fhn02kcrivx-nix-grpc-store daemon/plugin, including PR204.
 The actual installed nix-eval-jobs wrapper instantiated a sample derivation
 successfully; its package path is pvikjm045lv98ipmlaic55vrfz0aa4yp-...-with-tarmac.
-Raw and wrapped functional suites each passed33 cases before activation;
-gRPC's new package passed all13 Meson tests against the new patched components.
+Raw and wrapped functional suites each passed 33 cases before activation;
+gRPC's new package passed all 13 Meson tests against the new patched components.
 The Sergei tarball smoke verified identical old/new NAR hashes, warm cache,
 file modes/symlink/empty-directory preservation, no pack deltas, unmodified disk
 Git config and rejection of a wrong expected NAR hash. Performance is not a

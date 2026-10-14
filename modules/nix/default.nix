@@ -138,7 +138,7 @@ in
         IdentityFile ${config.sops.secrets.${nixPrivateKey}.path}
     '') sshHostNames;
     knownHosts = genAttrs sshHostNames (hostName: {
-      publicKeyFile = ../.. + "/devices/${hostName}/keys/ssh_host_ed25519_key.pub";
+      publicKeyFile = inventory.hosts.${hostName}.sshHostKey;
     });
   };
 

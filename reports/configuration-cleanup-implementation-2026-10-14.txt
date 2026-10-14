@@ -59,14 +59,14 @@ checking or claim a measured build-workload speedup.
 The optimized system CLI, daemon, Tarmac and gRPC plugins and nix-eval-jobs all
 use the same patched Nix component scope. The gRPC PR204 drain/upload/scheduling
 patch previously authorized remains included and was rebuilt for the new scope.
-System Nix now reports2.36.0pre20261013_a9f38ea+5.
+System Nix now reports 2.36.0pre20261013_a9f38ea+5.
 
 Validation before activation
 - Complete desktop and ext system closures built successfully.
 - Nix unit gates: util 819, store 803, expr 394, fetchers 83, flake 25 passed.
   There is one util skip and existing disabled tests in util/store/expr.
-- nix-eval-jobs functional tests:33 passed raw,33 passed Tarmac-wrapped.
-- Scoped libgit2's offline suite passed;392 suites loaded with platform skips.
+- nix-eval-jobs functional tests: 33 passed raw, 33 passed Tarmac-wrapped.
+- Scoped libgit2's offline suite passed; 392 suites loaded with platform skips.
 - New tarmac-sandbox-cache regression instantiates both through the CLI and
   nix-eval-jobs in a private store with the real unwritable builder HOME.
 - Pre-commit checks passed.
@@ -90,7 +90,7 @@ Validation before activation
 Preserved intentional policy / limits
 Prometheus is excluded by the user's instruction. Broad Tailscale ACL/tag:ci,
 existing hub and ports, SSH authentication, CPU performance/stability cap,
-root rollback/native zfs-mount disabling, ZFS durability choices,400% logical
+root rollback/native zfs-mount disabling, ZFS durability choices, 400% logical
 zram capacity, swap/dirty-page policy and initrd zstd-19 remain. Boot counting,
 Facter and further shared-package-instance migrations were optional future
 projects in the audit, not fixes to apply without boot/recovery validation.
