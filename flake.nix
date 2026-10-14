@@ -41,7 +41,7 @@
 
     nix-grpc-store = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:Mic92/nix-grpc-store/8d0368860b4c3865bd15b22f86605b2e2472f7b5";
+      url = "github:Mic92/nix-grpc-store";
     };
 
     nix-direnv = {
