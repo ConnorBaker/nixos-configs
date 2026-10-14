@@ -45,5 +45,9 @@
     hostName = "nixos-ext";
   };
 
+  users.users.connorbaker.openssh.authorizedKeys.keys = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ61iahx0HtGVD0qtBFIr8nTPivNxQimrqaloBazYCPK john@nixos"
+  ];
+
   system.stateVersion = "24.05";
 }
