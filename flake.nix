@@ -34,7 +34,7 @@
 
     nix.url = "github:NixOS/nix";
 
-    # Local snapshot of nix-optimization's nixos-nix-tarmac branch at 452d5a8.
+    # Local snapshot of nix-optimization's nixos-nix-tarmac branch at e1ba036.
     # Keep its tested dependency pins; the branch has not been published.
     nix-optimization.url = "path:./inputs/nix-optimization";
 
