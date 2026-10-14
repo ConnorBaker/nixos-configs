@@ -22,9 +22,11 @@
 
     impermanence.url = "github:nix-community/impermanence";
 
+    # Upstream directly: the ConnorBaker fork carries no commits of its own
+    # and had fallen behind (bzip2_1_1 removal, cuda-legacy manifests).
     jetpack-nixos = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:ConnorBaker/jetpack-nixos";
+      url = "github:anduril/jetpack-nixos";
     };
 
     nil = {

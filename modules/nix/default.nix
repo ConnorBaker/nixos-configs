@@ -25,6 +25,8 @@ let
     "kvm"
     "nixos-test"
     "recursive-nix"
+    # Every host runs auto-allocate-uids with cgroups (settings below).
+    "uid-range"
   ];
 
   # Maps host names to machine architecture.
@@ -40,10 +42,13 @@ let
           else
             hostName + "?max-connections=1&want-mass-query=true";
         supportedFeatures = baselineSupportedFeatures ++ machine.features;
-        maxJobs = 3;
+        # Builds this client keeps in flight there; hook builds do not take
+        # local build slots, so this alone bounds them.
+        maxJobs = machine.maxJobs or 3;
         # Ext schedules CPU jobs through Tribuchet. Direct gRPC builders
         # serve GPU jobs, which Tribuchet workers cannot advertise.
-        mandatoryFeatures = lib.optionals (builtins.elem "cuda" machine.features) [ "cuda" ];
+        mandatoryFeatures =
+          machine.mandatoryFeatures or (lib.optionals (builtins.elem "cuda" machine.features) [ "cuda" ]);
         protocol = if config.programs.nix-grpc-store.enable then null else "ssh-ng";
         speedFactor = 1;
         sshKey =
@@ -51,28 +56,43 @@ let
         inherit (machine) systems;
       };
     in
-    mapAttrs mkBuildMachineConfig {
-      nixos-build01 = {
-        systems = [ "x86_64-linux" ];
-        features = [ ];
-      };
-      nixos-desktop = {
-        systems = [ "x86_64-linux" ];
-        features = [ "cuda" ];
-      };
-      # Ext's external builder routes both architectures through its pool.
-      nixos-ext = {
-        systems = [
-          "x86_64-linux"
-          "aarch64-linux"
-        ];
-        features = [ "uid-range" ];
-      };
-      nixos-orin = {
-        systems = [ "aarch64-linux" ];
-        features = [ "cuda" ];
-      };
+    mapAttrs mkBuildMachineConfig hostNameToBuildMachineDefinitions;
+
+  hostNameToBuildMachineDefinitions = {
+    nixos-build01 = {
+      systems = [ "x86_64-linux" ];
+      features = [ ];
     };
+    nixos-desktop = {
+      systems = [ "x86_64-linux" ];
+      features = [ "cuda" ];
+    };
+    # Ext's dynamic Tribuchet hub runs x86_64 jobs on the connected
+    # workers. Its queue, not this entry, should bound the pool's
+    # parallelism: the workers' max-jobs set what actually runs.
+    nixos-ext = {
+      systems = [ "x86_64-linux" ];
+      features = [ ];
+      maxJobs = 32;
+    };
+    nixos-orin = {
+      systems = [ "aarch64-linux" ];
+      features = [ "cuda" ];
+    };
+    # DGX Spark (Ubuntu; ConnorBaker/nix-optimization setup via
+    # spark-nix-infra). The aarch64 CPU route as well, so not cuda-only.
+    spark-ee4c = {
+      systems = [ "aarch64-linux" ];
+      features = [ "cuda" ];
+      mandatoryFeatures = [ ];
+      nixos = false;
+    };
+  };
+
+  # Hosts reached over SSH (known host keys live under devices/).
+  sshHostNames = attrNames (
+    lib.filterAttrs (_: machine: machine.nixos or true) hostNameToBuildMachineDefinitions
+  );
 in
 {
   imports = [ ../services/tribuchet.nix ];
@@ -95,6 +115,10 @@ in
         hostName: machine:
         hostName != config.networking.hostName
         && (hostName == "nixos-ext" || builtins.elem "cuda" machine.supportedFeatures)
+        # Non-NixOS builders are reachable over gRPC only.
+        && (
+          config.programs.nix-grpc-store.enable || hostNameToBuildMachineDefinitions.${hostName}.nixos or true
+        )
       ) hostNameToBuildMachineConfig
     );
 
@@ -108,8 +132,15 @@ in
       # have lots of memory and will be downloading large tarballs.
       # NOTE: https://github.com/NixOS/nix/pull/11171
       download-buffer-size = 256 * 1024 * 1024; # 256 MB
+      # Builds take a fresh uid slot (and, for uid-range, a 65536-uid
+      # range) instead of a static nixbld account, and run in their own
+      # cgroup, so they are accounted and killed as a unit.
+      auto-allocate-uids = true;
+      use-cgroups = true;
       experimental-features = [
+        "auto-allocate-uids"
         "ca-derivations"
+        "cgroups"
         "dynamic-derivations"
         "flakes"
         "git-hashing"
@@ -146,8 +177,8 @@ in
         ServerAliveInterval 60
         IPQoS throughput
         IdentityFile ${config.sops.secrets.${nixPrivateKey}.path}
-    '') (attrNames hostNameToBuildMachineConfig);
-    knownHosts = genAttrs (attrNames hostNameToBuildMachineConfig) (hostName: {
+    '') sshHostNames;
+    knownHosts = genAttrs sshHostNames (hostName: {
       publicKeyFile = ../.. + "/devices/${hostName}/keys/ssh_host_ed25519_key.pub";
     });
   };

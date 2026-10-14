@@ -14,10 +14,13 @@ in
     openFirewall = false;
     externalBuilders = {
       enable = true;
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-      ];
+      # The hub derives external-builders systems and max-jobs from the
+      # workers currently connected, rewriting a nix.conf fragment that
+      # nix-daemon is restarted on; systems no worker serves stay local.
+      dynamic = true;
+      # Bound the hub-emitted max-jobs by this host's uid slots: every
+      # offloaded build still holds one locally (id-count / 65536).
+      maxJobsCap = (config.nix.settings.id-count or (128 * 65536)) / 65536;
       nixPackage = patchedNix;
       patchNix = false;
     };

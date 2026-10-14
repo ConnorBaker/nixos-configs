@@ -27,11 +27,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1768505959,
-        "narHash": "sha256-oFCx/ApQ+S1/apUKWsvT9vq+Eo1m2vINWEDkW7/nckA=",
+        "lastModified": 1779836515,
+        "narHash": "sha256-X/AwJZeTjxetRM7JG2BXeffKa1PIg/uo8AP5TX/+kb0=",
         "owner": "nixos-cuda",
         "repo": "cuda-legacy",
-        "rev": "86ad7e2c2e314f0234539cbbc66b5cd7746bcd32",
+        "rev": "baf22622e1114bb36412e5cebe2303f302edb882",
         "type": "github"
       },
       "original": {
@@ -345,15 +345,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1778865657,
-        "narHash": "sha256-86LL1b7XORuf8nriwEFxoH0fjEsIrhf+y7oWyAU/EKQ=",
-        "owner": "ConnorBaker",
+        "lastModified": 1791574637,
+        "narHash": "sha256-fZfZ/XJsGIKENW3ods8OmGm2vWfE3MGfN6b4f1L9BPU=",
+        "owner": "anduril",
         "repo": "jetpack-nixos",
-        "rev": "a8c6026cf36cd33af69034ff1d3ac98221411c9d",
+        "rev": "acf8e24053db01e920818604c9a24af1e01c98af",
         "type": "github"
       },
       "original": {
-        "owner": "ConnorBaker",
+        "owner": "anduril",
         "repo": "jetpack-nixos",
         "type": "github"
       }
