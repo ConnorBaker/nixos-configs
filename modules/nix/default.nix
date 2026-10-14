@@ -41,7 +41,7 @@ let
       };
     in
     mapAttrs mkBuildMachineConfig {
-      nixos-build01 = [ ];
+      # nixos-build01 = [ ];
       nixos-desktop = [ "cuda" ];
       nixos-ext = [ ];
     };
