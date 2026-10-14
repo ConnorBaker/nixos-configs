@@ -69,6 +69,11 @@
       inputs.treefmt-nix.follows = "treefmt-nix";
       url = "github:Mic92/tribuchet";
     };
+
+    zfs-dedup = {
+      flake = false;
+      url = "github:Mic92/zfs-dedup";
+    };
   };
 
   outputs =
@@ -89,6 +94,9 @@
         # Misc tools
         inputs.nix-direnv.overlays.default
         (final: _: { inherit (inputs.histodu.packages.${final.stdenv.hostPlatform.system}) histodu; })
+        (final: _: {
+          zfs-dedup = final.callPackage (inputs.zfs-dedup + "/nix/package.nix") { };
+        })
         inputs.nil.overlays.default
         (final: prev: {
           nil = prev.nil.overrideAttrs (_: {

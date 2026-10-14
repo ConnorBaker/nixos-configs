@@ -736,7 +736,8 @@
         "nixpkgs": "nixpkgs_6",
         "sops-nix": "sops-nix",
         "treefmt-nix": "treefmt-nix_4",
-        "tribuchet": "tribuchet"
+        "tribuchet": "tribuchet",
+        "zfs-dedup": "zfs-dedup"
       }
     },
     "sops-nix": {
@@ -862,6 +863,22 @@
       "original": {
         "owner": "Mic92",
         "repo": "tribuchet",
+        "type": "github"
+      }
+    },
+    "zfs-dedup": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791751457,
+        "narHash": "sha256-76AWPDPJJhWMyKM+aF0LDHWKS8znwC+tZDQrN7Bqz/M=",
+        "owner": "Mic92",
+        "repo": "zfs-dedup",
+        "rev": "eca7ac01996ae9a278b1ddbcbb56aa44c3e99da6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Mic92",
+        "repo": "zfs-dedup",
         "type": "github"
       }
     }

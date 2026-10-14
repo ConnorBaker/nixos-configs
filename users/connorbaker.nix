@@ -135,6 +135,7 @@ in
       pkgs.perf
       pkgs.tmux
       pkgs.vim
+      (mkIf ((config.fileSystems."/".fsType or "") == "zfs") pkgs.zfs-dedup)
       (mkIf config.hardware.nvidia.enabled pkgs.nvitop)
     ];
   };
