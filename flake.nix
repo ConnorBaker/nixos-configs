@@ -34,6 +34,10 @@
 
     nix.url = "github:NixOS/nix";
 
+    # Local snapshot of nix-optimization's nixos-nix-tarmac branch at 7d156f4.
+    # Keep its tested dependency pins; the branch has not been published.
+    nix-optimization.url = "path:./inputs/nix-optimization";
+
     nix-direnv = {
       inputs = {
         flake-parts.follows = "flake-parts";
@@ -180,6 +184,7 @@
                 inputs.disko.nixosModules.disko
                 inputs.impermanence.nixosModules.impermanence
                 inputs.tribuchet.nixosModules.default
+                { _module.args.nixOptimization = inputs.nix-optimization; }
                 {
                   nixpkgs = { inherit config overlays; };
                 }

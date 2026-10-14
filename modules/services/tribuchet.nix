@@ -2,12 +2,14 @@
   config,
   lib,
   pkgs,
+  nixOptimization,
   ...
 }:
 let
   isHub = config.networking.hostName == "nixos-ext";
-  # The upstream module's patches target the older Nix builder API.
-  patchedNix = pkgs.nix.appendPatches [ ../../patches/tribuchet-external-builders.patch ];
+  # This package includes automatic Tarmac evaluation, PGO, and the ported
+  # Tribuchet patches. Its wrappers preserve separately configured plugins.
+  patchedNix = nixOptimization.packages.${pkgs.stdenv.hostPlatform.system}.tarmac-pgo;
 in
 {
   services.tribuchet-hub = lib.mkIf isHub {
