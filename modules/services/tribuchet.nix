@@ -5,7 +5,8 @@
   ...
 }:
 let
-  isHub = config.networking.hostName == "nixos-ext";
+  inventory = import ../../inventory.nix;
+  isHub = config.networking.hostName == inventory.hub;
 in
 {
   imports = [ ./nix-grpc-store.nix ];
@@ -37,7 +38,7 @@ in
     agents = 3;
     settings = {
       auth = "tailscale";
-      hub = "http://nixos-ext.rove-hexatonic.ts.net:7437";
+      hub = "http://${inventory.hub}.${inventory.tailnet}:7437";
       max-jobs = 3;
       recursive-nix = true;
     };

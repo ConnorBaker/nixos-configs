@@ -1,5 +1,5 @@
 {
   users.mutableUsers = false;
-  # TODO: Is this necessary?
-  systemd.user.settings.Manager.DefaultLimitNOFILE = "32000";
+  # Retain the increased soft limit without lowering systemd's hard ceiling.
+  systemd.user.settings.Manager.DefaultLimitNOFILE = "32000:524288";
 }

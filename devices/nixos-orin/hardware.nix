@@ -34,7 +34,8 @@
   };
 
   hardware = {
-    # TODO: graphics.enable shouldn't need to be set by us; it should happen through jetpack nixos.
+    # Jetpack derives CUDA support from this; assigning driver packages alone
+    # does not enable graphics.
     graphics.enable = true;
     nvidia-jetpack = {
       enable = true;
@@ -55,13 +56,16 @@
   systemd = {
     network.networks = {
       # NOTE: DNSOverTLS requires accurate time, which I don't have yet across power loss without an RTC battery.
-      "10-ether".networkConfig.DNSOverTLS = lib.mkForce false;
-      "20-wlan-station".networkConfig.DNSOverTLS = lib.mkForce false;
-      "30-usb-gadget" = {
+      "10-ether".networkConfig.DNSOverTLS = false;
+      "20-wlan-station".networkConfig.DNSOverTLS = false;
+      "05-usb-gadget" = {
         matchConfig.Name = "usb0";
         networkConfig = {
           MulticastDNS = true;
+          DHCP = "no";
           DHCPServer = true;
+          IPv6AcceptRA = false;
+          LinkLocalAddressing = "ipv6";
           Address = "192.168.128.129/30";
         };
         dhcpServerConfig = {

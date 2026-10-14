@@ -6,6 +6,7 @@
 }:
 let
   inherit (lib.modules) mkIf;
+  inventory = import ../inventory.nix;
 in
 {
   # For explainshell and iperf
@@ -75,12 +76,9 @@ in
     hashedPassword = "$y$j9T$ElNzp8jVQBLw00WZda/PR/$ilWJEMkkGBjYPEG.IkiNGp7ngsLgI7hGzsMeyywNYJ.";
     isNormalUser = true;
     openssh.authorizedKeys = {
-      keyFiles = [
-        ../devices/nixos-build01/keys/ssh_host_ed25519_key.pub
-        ../devices/nixos-desktop/keys/ssh_host_ed25519_key.pub
-        ../devices/nixos-ext/keys/ssh_host_ed25519_key.pub
-        ../devices/nixos-orin/keys/ssh_host_ed25519_key.pub
-      ];
+      keyFiles = map (host: host.sshHostKey) (
+        builtins.attrValues (lib.filterAttrs (_: host: host ? sshHostKey) inventory.hosts)
+      );
       keys = [
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJXpenPZWADrxK4+6nFmPspmYPPniI3m+3PxAfjbslg+ connorbaker@Connors-MacBook-Pro.local"
       ];
@@ -125,8 +123,6 @@ in
       pkgs.direnv
       pkgs.docker-compose
       pkgs.gh
-      pkgs.git
-      pkgs.htop
       pkgs.iperf
       pkgs.jq
       pkgs.micromamba

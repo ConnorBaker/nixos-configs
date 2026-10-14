@@ -37,10 +37,6 @@ in
           ${zfsPkg}/sbin/zfs rollback -r rpool/root@blank
         '';
       };
-      supportedFilesystems = [
-        "vfat"
-        "zfs"
-      ];
     };
     kernelPackages = lib.mkIf (
       !config.hardware.nvidia-jetpack.enable or false
@@ -50,10 +46,6 @@ in
       # https://github.com/openzfs/zfs/issues/9910
       "init_on_alloc=0"
       "init_on_free=0"
-    ];
-    supportedFilesystems = [
-      "vfat"
-      "zfs"
     ];
     # Prefer availability for remote hosts without KVM access: force-import
     # root after unclean shutdowns or installer boots that did not export pools.

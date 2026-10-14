@@ -153,18 +153,54 @@
 
           # nix-cli does not include upstream's test gate. Check the same
           # patched, optimized libraries used by the system and its plugins.
-          checks = lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
-            nix-util = pkgs.nix.components.nix-util-tests.tests.run;
-            nix-store = pkgs.nix.components.nix-store-tests.tests.run;
-            nix-expr = pkgs.nix.components.nix-expr-tests.tests.run;
-            nix-fetchers = pkgs.nix.components.nix-fetchers-tests.tests.run;
-            nix-flake = pkgs.nix.components.nix-flake-tests.tests.run;
-            nix-eval-jobs = pkgs.callPackage (inputs.nix-eval-jobs + "/dev/functional-tests.nix") {
-              nix = pkgs.nix.unwrapped;
-              nix-eval-jobs = pkgs.nixEvalJobsUnwrapped;
+          checks =
+            lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+              nix-util = pkgs.nix.components.nix-util-tests.tests.run;
+              nix-store = pkgs.nix.components.nix-store-tests.tests.run;
+              nix-expr = pkgs.nix.components.nix-expr-tests.tests.run;
+              nix-fetchers = pkgs.nix.components.nix-fetchers-tests.tests.run;
+              nix-flake = pkgs.nix.components.nix-flake-tests.tests.run;
+              nix-eval-jobs = pkgs.callPackage (inputs.nix-eval-jobs + "/dev/functional-tests.nix") {
+                nix = pkgs.nix.unwrapped;
+                nix-eval-jobs = pkgs.nixEvalJobsUnwrapped;
+              };
+              nix-eval-jobs-tarmac = pkgs.callPackage (inputs.nix-eval-jobs + "/dev/functional-tests.nix") { };
+              tarmac-sandbox-cache =
+                pkgs.runCommand "tarmac-sandbox-cache"
+                  {
+                    nativeBuildInputs = [
+                      pkgs.nix
+                      pkgs.nix-eval-jobs
+                      pkgs.jq
+                    ];
+                  }
+                  ''
+                    unset XDG_CACHE_HOME
+                    # Instantiate into a private store, without contacting the
+                    # host daemon or changing the sandbox's unwritable HOME.
+                    export NIX_REMOTE=local
+                    export NIX_STORE_DIR="$NIX_BUILD_TOP/store"
+                    export NIX_STATE_DIR="$NIX_BUILD_TOP/state"
+                    export NIX_LOG_DIR="$NIX_BUILD_TOP/log"
+                    export NIX_CONF_DIR="$NIX_BUILD_TOP/conf"
+                    mkdir -p "$NIX_CONF_DIR"
+                    nix --extra-experimental-features nix-command eval --offline --raw --expr \
+                      'builtins.readFile (builtins.toFile "cache-check" "sandbox-cache-ok")' > cli-result
+                    test "$(cat cli-result)" = sandbox-cache-ok
+                    nix-eval-jobs --workers 1 --expr \
+                      '{ sample = derivation { name = "cache-check"; system = "${system}"; builder = "/bin/sh"; }; }' > jobs.jsonl
+                    jq -e '.attr == "sample" and .error == null and (.drvPath | endswith(".drv"))' jobs.jsonl
+                    test -d "$NIX_BUILD_TOP/.cache/nix/tarmac"
+                    touch "$out"
+                  '';
+            }
+            // lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 {
+              networking-reload = pkgs.callPackage ./tests/networking-reload.nix {
+                networkFiles = builtins.mapAttrs (
+                  _: unit: unit.text
+                ) inputs.self.nixosConfigurations.nixos-desktop.config.systemd.network.units;
+              };
             };
-            nix-eval-jobs-tarmac = pkgs.callPackage (inputs.nix-eval-jobs + "/dev/functional-tests.nix") { };
-          };
 
           # packages = lib.mkIf (system == "x86_64-linux") {
           #   orin-flash-script =
@@ -253,12 +289,6 @@
           ];
 
           nixos-orin = mkSystem [
-            {
-              nixpkgs.config = {
-                cudaSupport = true;
-                cudaCapabilities = [ "8.7" ];
-              };
-            }
             inputs.jetpack-nixos.nixosModules.default
             ./devices/nixos-orin
           ];

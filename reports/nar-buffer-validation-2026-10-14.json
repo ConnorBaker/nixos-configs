@@ -1,0 +1,22 @@
+{
+  "fixture": "/tmp/nix-nar-buffer-probe-ok_0ntq8",
+  "source_bytes": 134217728,
+  "results": [
+    {
+      "limit_mib": 1024,
+      "seconds": 0.834,
+      "peak_rss_kib": 597484,
+      "cpu_user_seconds": 0.167683,
+      "cpu_system_seconds": 0.6617609999999999,
+      "path": "/tmp/nix-nar-buffer-probe-ok_0ntq8/1024-tofile/store/lqwwp379f24m5rpdsi4y8mmqqrf7j94d-buffer-probe"
+    },
+    {
+      "limit_mib": 32,
+      "seconds": 0.314,
+      "peak_rss_kib": 303052,
+      "cpu_user_seconds": 0.151862,
+      "cpu_system_seconds": 0.160137,
+      "path": "/tmp/nix-nar-buffer-probe-ok_0ntq8/32-tofile/store/jba00sr0d7wsi6vrac664n9j6sf3lpf6-buffer-probe"
+    }
+  ]
+}

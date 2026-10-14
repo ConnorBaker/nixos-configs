@@ -1,0 +1,105 @@
+Configuration cleanup and Sergei Nix integration — 2026-10-14
+
+Implemented
+- Shared profiles/builder.nix, inventory.nix, modules/secrets.nix and root-pool
+  dataset declarations. Disk identities/topology, datasets/properties, host IDs,
+  stateVersion, persistence, secret content and build-machine scheduling remain
+  equal in evaluated before/after snapshots of all four NixOS configurations.
+- Scoped physical Ethernet/WLAN defaults replace a global network submodule
+  extension. Primary LAN rules match permanent MACs instead of setting every
+  NIC to one MAC. Desktop/ext inactive secondary MACs are explicitly restored
+  to their verified factory values. Client-only DHCP reservations, gateway host
+  routes and duplicate defaults are removed. Backup DHCPv4/RA metrics are 4096;
+  the primary connected /24 still provides direct 10Gbps desktop/ext transport.
+- Orin's USB DHCP-server profile sorts before generic Ethernet, has no uplink
+  DHCP/DNS/default routes, and does not accept client router advertisements.
+  Its existing address/subnet, server role and mDNS policy remain.
+- Selectively remove bpftune-managed boot buffer/backlog overrides and obsolete
+  or unmeasured TCP tuning. Keep independent UDP, keepalive, qdisc, fallback
+  congestion-control, fast-open and MTU-probing policy. Existing runtime values
+  of removed sysctls are not automatically reset by removing declarations.
+- Remove obsolete NVIDIA mount workaround, duplicate Docker CDI setting,
+  unnecessary NixOS containers framework enablement, duplicated SSH/package/
+  compressor/zram/filesystem defaults, obsolete static-build-user trust and
+  repeated local feature advertisements. Use current NVIDIA branch/moduleParams
+  options; remove Orin CUDA values supplied by its JetPack SOM module.
+- Raise the systemd file-descriptor hard ceiling to 524288 while retaining the
+  custom 32000 soft limit. Drop the unsupported extreme vm.max_map_count override.
+- Drop Nix's old 256MiB download-buffer workaround: the selected upstream source
+  already includes curl pause/resume and its new 1MiB default. Drop the separate
+  1GiB NAR buffer override after an isolated 128MiB builtins.toFile probe measured
+  peak RSS about 583MiB vs 296MiB with the default 32MiB buffer. Identical output
+  bytes were verified. This one probe is not a fleet workload benchmark.
+- Automatic Tarmac CLI and embedded nix-eval-jobs wrappers now select a private
+  build-sandbox cache when HOME is /homeless-shelter/unset and XDG_CACHE_HOME is
+  unspecified. Explicit cache configuration and custom homes remain respected.
+  This fixes a real system documentation build failure with unwritable HOME.
+
+Sergei's change
+Upstream draft Nix PR16427, reviewed head36bdf2ab83431794a8740e4bb61d1d8c45b91843:
+https://github.com/NixOS/nix/pull/16427
+The source-only port is maintained in ConnorBaker/nix-optimization's
+nixos-nix-tarmac branch, initially commit4f958df80feaa562bd759887918fdf7930bac90b.
+The root flake follows that branch normally and was updated to
+bcacbe17f37b1265db2764a546465d44ad1a671c through nix flake update nix-optimization.
+
+This is the full dependency change, not merely the Nix diff: Nix's scoped
+libgit2 uses2.0.0-rc.1 atae45d0d168f7e8dbfdb8c623589cb51caac96ab3 plus the draft's
+zlib-ng, memory-config-backend and packbuilder configuration patches. Global
+pkgs.libgit2 is unchanged. The source port keeps upstream's existing parallel
+writer pool, sets dontFindDeltas in shared options, and uses an in-memory
+pack.window=0 override without changing the on-disk Git config.
+
+Tradeoff: the draft disables Git-object rehash-on-read process-wide for the
+Nix fetcher, reducing detection of corrupt cached Git objects. Newly created
+objects are hashed and expected NAR hashes/signature checks remain. An isolated
+wrong-narHash fetch was rejected. Do not describe this as unchanged corruption
+checking or claim a measured build-workload speedup.
+
+The optimized system CLI, daemon, Tarmac and gRPC plugins and nix-eval-jobs all
+use the same patched Nix component scope. The gRPC PR204 drain/upload/scheduling
+patch previously authorized remains included and was rebuilt for the new scope.
+System Nix now reports2.36.0pre20261013_a9f38ea+5.
+
+Validation before activation
+- Complete desktop and ext system closures built successfully.
+- Nix unit gates: util819, store803, expr394, fetchers83, flake25 passed.
+  There is one util skip and existing disabled tests in util/store/expr.
+- nix-eval-jobs functional tests:33 passed raw,33 passed Tarmac-wrapped.
+- Scoped libgit2's offline suite passed;392 suites loaded with platform skips.
+- New tarmac-sandbox-cache regression instantiates both through the CLI and
+  nix-eval-jobs in a private store with the real unwritable builder HOME.
+- Pre-commit checks passed.
+- New checks.x86_64-linux.networking-reload boots two VMs, obtains actual
+  DHCPv6/SLAAC leases, and reloads the production generated desktop .network
+  files (only factory MACs substituted for virtual hardware). It retains the
+  networkd PID, primary MAC, static IPv4, SLAAC/DHCPv6 addresses, records no
+  deleted primary addresses, restores the secondary factory MAC, removes the
+  duplicate routes, and proves secondary DHCPv4/RA metrics4096. Two hundred
+  continuous primary IPv4 pings show zero packet loss. No explicit networkctl
+  reconfigure is used; that API would discard more dynamic state.
+- All-four-host evaluation: zero failed assertions; preserved effective local
+  feature sets, build routes, secret/persistence and storage declarations.
+  Prometheus server/exporter configuration is identical and its files untouched.
+- Dry activation plans reload systemd-networkd rather than restarting it.
+  Actual native binary, service parameters and restart triggers are unchanged.
+  On ext the plan also drains nix-grpc-daemon. Nix daemon KillMode=process
+  preserves active clients. Active Tribuchet agents are independent services
+  with restartIfChanged=false. Docker live restore is enabled on both live hosts.
+
+Preserved intentional policy / limits
+Prometheus is excluded by the user's instruction. Broad Tailscale ACL/tag:ci,
+existing hub and ports, SSH authentication, CPU performance/stability cap,
+root rollback/native zfs-mount disabling, ZFS durability choices,400% logical
+zram capacity, swap/dirty-page policy and initrd zstd-19 remain. Boot counting,
+Facter and further shared-package-instance migrations were optional future
+projects in the audit, not fixes to apply without boot/recovery validation.
+No reboot was performed, so new initrd hardware boot is not yet verified.
+Build01 and Orin are offline: evaluate their configurations only, do not build,
+contact or activate them. Build01's stored primary MAC needs target verification
+before eventual deployment. zfs-dedup was not run.
+
+See network-change-validation-2026-10-14.txt for physical identity, source-level
+reload semantics and exact generated policies; sergei-fetch-validation and
+nar-buffer-validation JSON files record isolated runtime evidence. Live switch
+and post-activation results are recorded separately after completing deployment.

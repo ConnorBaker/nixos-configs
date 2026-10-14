@@ -72,6 +72,11 @@ in
     nativeBuildInputs = [ final.makeWrapper ];
     postBuild = ''
       wrapProgram "$out/bin/nix-eval-jobs" \
+        --run 'if [ -n "''${NIX_BUILD_TOP-}" ] && [ -z "''${XDG_CACHE_HOME+x}" ]; then
+          case "''${HOME-}" in
+            /homeless-shelter|"") export XDG_CACHE_HOME="$NIX_BUILD_TOP/.cache" ;;
+          esac
+        fi' \
         --suffix NIX_CONFIG $'\n' \
           "extra-plugin-files = ${final.nix.plugin}/lib/nix/plugins/nix-tarmac-loader.so" \
         --add-flags "--eval-store tarmac://"
