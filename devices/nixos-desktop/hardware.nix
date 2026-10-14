@@ -36,7 +36,13 @@
     };
   };
 
-  powerManagement.cpuFreqGovernor = "performance";
+  powerManagement = {
+    cpuFreqGovernor = "performance";
+    # The i9-13900K's 5.8 GHz boost cores (CPUs 4-7) segfault under load:
+    # ghc, z3 and libc crashes all landed on CPUs 4-5. Capping every core
+    # at 5.2 GHz stops them. The cpufreq unit applies this at boot.
+    cpufreq.max = 5200000;
+  };
 
   programs.nix-required-mounts =
     let
