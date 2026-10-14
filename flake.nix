@@ -36,12 +36,20 @@
 
     nix.url = "github:NixOS/nix";
 
-    # Keep the optimization branch's tested dependency pins.
-    nix-optimization.url = "github:ConnorBaker/nix-optimization/nixos-nix-tarmac";
+    nix-optimization = {
+      inputs.nix.follows = "nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:ConnorBaker/nix-optimization/nixos-nix-tarmac";
+    };
 
     nix-grpc-store = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:Mic92/nix-grpc-store";
+    };
+
+    nix-eval-jobs = {
+      flake = false;
+      url = "github:NixOS/nix-eval-jobs";
     };
 
     nix-direnv = {
@@ -82,7 +90,6 @@
       inherit (inputs.flake-parts.lib) mkFlake;
       inherit (inputs.nixpkgs) lib;
       inherit (lib.attrsets) genAttrs;
-      inherit (lib.strings) mesonBool;
 
       systems = [
         "aarch64-darwin"
@@ -93,17 +100,15 @@
       overlays = [
         # Misc tools
         inputs.nix-direnv.overlays.default
-        (final: _: { inherit (inputs.histodu.packages.${final.stdenv.hostPlatform.system}) histodu; })
-        (final: _: {
-          zfs-dedup = final.callPackage (inputs.zfs-dedup + "/nix/package.nix") { };
-        })
+        (import ./overlays/infrastructure.nix inputs)
         inputs.nil.overlays.default
-        (final: prev: {
+        (_: prev: {
           nil = prev.nil.overrideAttrs (_: {
             doCheck = false;
           });
         })
         inputs.nix.overlays.default
+        inputs.nix-optimization.overlays.default
         (final: prev: {
           nixVersions = prev.nixVersions.extend (
             finalNixVersions: _: {
@@ -145,6 +150,21 @@
           _module.args.pkgs = nixpkgsInstances.${system};
 
           legacyPackages = pkgs;
+
+          # nix-cli does not include upstream's test gate. Check the same
+          # patched, optimized libraries used by the system and its plugins.
+          checks = lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+            nix-util = pkgs.nix.components.nix-util-tests.tests.run;
+            nix-store = pkgs.nix.components.nix-store-tests.tests.run;
+            nix-expr = pkgs.nix.components.nix-expr-tests.tests.run;
+            nix-fetchers = pkgs.nix.components.nix-fetchers-tests.tests.run;
+            nix-flake = pkgs.nix.components.nix-flake-tests.tests.run;
+            nix-eval-jobs = pkgs.callPackage (inputs.nix-eval-jobs + "/dev/functional-tests.nix") {
+              nix = pkgs.nix.unwrapped;
+              nix-eval-jobs = pkgs.nixEvalJobsUnwrapped;
+            };
+            nix-eval-jobs-tarmac = pkgs.callPackage (inputs.nix-eval-jobs + "/dev/functional-tests.nix") { };
+          };
 
           # packages = lib.mkIf (system == "x86_64-linux") {
           #   orin-flash-script =
@@ -200,16 +220,6 @@
                 inputs.tribuchet.nixosModules.default
                 inputs.nix-grpc-store.nixosModules.client
                 inputs.nix-grpc-store.nixosModules.server
-                (
-                  { config, ... }:
-                  {
-                    _module.args = {
-                      nixOptimization = inputs.nix-optimization;
-                      nixGrpcStore = inputs.nix-grpc-store;
-                      nixInfrastructurePkgs = nixpkgsInstances.${config.nixpkgs.hostPlatform.system};
-                    };
-                  }
-                )
                 {
                   nixpkgs = { inherit config overlays; };
                 }

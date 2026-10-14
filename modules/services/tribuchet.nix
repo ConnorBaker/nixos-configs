@@ -1,7 +1,7 @@
 {
   config,
   lib,
-  patchedNix,
+  pkgs,
   ...
 }:
 let
@@ -11,6 +11,7 @@ in
   imports = [ ./nix-grpc-store.nix ];
   services.tribuchet-hub = lib.mkIf isHub {
     enable = true;
+    package = pkgs.tribuchet;
     openFirewall = false;
     externalBuilders = {
       enable = true;
@@ -21,7 +22,7 @@ in
       # Bound the hub-emitted max-jobs by this host's uid slots: every
       # offloaded build still holds one locally (id-count / 65536).
       maxJobsCap = (config.nix.settings.id-count or (128 * 65536)) / 65536;
-      nixPackage = patchedNix;
+      nixPackage = pkgs.nix;
       patchNix = false;
     };
     settings = {
@@ -32,6 +33,7 @@ in
 
   services.tribuchet-worker = {
     enable = true;
+    package = pkgs.tribuchet;
     agents = 3;
     settings = {
       auth = "tailscale";

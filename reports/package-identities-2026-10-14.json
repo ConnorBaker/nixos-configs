@@ -1,0 +1,38 @@
+{
+  "nixos-build01": {
+    "nix": "/nix/store/yv4kb36z4mgcv87h2f745c20rrk25sa3-nix-pgo-2.36.0pre20261013_a9f38ea+4-with-tarmac.drv",
+    "sameEvalNix": true,
+    "sameEvalStore": true,
+    "sameEvalUtil": true,
+    "sameGrpc": true,
+    "sameNix": true,
+    "sameWorker": true
+  },
+  "nixos-desktop": {
+    "nix": "/nix/store/yv4kb36z4mgcv87h2f745c20rrk25sa3-nix-pgo-2.36.0pre20261013_a9f38ea+4-with-tarmac.drv",
+    "sameEvalNix": true,
+    "sameEvalStore": true,
+    "sameEvalUtil": true,
+    "sameGrpc": true,
+    "sameNix": true,
+    "sameWorker": true
+  },
+  "nixos-ext": {
+    "nix": "/nix/store/yv4kb36z4mgcv87h2f745c20rrk25sa3-nix-pgo-2.36.0pre20261013_a9f38ea+4-with-tarmac.drv",
+    "sameEvalNix": true,
+    "sameEvalStore": true,
+    "sameEvalUtil": true,
+    "sameGrpc": true,
+    "sameNix": true,
+    "sameWorker": true
+  },
+  "nixos-orin": {
+    "nix": "/nix/store/kx63knzzkl23amf4dnhgdvqjz1l1rpna-nix-pgo-2.36.0pre20261013_a9f38ea+4-with-tarmac.drv",
+    "sameEvalNix": true,
+    "sameEvalStore": true,
+    "sameEvalUtil": true,
+    "sameGrpc": true,
+    "sameNix": true,
+    "sameWorker": true
+  }
+}

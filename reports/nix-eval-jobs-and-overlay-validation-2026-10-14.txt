@@ -1,0 +1,80 @@
+Overlay and nix-eval-jobs integration — 2026-10-14
+
+Package construction
+Optimized Nix, histodu and Tribuchet no longer come from foreign flake packages
+attributes. gRPC no longer uses a separate infrastructure Nixpkgs import.
+All construct through the caller's final package set. nix-optimization inputs
+Nix and Nixpkgs follow our root inputs. Its new published overlay API accepts
+caller pkgs; the public variant factory still supports standalone system use.
+Published nixos-nix-tarmac branch commits:
+82e64b0: consumer-pkgs overlay API and reusable Tarmac wrapper factory.
+95c1a7f: preserve upstream unit-test executable names when naming PGO variants.
+https://github.com/ConnorBaker/nix-optimization/tree/nixos-nix-tarmac
+
+The upstream unit runners use pname to find executables, while Meson installs
+unsuffixed names. Existing optimization suffixes broke those runners. Test
+components now keep pname and vary their derivation name, without changing
+the runtime libraries. Root flake exposes actual optimized component tests.
+
+Nix-eval-jobs source and port
+Main is 9f1553af (v2.35.4), included as a non-flake source input. John Ericson's
+nix-next branch contains ef72a547 'Port to Nix master'. It is 53 commits behind
+main and lacks newer separate-store, IFD, scheduling, memory and logging fixes.
+Keep current main, backport code-only port, plus current immutable-Bindings
+and Logger span/noexcept API changes. No old nix-next flake dependency pins
+are imported. Package-specific compatibility patch is in packages/, while
+core Nix patches remain managed in nix-optimization, not vendored here.
+https://github.com/NixOS/nix-eval-jobs/tree/nix-next
+https://github.com/NixOS/nix-eval-jobs/commit/ef72a54725509bc59b177d815ca544d979f3c270
+https://github.com/NixOS/nix-eval-jobs/commit/9f1553afabd95f9f59951f5c946e86005af7196a
+
+The package links our exact optimized Nix components and Boost 1.89, and enables
+upstream unit tests. It embeds Nix evaluation rather than invoking the CLI,
+so using a wrapped nix executable alone cannot select Tarmac for its workers.
+Its own wrapper loads the same Tarmac plugin, defaults --eval-store tarmac://,
+and exposes nix=pkgs.nix (wrapped system CLI). Explicit --eval-store arguments
+override the default. This also gives consumers such as nix-fast-build the
+wrapped Nix via passthru. gRPC and Tarmac plugin libraries use the same ABI.
+
+Validation
+Five selected PGO Nix unit suites passed: util819, store803, expr394, fetchers83,
+flake25, total2124 tests. One upstream store test is disabled.
+Nix-eval-jobs unit tests pass during package build. All33 upstream functional
+tests pass with raw selected Nix/nix-eval-jobs, and all33 pass with automatic
+Tarmac wrappers, including cache-status, constituents, separate-store IFD,
+logging, worker restarts, flake fetch races and memory-budget behavior.
+These are correctness tests, not a workload performance benchmark.
+
+Configuration evaluation for desktop, ext, build01 and Orin confirms system
+Nix is pkgs.nix, client/daemon gRPC is pkgs.nix-grpc-store, worker package is
+pkgs.tribuchet, and nix-eval-jobs uses identical nix-store/nix-util derivations
+to system Nix. Orin legitimately has a different configured package set with
+JetPack/CUDA. Only desktop/ext were built; offline build01/Orin skipped.
+
+ZFS cleanup removes redundant zfs_bclone_enabled=1 (default since2.3), nohibernate
+(already added by Nixpkgs), and stale hostId-check TODO (Nixpkgs asserts it).
+Documents native-mount disabling and keeps all workload/durability tuning.
+No ZFS pool property changes or zfs-dedup operations were performed.
+
+The separately researched d3538 logger change, repkgs patches and PR16433 were
+not added to the core Nix build by this cleanup. See their research reports
+for upstream status and integration requirements, especially PR16433's required
+gRPC Store::queryMissing API adaptation.
+
+Final smoke/check evidence
+All formatting, deadnix, nil and statix checks passed. Automatic Tarmac CLI
+evaluation/build succeeded; gRPC derivation transfer to ext and an existing
+copied .drv build with delegation disabled succeeded. Remote delegation via
+gRPC/Tribuchet also built the smoke output. The known queryMissing warning
+"don't know how to build these paths" appeared for a Tarmac-only derivation,
+but the build imported it and succeeded; PR16433 addresses that reporting path.
+Live nix-eval-jobs with automatic Tarmac and --store grpc://ext returned all
+four fixture jobs with correct cache/input information and no errors.
+
+Both online toplevels built:
+desktop /nix/store/qw0pqd0brajzx8wqhb4frkb2zh1k7ha6-nixos-system-nixos-desktop-26.11.20261011.7fd4004
+ext /nix/store/qj1za40gdn55rcl2p9v0k4ivi30bqvq7-nixos-system-nixos-ext-26.11.20261011.7fd4004
+Configuration is ready to switch. No switch was performed for this cleanup:
+active Haskell builds were observed on the worker pool; changing service paths
+would restart gRPC/build services and may interrupt them. Existing active
+system generations continue running. Offline hosts remain skipped.

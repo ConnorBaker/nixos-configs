@@ -1,0 +1,341 @@
+Nix 2.36 compatibility for nix-eval-jobs 2.35.4/main.
+
+Based on John Ericson's nix-next port ef72a54725509bc59b177d815ca544d979f3c270:
+https://github.com/NixOS/nix-eval-jobs/commit/ef72a54725509bc59b177d815ca544d979f3c270
+Retains current main's store, scheduling, and logging fixes; additionally
+adapts const Bindings and the current Logger noexcept/span API.
+Remove when upstream main supports the selected Nix master API.
+
+diff --git a/src/cache-status-resolver.cc b/src/cache-status-resolver.cc
+index 878f256..69ac567 100644
+--- a/src/cache-status-resolver.cc
++++ b/src/cache-status-resolver.cc
+@@ -2,6 +2,7 @@
+ #include <exception>
+ #include <map>
+ #include <mutex>
++#include <nix/store/derived-path.hh>
+ #include <nix/store/derivations.hh>
+ #include <nix/store/path-info.hh>
+ #include <nix/store/path.hh>
+@@ -210,7 +211,7 @@ auto CacheStatusResolver::missingOutputs(const nix::Derivation &derivation,
+     -> MissingOutputs {
+     MissingOutputs result;
+     for (const auto &[outputName, outputPathOpt] :
+-         derivation.outputsAndOptPaths(*evalStore)) {
++         outputsAndOptPaths(derivation, *evalStore)) {
+         if (!wantedOutputs.empty() && !wantedOutputs.contains(outputName)) {
+             continue;
+         }
+@@ -240,6 +241,28 @@ void CacheStatusResolver::visitDrv(Traversal *traversal,
+         return;
+     }
+     const auto &derivation = readDerivation(drvPath);
++    /* The input derivations, grouped so each is visited once with every
++     * output wanted from it. Source inputs aren't derivations. */
++    std::map<nix::StorePath, nix::StringSet> inputDrvs;
++    for (const auto &input : derivation.inputs) {
++        const auto *built =
++            std::get_if<nix::SingleDerivedPath::Built>(&input.raw());
++        if (built == nullptr) {
++            continue;
++        }
++        const auto *opaque =
++            std::get_if<nix::SingleDerivedPath::Opaque>(&built->drvPath->raw());
++        if (opaque == nullptr) {
++            // An output of a dynamic derivation. TODO probe it; its
++            // outputs are unknown until the derivation producing them is
++            // built. Visiting the derivation it comes from with no
++            // wanted outputs — meaning all of them — is what pre-2.36
++            // did, by leaving the nested childMap unread.
++            inputDrvs[built->drvPath->getBaseStorePath()];
++            continue;
++        }
++        inputDrvs[opaque->path].insert(built->output);
++    }
+ 
+     auto outputs = missingOutputs(derivation, wantedOutputs);
+     if (!outputs.known) {
+@@ -249,8 +272,8 @@ void CacheStatusResolver::visitDrv(Traversal *traversal,
+     /* Validity probes are cheap daemon lookups: recurse anyway so a single
+      * queryValidPaths round covers the whole closure. */
+     if (!outputs.complete) {
+-        for (const auto &[inputDrvPath, inputNode] : derivation.inputDrvs.map) {
+-            visitDrv(traversal, inputDrvPath, inputNode.value);
++        for (const auto &[inputDrvPath, inputWanted] : inputDrvs) {
++            visitDrv(traversal, inputDrvPath, inputWanted);
+         }
+         return;
+     }
+@@ -270,8 +293,8 @@ void CacheStatusResolver::visitDrv(Traversal *traversal,
+         return;
+     }
+ 
+-    for (const auto &[inputDrvPath, inputNode] : derivation.inputDrvs.map) {
+-        visitDrv(traversal, inputDrvPath, inputNode.value);
++    for (const auto &[inputDrvPath, inputWanted] : inputDrvs) {
++        visitDrv(traversal, inputDrvPath, inputWanted);
+     }
+     /* Post-order: dependencies before their dependants. */
+     traversal->neededBuilds.push_back(drvPath);
+diff --git a/src/constituents.cc b/src/constituents.cc
+index a8986f0..0990860 100644
+--- a/src/constituents.cc
++++ b/src/constituents.cc
+@@ -116,8 +116,11 @@ void addConstituents(nlohmann::json &job, nix::Derivation &drv,
+             std::string(jobs.find(childJobName)->second["drvPath"]));
+         auto childDrv = store->readDerivation(childDrvPath);
+         job["constituents"].push_back(store->printStorePath(childDrvPath));
+-        drv.inputDrvs.map[childDrvPath].value = {
+-            childDrv.outputs.begin()->first};
++        drv.inputs.insert(nix::SingleDerivedPath::Built{
++            .drvPath = nix::make_ref<nix::SingleDerivedPath>(
++                nix::SingleDerivedPath::Opaque{.path = childDrvPath}),
++            .output = childDrv.outputs.begin()->first,
++        });
+     }
+ }
+ 
+@@ -126,7 +129,7 @@ void rewriteAndRegisterDrv(nlohmann::json &job, nix::Derivation &drv,
+                            const nix::ref<nix::Store> &store,
+                            const std::filesystem::path &gcRootsDir) {
+     // Reset outputs so fillInOutputPaths recomputes them
+-    // with the updated inputDrvs (constituents).
++    // with the updated inputs (constituents).
+     for (auto &[name, output] : drv.outputs) {
+         if (std::holds_alternative<nix::DerivationOutput::InputAddressed>(
+                 output.raw)) {
+@@ -134,7 +137,7 @@ void rewriteAndRegisterDrv(nlohmann::json &job, nix::Derivation &drv,
+             drv.env[name] = "";
+         }
+     }
+-    drv.fillInOutputPaths(*store);
++    fillInOutputPaths(drv, *store);
+ 
+     auto newDrvPath = store->writeDerivation(drv);
+     if (newDrvPath == drvPath) {
+diff --git a/src/drv.cc b/src/drv.cc
+index ea7e368..ee84a85 100644
+--- a/src/drv.cc
++++ b/src/drv.cc
+@@ -97,12 +97,24 @@ auto queryMeta(nix::PackageInfo &packageInfo, nix::EvalState &state)
+ auto queryInputDrvs(const nix::Derivation &drv)
+     -> std::map<nix::StorePath, std::set<std::string>> {
+     std::map<nix::StorePath, std::set<std::string>> drvs;
+-    for (const auto &[inputDrvPath, inputNode] : drv.inputDrvs.map) {
+-        std::set<std::string> inputDrvOutputs;
+-        for (const auto &outputName : inputNode.value) {
+-            inputDrvOutputs.insert(outputName);
++    for (const auto &input : drv.inputs) {
++        const auto *built =
++            std::get_if<nix::SingleDerivedPath::Built>(&input.raw());
++        if (built == nullptr) {
++            continue;
++        }
++        const auto *opaque =
++            std::get_if<nix::SingleDerivedPath::Opaque>(&built->drvPath->raw());
++        if (opaque == nullptr) {
++            // An output of a dynamic derivation. TODO report it; the
++            // output name belongs to the derivation that derivation
++            // produces, so this format has nowhere to put it. Naming the
++            // derivation it comes from with no outputs is what pre-2.36
++            // did, by leaving the nested childMap unread.
++            drvs[built->drvPath->getBaseStorePath()];
++            continue;
+         }
+-        drvs.emplace(inputDrvPath, std::move(inputDrvOutputs));
++        drvs[opaque->path].insert(built->output);
+     }
+     return drvs;
+ }
+diff --git a/src/eval-args.cc b/src/eval-args.cc
+index f86f5c7..420f3e6 100644
+--- a/src/eval-args.cc
++++ b/src/eval-args.cc
+@@ -209,7 +209,7 @@ MyArgs::MyArgs() : MixCommonArgs("nix-eval-jobs") {
+             }
+             lockFlags.inputOverrides.insert_or_assign(
+                 std::move(*path),
+-                nix::parseFlakeRef(nix::fetchSettings, flakeRef,
++                nix::parseFlakeRef(flakeRef,
+                                    nix::absPath(std::filesystem::path(".")),
+                                    true));
+         }},
+diff --git a/src/eval-log.cc b/src/eval-log.cc
+index 7509d05..f69b2dd 100644
+--- a/src/eval-log.cc
++++ b/src/eval-log.cc
+@@ -24,24 +24,36 @@ auto EvalLogCapture::install() -> EvalLogCapture & {
+ auto EvalLogCapture::take() -> Logs { return std::exchange(logs, {}); }
+ 
+ /* builtins.trace → printError("trace: …") */
+-void EvalLogCapture::log(nix::Verbosity lvl, std::string_view msg) {
+-    auto plain = nix::filterANSIEscapes(msg, true);
+-    if (plain.starts_with(TRACE_PREFIX)) {
+-        logs.traces.push_back(plain.substr(TRACE_PREFIX.size()));
++void EvalLogCapture::log(nix::Verbosity lvl, std::string_view msg) noexcept {
++    try {
++        auto plain = nix::filterANSIEscapes(msg, true);
++        if (plain.starts_with(TRACE_PREFIX)) {
++            logs.traces.push_back(plain.substr(TRACE_PREFIX.size()));
++        }
++    } catch (...) {
++        // Capturing logs is best effort; Logger callbacks must not throw.
+     }
+     inner->log(lvl, msg);
+ }
+ 
+ /* builtins.warn → logWarning(ErrorInfo{lvlWarn, …}) */
+-void EvalLogCapture::logEI(const nix::ErrorInfo &info) {
+-    if (info.level == nix::lvlWarn) {
+-        logs.warnings.push_back(nix::filterANSIEscapes(info.msg.str(), true));
++void EvalLogCapture::logEI(const nix::ErrorInfo &info) noexcept {
++    try {
++        if (info.level == nix::lvlWarn) {
++            logs.warnings.push_back(nix::filterANSIEscapes(info.msg.str(), true));
++        }
++    } catch (...) {
++        // Continue forwarding the message if capturing it fails.
+     }
+     inner->logEI(info);
+ }
+ 
+ /* nix::warn(), e.g. deprecated settings or impure fetches */
+-void EvalLogCapture::warn(const std::string &msg) {
+-    logs.warnings.push_back(nix::filterANSIEscapes(msg, true));
++void EvalLogCapture::warn(const std::string &msg) noexcept {
++    try {
++        logs.warnings.push_back(nix::filterANSIEscapes(msg, true));
++    } catch (...) {
++        // Continue forwarding the message if capturing it fails.
++    }
+     inner->warn(msg);
+ }
+diff --git a/src/eval-log.hh b/src/eval-log.hh
+index 9f6feb5..35a2555 100644
+--- a/src/eval-log.hh
++++ b/src/eval-log.hh
+@@ -4,6 +4,7 @@
+ #include <nix/util/error.hh>
+ #include <nix/util/logging.hh>
+ #include <optional>
++#include <span>
+ #include <string>
+ #include <string_view>
+ #include <vector>
+@@ -31,21 +32,25 @@ class EvalLogCapture : public nix::Logger {
+     void pause() override { inner->pause(); }
+     void resume() override { inner->resume(); }
+     auto isVerbose() -> bool override { return inner->isVerbose(); }
+-    void log(nix::Verbosity lvl, std::string_view msg) override;
+-    void logEI(const nix::ErrorInfo &info) override;
+-    void warn(const std::string &msg) override;
++    void log(nix::Verbosity lvl, std::string_view msg) noexcept override;
++    void logEI(const nix::ErrorInfo &info) noexcept override;
++    void warn(const std::string &msg) noexcept override;
+     void startActivity(nix::ActivityId act, nix::Verbosity lvl,
+                        nix::ActivityType type, const std::string &text,
+-                       const Fields &fields, nix::ActivityId parent) override {
++                       std::span<const Field> fields, nix::ActivityId parent) noexcept override {
+         inner->startActivity(act, lvl, type, text, fields, parent);
+     }
+-    void stopActivity(nix::ActivityId act) override {
++    void stopActivity(nix::ActivityId act) noexcept override {
+         inner->stopActivity(act);
+     }
+     void result(nix::ActivityId act, nix::ResultType type,
+-                const Fields &fields) override {
++                std::span<const Field> fields) noexcept override {
+         inner->result(act, type, fields);
+     }
++    void result(nix::ActivityId act, nix::ResultType type,
++                const nlohmann::json &value) noexcept override {
++        inner->result(act, type, value);
++    }
+     void writeToStdout(std::string_view data) override {
+         inner->writeToStdout(data);
+     }
+diff --git a/src/worker.cc b/src/worker.cc
+index 6b86675..175a61c 100644
+--- a/src/worker.cc
++++ b/src/worker.cc
+@@ -71,8 +71,9 @@ auto showError(const nix::ErrorInfo &err) -> std::string {
+     return msg;
+ }
+ 
+-auto releaseExprTopLevelValue(nix::EvalState &state, nix::Bindings &autoArgs,
+-                              MyArgs &args) -> nix::Value * {
++auto releaseExprTopLevelValue(nix::EvalState &state,
++                              const nix::Bindings &autoArgs, MyArgs &args)
++    -> nix::Value * {
+     nix::Value vTop;
+ 
+     if (args.fromArgs) {
+@@ -94,18 +95,15 @@ auto evaluateFlake(const nix::ref<nix::EvalState> &state, const MyArgs &args)
+     -> nix::Value * {
+     auto [flakeRef, fragment, outputSpec] =
+         nix::parseFlakeRefWithFragmentAndExtendedOutputsSpec(
+-            nix::fetchSettings, args.releaseExpr,
+-            nix::absPath(std::filesystem::path(".")));
++            args.releaseExpr, nix::absPath(std::filesystem::path(".")));
+     const auto &lockFlags = args.lockFlags;
+ 
+     /* The collector passes the flakeref it already locked and fetched:
+        final + narHash lets the fetcher skip the fetch lock entirely
+        (issue #432). */
+     if (!args.lockedFlakeAttrs.empty()) {
+-        flakeRef = nix::FlakeRef::fromAttrs(
+-            nix::fetchSettings,
+-            nix::fetchers::jsonToAttrs(
+-                nlohmann::json::parse(args.lockedFlakeAttrs)));
++        flakeRef = nix::FlakeRef::fromAttrs(nix::fetchers::jsonToAttrs(
++            nlohmann::json::parse(args.lockedFlakeAttrs)));
+     }
+ 
+     nix::InstallableFlake flake{{},       state,      std::move(flakeRef),
+@@ -120,7 +118,7 @@ auto evaluateFlake(const nix::ref<nix::EvalState> &state, const MyArgs &args)
+         return value;
+     }
+     // Fragment specified, use normal evaluation
+-    return flake.toValue(*state).first;
++    return flake.toValue(*state, nix::AutoCall::No).first;
+ }
+ 
+ auto forceBoolAttr(nix::EvalState &state, nix::Value *value,
+@@ -273,7 +271,7 @@ auto processDerivation(nix::EvalState &state, nix::Value *value,
+ }
+ 
+ auto initializeRootValue(const nix::ref<nix::EvalState> &state,
+-                         nix::Bindings &autoArgs, MyArgs &args)
++                         const nix::Bindings &autoArgs, MyArgs &args)
+     -> nix::Value * {
+     nix::Value *vEvaluated =
+         args.flake ? evaluateFlake(state, args)
+@@ -304,7 +302,7 @@ auto shouldRestart(const MyArgs &args) -> bool {
+ 
+ struct Evaluator {
+     nix::EvalState &state;
+-    nix::Bindings &autoArgs;
++    const nix::Bindings &autoArgs;
+     nix::Value *vRoot;
+     MyArgs &args;
+     EvalLogCapture &logCapture;
+@@ -429,8 +427,7 @@ auto prefetchFlake(MyArgs &args) -> std::optional<std::string> {
+         store.get_ptr());
+     auto [flakeRef, fragment, outputSpec] =
+         nix::parseFlakeRefWithFragmentAndExtendedOutputsSpec(
+-            nix::fetchSettings, args.releaseExpr,
+-            nix::absPath(std::filesystem::path(".")));
++            args.releaseExpr, nix::absPath(std::filesystem::path(".")));
+     auto locked = nix::flake::lockFlake(nix::flakeSettings, *state, flakeRef,
+                                         args.lockFlags);
+ 
+@@ -465,7 +462,7 @@ void worker(
+     auto state = nix::make_ref<nix::EvalState>(
+         args.lookupPath, evalStore, nix::fetchSettings, nix::evalSettings,
+         store.get_ptr());
+-    nix::Bindings &autoArgs = *args.getAutoArgs(*state);
++    const nix::Bindings &autoArgs = *args.getAutoArgs(*state);
+ 
+     Evaluator evaluator{
+         .state = *state,

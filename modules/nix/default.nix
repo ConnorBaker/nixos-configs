@@ -2,11 +2,9 @@
   config,
   lib,
   pkgs,
-  nixOptimization,
   ...
 }:
 let
-  patchedNix = nixOptimization.packages.${pkgs.stdenv.hostPlatform.system}.tarmac-pgo;
   inherit (lib.attrsets)
     attrNames
     attrValues
@@ -96,7 +94,6 @@ let
 in
 {
   imports = [ ../services/tribuchet.nix ];
-  _module.args.patchedNix = patchedNix;
   networking.hosts = {
     "192.168.1.12" = [ "nixos-desktop" ];
     "192.168.1.13" = [ "nixos-ext" ];
@@ -108,7 +105,7 @@ in
     channel.enable = false;
 
     # The hub module selects this same package through externalBuilders.
-    package = lib.mkDefault patchedNix;
+    package = lib.mkDefault pkgs.nix;
 
     buildMachines = attrValues (
       lib.filterAttrs (

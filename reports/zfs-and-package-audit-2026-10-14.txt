@@ -1,0 +1,182 @@
+ZFS and package construction audit — 2026-10-14
+
+Scope and evidence
+Read-only inspection of nixos-desktop and nixos-ext: pool/dataset properties,
+ARC statistics, NVMe SMART, short idle I/O samples, kernel parameters and unit
+ordering. Reviewed the pinned Nixpkgs ZFS module/package history and OpenZFS
+master documentation against installed OpenZFS 2.4.4. No representative compile
+benchmark was run; recommendations below are experiments, not measured gains.
+No pool upgrade, property change, deduplication scan or deduplication operation
+was performed by this audit. Desktop's pool history records an earlier upgrade
+by another session. Do not run zfs-dedup as part of this work.
+
+Installed software and mounting
+Both hosts run OpenZFS 2.4.4 and Linux 7.2.9. In our pinned Nixpkgs, zfs and
+zfs_unstable use the same 2.4.4 source and support kernels through 7.2. Using
+zfs_2_4 would express a stable release-family policy; it changes no current
+source. The pinned ZFS NixOS module matches the inspected current master module.
+
+services.zfs-mount.enable=false remains appropriate for the current design.
+Disko/NixOS fileSystems generate systemd mounts for /nix, /home, /tmp and
+/persist. The native ZFS mountpoint properties instead name /rpool/... paths.
+Enabling zfs-mount would introduce a second mount manager and different target
+paths. zfs-mount-generator is now packaged correctly, but we have no populated
+zfs-list.cache and must migrate mount ownership/properties before using it.
+Keep the initrd rollback ordering before sysroot.mount and zfs-import.target.
+
+The previous explicit ZED script and PATH overrides were removed: recent
+Nixpkgs fixes install zed-functions.sh and include its needed tools in PATH.
+
+Relevant Nixpkgs history
+2023: ZFS member devices default to the none I/O scheduler, fixing freezes
+under nix build. All our NVMe drives already use none.
+https://github.com/NixOS/nixpkgs/commit/696353fcf4b6c290003344e0e26802db7c2eaf51
+2024: autoscrub switched to monthly and randomized timer scheduling. Shutdown
+ordering gained pool synchronization before final shutdown.
+https://github.com/NixOS/nixpkgs/commit/7aad7090b7bd3b5f18e1c5788f1aa35a7b2e57bc
+2025: the scrub helper uses idle I/O scheduling; ZED naming changed for 2.4.
+https://github.com/NixOS/nixpkgs/commit/945777b8ed999b7f170f393c4884a24102059974
+https://github.com/NixOS/nixpkgs/commit/e7fcac957619e23b5f7c6776f3a1b644ad937c45
+2026: missing zed-functions.sh installation fixed; unsafe hibernation option
+renamed; forceImportRoot defaults false for stateVersion >=26.11. We explicitly
+choose true for remote-machine availability. The udev-settle workaround was
+removed. The ZFS mount generator now installs in system-generators (plural),
+and ZED PATH gained findutils, diffutils and logger.
+https://github.com/NixOS/nixpkgs/commit/c91db261754cd5c1e127dc50c2110987e0d1ee52
+https://github.com/NixOS/nixpkgs/commit/ebc08544afa77957cc348ba72dc490ec73b87f68
+https://github.com/NixOS/nixpkgs/commit/dfd0f18d9df417bb185d95ac806c220049fbfca1
+https://github.com/NixOS/nixpkgs/commit/35c3b96ba86853397b4b5b17b317cc7f85042774
+https://github.com/NixOS/nixpkgs/commit/be3dab5b1a3c41ed2db86093b9f4e048305630b7
+OpenZFS 2.4.4 includes kernel 7.2 support and user-namespace credential fixes,
+relevant to builders. No additional ZFS patch is suggested by this audit.
+https://github.com/openzfs/zfs/releases/tag/zfs-2.4.4
+
+Hardware and workload observations
+Desktop: 94 GiB RAM, striped single-device vdevs: 990 PRO 1 TB and two 980 PRO
+2 TB. Pool 4.53 TiB, 3.63 TiB allocated, 80% full, 37% fragmentation. Nix and
+home together use about 3.74 TiB. ARC snapshot 18.25 GiB, metadata 4.18 GiB,
+lifetime hit ratio 99.816%; automatic maximum about 93 GiB.
+Ext: 93 GiB RAM, four striped 990 PRO 2 TB vdevs. Pool 7.25 TiB, 336 GiB
+allocated, 4% full, 8% fragmentation. ARC snapshot 65.66 GiB, metadata
+23.74 GiB, lifetime hit ratio 98.795%; automatic maximum about 92.5 GiB.
+All seven drives report zero media errors and zero critical warnings; sampled
+temperatures 31–36 C. Wear: desktop 6–13%, ext 2%. Firmware currency was not
+verified. Both pools ONLINE, latest scrub reports zero errors. Data checksums
+are disabled, so a clean scrub is not proof of checksummed user-data integrity.
+Short I/O samples were mostly idle. No observed compiler-memory bottleneck or
+storage throughput bottleneck is claimed from these samples.
+
+Current policies
+Pool ashift=12, autotrim=on. Dataset defaults: recordsize=128K, compression=off,
+checksum=off, dedup=off, sync=disabled, redundant_metadata=none, dnodesize=auto,
+atime=off, xattr=sa, acltype=posixacl. Desktop PostgreSQL uses 16K recordsize.
+Ext retains inherited logbias=throughput; desktop uses latency. With sync
+requests disabled, logbias is not an ordinary asynchronous-write speed knob.
+All pools are stripes, without redundant data vdevs. The low-durability choices
+were intentional in the earlier module, so do not silently replace them.
+Nix fsync-metadata=false also sets SQLite synchronous off: merely restoring
+ZFS sync=standard would not restore Nix metadata durability.
+
+Feature audit
+log_spacemap: ACTIVE both. Relevant to allocation/free-heavy builds and GC,
+particularly fragmented pools: allocation changes are recorded in per-TXG
+logs rather than requiring scattered updates to every metaslab spacemap.
+It does not require a separate SLOG device; there is nothing left to enable.
+spacemap_v2, embedded_data, large_dnode: ACTIVE both.
+block_cloning: ACTIVE both; zfs_bclone_enabled=1 already default in 2.3+.
+Desktop cloned-block savings ~216 GiB (36.2 GiB shared physical blocks, ratio
+6.98); ext ~6.88 GiB (3.08 GiB shared, ratio 3.23). Existing clones matter
+when considering rewrite/conversion and available capacity.
+lz4_compress: ACTIVE both despite current compression=off; metadata may still
+be compressed. zstd/blake3 features enabled or active from earlier blocks,
+but current datasets do not request compression/checksums.
+fast_dedup: enabled, dataset dedup=off. Do not enable an online DDT blindly.
+large_microzap: enabled but inactive; longname enabled but dataset option off.
+Neither is a general build accelerator needing blanket enablement.
+physical_rewrite and block_cloning_endian: enabled desktop, disabled ext.
+Endian support is not needed for little-endian x86_64/aarch64 interoperability.
+dynamic_gang_header: disabled both and not automatically enabled by upgrade;
+addresses extreme fragmentation rather than offering a universal speedup.
+project_quota available; useful for bounding build scratch growth.
+async_destroy helps whole dataset destruction, not ordinary per-file Nix GC.
+https://openzfs.github.io/openzfs-docs/man/master/7/zpool-features.7.html
+
+Prioritized experiments and configuration proposals (not applied)
+1. Desktop free space: establish alerts/GC policy and build-scratch limits,
+aiming for comfortable headroom (e.g. 20–25%); there is no single hard fullness
+threshold. Protect intentional GC roots. Compression may provide more headroom
+without deleting useful closures; compare lz4 first, then zstd-1 where useful.
+2. Isolate Tribuchet scratch, which is under /var/lib/tribuchet/a*/scratch and
+worker/builds on rpool/persist, not /tmp. Separate dataset policy/quota would
+let scratch retain relaxed durability without extending it to persistent
+worker state, home and other applications.
+3. Benchmark lz4 on new data against compression=off, measuring elapsed build,
+CPU cost, allocated bytes and p95 I/O latency. Existing files do not change
+just because the dataset property changes. Keep /nix and build datasets'
+recordsize aligned if cross-dataset block cloning is important. Avoid global
+4K recordsize: this was previously tried and reverted for performance.
+4. ARC: test a 32–48 GiB maximum under representative simultaneous compiles.
+Current automatic caps approach total RAM, but ARC is reclaimable and idle
+ARC occupancy alone does not demonstrate an OOM cause. Measure RSS, PSI,
+ARC hit rate and elapsed builds before selecting a cap.
+5. TXG timeout: compare default 5 or 10 seconds with our 30-second override.
+Dirty-data pressure also triggers syncing; both hosts have a 4 GiB dirty-data
+maximum and 20% sync threshold. Thirty seconds is not an unconditional speedup.
+6. Consider checksums on for retained source/store/home, and sync=standard for
+persistent state/PostgreSQL, if that matches the desired integrity tradeoff.
+Coordinate Nix fsync-metadata policy too. Measure checksum CPU cost.
+7. Keep xattr=sa, atime=off, dnodesize=auto, autotrim and monthly scrub. Do not
+copy 2048 I/O queue tuning from enterprise NVMe systems with 2 TiB RAM; our
+consumer drives, RAM and observed workload differ substantially.
+A separate SLOG is not useful for this currently asynchronous write policy.
+L2ARC/special vdev purchases have no demonstrated benefit on this same-NVMe
+layout with high observed ARC hit ratios.
+https://openzfs.github.io/openzfs-docs/man/v2.4/4/zfs.4.html
+https://openzfs.github.io/openzfs-docs/man/master/7/zfsprops.7.html
+
+Master documentation versus installed 2.4
+Master-only zfs rewrite -C/-S (skip cloned/snapshot blocks) and scrub -t are
+absent in installed 2.4.4. Rewrite does not change recordsize. Rewrite -P
+requires physical_rewrite and preserves logical birth times for incrementals.
+A broad rewrite can unshare existing clones, consuming additional space;
+avoid using it blindly to convert the full desktop pool to compression.
+zfs_bclone_strict_properties in master documentation is absent in 2.4.4.
+zfs_bclone_wait_dirty=1 can wait on dirty blocks before cloning; consider a
+0 experiment only if clone-induced flush latency is actually measured.
+The existing init_on_alloc=0 workaround links to issue #9910, still open;
+its performance rationale is debated. Do not claim it is fixed or benchmarked
+on these hosts. OpenZFS 2.4 includes zfs_arc_evict_threads (default six); there
+is no evidence to tune it here.
+https://openzfs.github.io/openzfs-docs/man/v2.4/8/zfs-rewrite.8.html
+https://openzfs.github.io/openzfs-docs/man/v2.4/8/zpool-scrub.8.html
+https://github.com/openzfs/zfs/issues/9910
+
+zfs-dedup packaging and compatibility
+Added non-flake input, built via caller rustPlatform overlay; user package
+conditional on root filesystem fsType=zfs. Installed on desktop/ext; no pool
+scan or deduplication operation performed. This is post-hoc block cloning,
+not enabling dataset dedup/online DDT. Installed 2.4.4 rejects the kernel
+REMAP_FILE_DEDUP operation; upstream tool documents a --force fallback that
+requires userspace verification and has race/mtime caveats. Package availability
+is not a recommendation to run that fallback on an active Nix store.
+https://github.com/Mic92/zfs-dedup
+https://github.com/openzfs/zfs/blob/zfs-2.4.4/module/os/linux/zfs/zpl_file_range.c
+
+Package construction findings and cleanup
+Foreign prebuilt attributes were used for optimized Nix, histodu, and the
+Tribuchet module defaults. gRPC used another Nixpkgs instance, with explicit
+ABI matching. Genuine factory overlays (nix-direnv, nil, upstream Nix) already
+use their consumer's final package set. Aligning follows alone does not pass
+host overlays/configuration to an upstream flake's exported packages.
+Cleanup builds the tools through caller-pkgs factories, adds a genuine overlay
+API to nix-optimization, makes its Nix/Nixpkgs inputs follow our root inputs,
+and removes the infrastructure package-set/module argument workaround.
+Nix library consumers must still select a compatible Nix ABI; matching a
+Nixpkgs revision alone does not ensure that. nix-eval-jobs 2.35.4 was linked
+to Nix 2.35.2 even though our daemon uses patched 2.36 prerelease. Its alignment
+was subsequently implemented using the nix-next API port on current upstream
+source: unit tests and 33 functional tests passed both raw and with Tarmac.
+Per-host architecture/configuration package sets remain legitimate (especially
+Orin's JetPack/CUDA overlays). The goal is that each host constructs its tools
+through its own final package set, not to erase host-specific configuration.
+https://nixos.org/manual/nixpkgs/unstable/#chap-overlays

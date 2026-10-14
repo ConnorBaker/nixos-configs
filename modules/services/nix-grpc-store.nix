@@ -1,7 +1,6 @@
 {
   config,
-  nixGrpcStore,
-  nixInfrastructurePkgs,
+  pkgs,
   ...
 }:
 let
@@ -11,11 +10,7 @@ in
 {
   programs.nix-grpc-store = {
     enable = true;
-    # Build infrastructure independently of host CUDA/JetPack overlays, while
-    # linking the plugin against the exact selected system Nix libraries.
-    packageSet = nixInfrastructurePkgs.callPackage (nixGrpcStore + "/nix/packages") {
-      nixPackages = config.nix.package.libs;
-    };
+    packageSet = pkgs.nixGrpcPackages;
     # A single selected Nix ABI is enough; avoid building every release.
     package = grpc;
   };

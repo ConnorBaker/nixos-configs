@@ -17,7 +17,7 @@ in
           modelSerialSeparator = "_";
         };
       in
-      lib.mapAttrs (name: value: mkDisk (common // value)) {
+      lib.mapAttrs (_: value: mkDisk (common // value)) {
         rpool-boot = {
           serial = "S73WNJ0W809592D";
           contentConfigs = [

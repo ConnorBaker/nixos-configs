@@ -4,18 +4,15 @@
   pkgs,
   ...
 }:
-# TODO: Find a way to implement a check which makes certain networking.hostId is set.
 let
   zfsPkg = config.boot.zfs.package;
 in
 {
   boot = {
-    # TODO: Investigate potential tuneables in
-    # https://github.com/openzfs/zfs/issues/8381#issuecomment-1374268868
     extraModprobeConfig = ''
-      # Enable block cloning for ZFS.
-      options zfs zfs_bclone_enabled=1
-      # Values to increase the time before ZFS TXG timeout.
+      # Retain the existing workload tuning; compare against 5–10 seconds
+      # under representative builds before changing it. Block cloning is
+      # already enabled by default in OpenZFS 2.3 and later.
       options zfs zfs_txg_timeout=30
     '';
     initrd = {
@@ -49,8 +46,7 @@ in
       !config.hardware.nvidia-jetpack.enable or false
     ) pkgs.linuxKernel.packages.linux_7_2;
     kernelParams = [
-      "nohibernate"
-
+      # Nixpkgs already adds nohibernate for ZFS and asserts networking.hostId.
       # https://github.com/openzfs/zfs/issues/9910
       "init_on_alloc=0"
       "init_on_free=0"
@@ -71,6 +67,9 @@ in
   };
 
   systemd = {
+    # Disko/NixOS fileSystems own the systemd mounts. Native ZFS mountpoint
+    # properties name /rpool/... rather than the /nix, /home, /tmp, /persist
+    # paths we actually mount; enabling zfs-mount would add a second manager.
     services.zfs-mount.enable = false;
   };
 }

@@ -16,7 +16,7 @@ in
           modelSerialSeparator = "_";
         };
       in
-      lib.mapAttrs (name: value: mkDisk (common // value)) {
+      lib.mapAttrs (_: value: mkDisk (common // value)) {
         rpool-boot = {
           model = "Samsung_SSD_990_PRO_1TB";
           serial = "S73VNJ0TA10611H";
