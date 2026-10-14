@@ -1,0 +1,102 @@
+NixOS configuration structure and maintenance audit — 2026-10-14
+
+Scope and method
+Read-only inspection of /home/connorbaker/nixos-configs, including all four host modules, user configuration, Disko structure, the flake/input graph, package overlays, and documentation. No AGENTS.md exists in the repository or its ancestor directories. Existing root-agent edits to overlays/infrastructure.nix and reports were left untouched. No deployments, switches, package builds, offline-host access, or zfs-dedup executions occurred. Defaults were checked against locked nixpkgs 7fd4004d0511991fff3a0524856a9be09e28c5f0, available as /nix/store/r5l65vg4gi4dnx54zkwagfb8jmlqniy5-source. Relevant module history was queried through GitHub's primary API for 2023-10-14 through 2026-10-14. Suggestions below distinguish behavior-preserving simplifications from optional behavioral changes.
+
+Ranked findings
+
+1. Medium impact, high confidence: remove the superseded NVIDIA sandbox symlink workaround.
+Locations: devices/nixos-desktop/hardware.nix:47-63, especially line50 and line62; hardware.graphics.enable at line30.
+The local code reaches into systemd.tmpfiles.settings.graphics-driver to obtain the target of /run/opengl-driver and manually adds it to programs.nix-required-mounts.allowedPatterns.nvidia-gpu.paths. Pinned upstream already includes /run/opengl-driver in its defaults and sets unsafeFollowSymlinks=true (nixos/modules/programs/nix-required-mounts.nix:54-69). The hook discovers its target at build time. This can be reduced to:
+  programs.nix-required-mounts = {
+    enable = true;
+    presets.nvidia-gpu.enable = true;
+  };
+This removes dependence on an internal tmpfiles record and 17 lines of obsolete explanation. Upstream already defaults hardware.graphics.enable=true when that preset is enabled (module line149), so desktop's explicit graphics.enable is also value-redundant, although retaining it as a declared host capability is reasonable.
+Historical evidence: Connor Baker's 2025-07-18 commit 0b47ed1b35e2a894f4ace1d2280220fca4a9ad2c added the direct target upstream. On 2026-02-12, 02b74722d86f55b367011ac4b9ebafe7ffcbb11c removed the reference, enabled symlink following, and added an evaluation regression test because direct access could cause infinite recursion with userborn. On 2026-02-08, 867b4878b711adce951ee21e5e0bdc30039d6e80 made the GPU preset enable graphics by default. On 2026-03-16, 7a9bf2776062731e82a6bf0a6b41fdcdf44623a5 expanded following to descendant symlink targets and added tests.
+Validation performed: imported the pinned Python hook with an already-installed Python interpreter; called mount_closure for actual /run/opengl-driver, with unsafeFollowSymlinks=true and safePrefixes=[/nix/store], once with and once without the explicit target. The discovered target was present and both returned exactly the same three mounts. No build or GPU test was executed.
+Primary sources:
+https://github.com/NixOS/nixpkgs/commit/02b74722d86f55b367011ac4b9ebafe7ffcbb11c
+https://github.com/NixOS/nixpkgs/commit/867b4878b711adce951ee21e5e0bdc30039d6e80
+https://github.com/NixOS/nixpkgs/commit/7a9bf2776062731e82a6bf0a6b41fdcdf44623a5
+https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/nixos/modules/programs/nix-required-mounts.nix
+
+2. Medium maintenance impact, high confidence: use one shared fleet profile for the repeated host import manifests.
+Locations: devices/nixos-build01/default.nix:11-31; devices/nixos-desktop/default.nix:11-31; devices/nixos-ext/default.nix:11-31; devices/nixos-orin/default.nix:11-30.
+All four hosts import the same boot, Docker, headless, impermanence, networking, sudo, users, ZFS, zram, Nix, OpenSSH, Tailscale, and Connor Baker user modules. The only real import-list exception is that Orin lacks prometheus-exporters. A single profiles/builder.nix or modules/default.nix importing the shared policy would make new common features a one-file change and make host exceptions visible. The host files should still import their own hardware.nix, disko.nix, and secrets.nix and explicitly retain their own hostId and stateVersion. Add Prometheus imports in the three x86 hosts or in an additional observed-builder profile so Orin's current exception is preserved. No new large module framework is needed: ordinary NixOS imports suffice. README.md:9's unchecked 'Migrate to use of flake modules' is ambiguous because flake-parts modules are already in use at flake.nix:137-139; rewrite it around the actual remaining objective or remove the stale task.
+This is a structural recommendation, not a new upstream default. It should preserve the evaluation result apart from source-location metadata.
+Primary module semantics:
+https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/lib/modules.nix
+
+3. Medium maintenance impact, high confidence: factor the entire repeated Disko dataset layout into the existing pure helper.
+Locations: devices/nixos-build01/disko.nix:39; devices/nixos-desktop/disko.nix:40; devices/nixos-ext/disko.nix:42; devices/nixos-orin/disko.nix:30; util.nix:4.
+The repeated zpool.rpool.datasets definitions have the same root snapshot hook and /nix, /tmp, /home, /persist layout; roughly 30-40 lines are repeated per host. util.nix already factors boot/rpool partitions, drive ID assembly, and ZFS properties. Move datasets into a shared zfsRpoolConfig or zfsRpoolDatasets helper and leave only disk serial/model/interface inventory in each host. Preserve the root@blank hook, all properties, device IDs, partition sizes, and disk membership exactly; filesystem-policy changes belong in a separate review. The standard NixOS module system can merge disko.devices.zpool.rpool pieces, so a common module is also reasonable. Prefer one reusable module/helper over four content generators or a filesystem DSL. README.md:13 already identifies this unfinished cleanup.
+Primary schema:
+https://github.com/nix-community/disko/blob/725ea35e410ad83be4931d1bff7e090eacaf3563/lib/types/zpool.nix
+https://github.com/nix-community/disko/blob/725ea35e410ad83be4931d1bff7e090eacaf3563/lib/types/zfs_fs.nix
+
+4. Medium maintenance impact: move the existing lightweight machine inventory out of the Nix tuning module.
+Locations: modules/nix/default.nix:59-88 and :97-100; flake.nix:231-263; users/connorbaker.nix:78-82; modules/services/tribuchet.nix:8 and :40; devices/*/hardware.nix's three IPv4/MAC records; modules/services/prometheus-scrape-config.yaml's repeated instance names.
+Architecture, host name, SSH public-key path, IPv4 address, build features, and builder role recur in several independent maps. A pure inventory.nix (values only, no nixosConfigurations evaluation) can feed these consumers. The existing comment at modules/nix/default.nix:26 correctly avoids forcing every system closure: preserve that property. Keep external spark-ee4c as a separate non-NixOS record. Encode hub role/address once instead of deriving role from the spelling of networking.hostName. An ordinary explicit per-host 'isHub' or role option is preferable to a general role engine. Keep disk serials and hardware workaround values close to their hosts, where they are easy to inspect.
+This pays off when adding, renaming, or taking a builder offline, rather than promising an immediate speed improvement. Existing hardware network semantics require the separate networking audit before generating those records.
+
+5. Low impact, high confidence: remove the Orin CUDA settings that pinned Jetpack already derives.
+Location: flake.nix:255-260; devices/nixos-orin/hardware.nix:36-44.
+Local nixpkgs.config.cudaSupport=true and cudaCapabilities=["8.7"] duplicate pinned Jetpack modules/cuda.nix. With hardware.nvidia-jetpack.enable=true, SOM="orin-agx", and hardware.graphics.enable=true, upstream's configureCuda default is true and it derives exactly CUDA capability 8.7. Remove that local module block and let the SOM determine capabilities. This avoids a silent stale value if the target SOM changes. KEEP Orin hardware.graphics.enable=true: upstream assigns graphics packages but does not enable graphics, so the TODO at hardware.nix:37 does not justify removal. Keep Orin's module-created package instance and overlays (see finding9).
+History: 0fd1ccc01914bf28bbf99ccfac72fddfd789b47d, 2025-11-16, moved CUDA options/configuration to their own Jetpack module; 44228672915f1ff11c36a55b0f08f9f5c902e1d2 added CUDA 13/Thor capability handling in November 2025. The SOM-derived approach is actively maintained upstream.
+Primary sources:
+https://github.com/anduril/jetpack-nixos/blob/acf8e24053db01e920818604c9a24af1e01c98af/modules/cuda.nix
+https://github.com/anduril/jetpack-nixos/blob/acf8e24053db01e920818604c9a24af1e01c98af/modules/graphics.nix
+https://github.com/anduril/jetpack-nixos/commit/0fd1ccc01914bf28bbf99ccfac72fddfd789b47d
+
+6. Low maintenance impact, high confidence: share the SOPS module and correct outdated installation documentation.
+Locations: devices/*/secrets.nix:1-13; README.md:25; modules/impermanence.nix:9; README.md:54/:70/:86/:107.
+The four secrets.nix files are byte-identical (all SHA256 28a49ba339c28ee4817f1b66e3fdd95700720b247bcfface1377c27614ce5add). Only ./secrets.yaml resolves differently by directory. A common secrets module can own age.sshKeyPaths, gnupg.sshKeyPaths=[], and the tailscale secret/path; each host then sets defaultSopsFile=./secrets.yaml. Do not accidentally reuse a common module-relative ./secrets.yaml for every host.
+README's RSA/GPG requirement is contradicted by gnupg.sshKeyPaths=[] and the ED25519 age-key setup. Rewrite that note to match current age/impermanence deployment. Pin nixos-anywhere through the flake (already requested by README's line7 TODO) and use one reviewed installer version across documented host commands. Orin currently invokes the unrelated historical github:numtide/nixos-anywhere URL without a lock; its kexec source and old IP also need separate validation before replacing the command. The three x86 command blocks can become one parameterized example plus a concise host table; preserve the impermanence /persist extra-files note.
+Primary source:
+https://github.com/Mic92/sops-nix
+https://github.com/nix-community/nixos-anywhere
+
+7. Low impact, high confidence: remove duplicate program package declarations and separate user preferences from machine services.
+Locations: users/connorbaker.nix:24-64 and :128-129; :11-22 and :125/:95.
+programs.git.enable installs its selected package in environment.systemPackages; programs.htop.enable does likewise. Therefore pkgs.git and pkgs.htop in Connor's user packages are redundant. Remove the user-list duplicates; expect cleaner package declarations and profiles, not two copies of the same store data saved. Upstream htop settings are global defaults read only at the first startup, then ~/.config/htop/htoprc wins; changes here are not continuously enforced user preferences.
+Optional behavior change: if repository-managed shell integration is desired, programs.direnv.enable=true already supplies Bash/Zsh/Fish integration, nix-direnv setup, and a nix-direnv package default bound to config.nix.package. This can replace the two raw package entries and local dotfile wiring. Merely installing the packages currently does not create that integration. Check existing home-directory shell setup before enabling it globally. Relevant history: fd32059984ff41a2fa43288c481c8fa55c9e536b (2023-12-20) made nix-direnv respect the configured Nix package; ee3da00d592822e508ee4c0e1b6a5ec1bf3051bd (2024-07-27) introduced explicit shell integration toggles; 26a640f83da2790452018b0de54d5ef01db1f663 (2026-01-01) removed obsolete finalPackage plumbing.
+The account module also opens firewall ports 5000/5001 for all imported hosts. Move service/firewall policy to its owning service or host profile if those tools are still required, preserving ports until their use is verified. Git user.name/email in programs.git.config are written to /etc/gitconfig and apply machine-wide; that is currently coherent with one person owning these machines, but the module name should not imply those settings are per-user.
+Primary sources:
+https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/nixos/modules/programs/git.nix#L104-L109
+https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/nixos/modules/programs/htop.nix#L53-L64
+https://github.com/NixOS/nixpkgs/commit/fd32059984ff41a2fa43288c481c8fa55c9e536b
+https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/nixos/modules/programs/direnv.nix
+
+8. Optional low impact: replace the nil input/overlays with the packaged version only if the remaining sourcehut fix is unneeded.
+Locations: flake.nix:32-35 and :104-109.
+Pinned nixpkgs nil is the 2026-07-23 release; local nil input 205c8ba65a7f956d7837a710794001b3515c65ff is exactly one commit ahead, 'Fix sourcehut link resolve (#193)'. This is NOT an identical package, so unconditional removal would lose a fix. If that fix is unnecessary, remove the dedicated input, upstream overlay, and doCheck=false override. Alternatively retain the input with a short comment explaining the one specific desired fix rather than treating nil as generic infrastructure. nixpkgs gained the current release through 3f4d020c897c7541e1d798800265b3601a92d8bb on 2026-07-23. Tests disabled locally must not be inferred safe to enable against the optimized development Nix without validation.
+Keep the nix-direnv overlay unless accepting its change: the current input is 61 commits ahead of nixpkgs 3.2.0, including logging and garbage-collection-root behavior changes. Likewise histodu has no packaged nixpkgs equivalent in this pin, so its local package is still needed; this audit found no basis to delete it.
+Primary sources:
+https://github.com/oxalica/nil/compare/2026-07-23...205c8ba65a7f956d7837a710794001b3515c65ff
+https://github.com/NixOS/nixpkgs/commit/3f4d020c897c7541e1d798800265b3601a92d8bb
+https://github.com/nix-community/nix-direnv/compare/3.2.0...3ee0117e8746e18c1ea0410a7cfcde41c9182fe5
+
+9. Optional medium complexity: share pkgs between compatible NixOS outputs using readOnlyPkgs, after measuring evaluation cost.
+Locations: flake.nix:124-132 and :211-227.
+The flake explicitly memoizes perSystem package sets, but each nixosSystem independently imports its own merged nixpkgs config. Upstream nixosModules.readOnlyPkgs exists to accept a prepared nixpkgs.pkgs set, prevent accidental module mutation, and reuse it across systems. It could share build01/ext's ordinary x86 package set with the perSystem tools. It is NOT a drop-in global rewrite: desktop retains cudaCapabilities=[8.9]; Orin's Jetpack module injects overlays and CUDA config and changes host/kernel selection. Either use named package variants for desktop or leave it module-instantiated. Preserve Orin's existing instance unless moving all Jetpack overlays/config into a reviewed explicit import. Its module writes would be rejected by readOnlyPkgs.
+This is an evaluation optimization opportunity, not an identified runtime bug or proven performance gain. A larger abstraction may cost more maintenance than it saves with four hosts. Historical relevance: the read-only module received cross-compilation fix 196f6a812b310e3179afcf48bf2907853246dcad on 2025-06-12; f2640ee208003ca7102cbda97740b07871fa7635 on 2025-10-25 changed top-level splicing. Avoid old snippets overriding _module.args.pkgs in NixOS without the supported interface. Nixpkgs' perSystem package memoization itself was improved by b78a8c9109b481e559c7b350695e671b3fbc37db on 2025-07-07, so the local memoization comment is useful but does not cover host instances.
+Primary sources:
+https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/nixos/modules/misc/nixpkgs/read-only.nix
+https://github.com/NixOS/nixpkgs/commit/196f6a812b310e3179afcf48bf2907853246dcad
+https://github.com/NixOS/nixpkgs/commit/b78a8c9109b481e559c7b350695e671b3fbc37db
+https://github.com/anduril/jetpack-nixos/blob/acf8e24053db01e920818604c9a24af1e01c98af/modules/default.nix
+
+10. Optional future work: use upstream hardware.facter only when a real target report is available.
+Locations: devices/nixos-{build01,desktop,ext}/hardware.nix:8-30 and hostPlatform entries in flake.nix.
+NixOS Facter entered nixpkgs in October 2025 (b7f40d25ebe0e89abb8d557e162592e9088f240e); boot/storage, CPU firmware, graphics, and networking detection followed in ab49e37a022de924b83b600371dd89d5135ca23c, cb883c36e3ee6551fa2b67c481a58d1186e83c38, ddf53abd21a45a2f3ba3e909c8ef7125ae991198, and 79d683f4ad85450287f8e723afc09c191d5839b5. April 2026 commit 2f236ee997c9cb59e009de8f4aac7508ab7499e3 added AMD-pstate detection. It can replace some generated CPU/initrd/platform declarations on ordinary x86 machines. It requires a report captured on the actual host, and can enable networking, graphics, Bluetooth, and other services. Avoid a blind migration for headless builders or the specialized Orin. Keep desktop's measured 5.2GHz stability cap, NVIDIA package/profiling policy, and network identity explicit.
+Current microcode defaults remain false, and enableAllFirmware defaults false: the existing true settings are intentional behavior, not old defaults that can be deleted. stateVersion 24.05/25.05 likewise encodes installation compatibility and must not be advanced as a cleanup.
+Primary sources:
+https://github.com/NixOS/nixpkgs/commit/b7f40d25ebe0e89abb8d557e162592e9088f240e
+https://github.com/NixOS/nixpkgs/commit/2f236ee997c9cb59e009de8f4aac7508ab7499e3
+https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/nixos/modules/hardware/facter/facter.md
+https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/nixos/modules/hardware/cpu/intel-microcode.nix
+https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/nixos/modules/hardware/cpu/amd-microcode.nix
+
+Recommended implementation order
+First remove the obsolete desktop mount workaround and Orin's duplicated CUDA block; compare the affected evaluated options. Next introduce one common fleet profile and common SOPS/Disko declarations, verifying imported service enablement, disk definitions, filesystem options, root snapshot hooks, and stateVersion remain unchanged for all four configs. Then centralize only the already-existing pure host metadata. Keep optional changes (direnv shell integration, nil downgrade to packaged release, readOnlyPkgs, facter) as separate reviewable changes with clear behavior/measurement. No modifications from this audit have been made to the repository.

@@ -1,0 +1,165 @@
+Storage, boot, initrd, Disko and impermanence audit — 2026-10-14
+
+Scope
+Read-only audit of all four declared hosts, using pinned Nixpkgs
+7fd4004d0511991fff3a0524856a9be09e28c5f0 at
+/nix/store/r5l65vg4gi4dnx54zkwagfb8jmlqniy5-source. Checked for AGENTS.md in
+workspace/ancestor directories and found none. Read the existing
+reports/zfs-and-package-audit-2026-10-14.txt first; its ZFS property policies,
+native-mount disabling, kernel tuning and package-family findings are retained.
+No hosts contacted, builds started, deployment performed, or storage operation
+run. Build01 and Orin remain configuration-only findings. Repository unchanged.
+
+Ranked concrete findings
+
+1. P2, safe cleanup: remove both explicit supported-filesystem lists.
+   modules/zfs.nix:40 and modules/zfs.nix:54.
+   Disko emits ZFS fileSystems declarations for root/nix/home/tmp/persist and
+   a vfat declaration for /boot. NixOS automatically derives stage-2 support
+   from fileSystems and initrd support from filesystems required in stage 1.
+   The explicit stage-2 [vfat zfs] duplicates the generated declarations.
+   Root and /persist already require ZFS in initrd. /boot is NOT neededForBoot
+   and has no x-initrd.mount option, so explicit initrd vfat additionally loads
+   vfat/nls_cp437/nls_iso8859-1 and dosfstools for a filesystem not mounted there.
+   Evaluation-only validation: used extendModules to disable the original
+   ZFS module and substitute its identical contents minus these two lists.
+   All four configurations have zero failed assertions; stage-2 support stays
+   {vfat=true; zfs=true;}; initrd support becomes {zfs=true;}; its kernelModules
+   lose only vfat/nls_cp437/nls_iso8859-1. Actual boot testing remains future
+   validation if adopted. Evidence artifacts:
+     /tmp/storage-evaluated-configs.json
+     /tmp/storage-drop-redundant-filesystem-eval.nix
+     /tmp/storage-without-explicit-filesystems.json
+   This automatic derivation existed in 23.11; it is not a newly changed
+   default. The supportedFilesystems option changed to attrset support in 2024;
+   old list syntax still works and does not need mechanical migration.
+   https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/nixos/modules/tasks/filesystems.nix#L491
+   https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/nixos/modules/system/boot/stage-1.nix#L791
+   https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/nixos/modules/tasks/filesystems/vfat.nix#L24
+   https://github.com/nix-community/disko/blob/725ea35e410ad83be4931d1bff7e090eacaf3563/lib/types/zfs_fs.nix#L167
+   https://github.com/NixOS/nixpkgs/commit/258b935d705be03e939b8205215202ad202073b3
+
+2. P2, safe maintainability cleanup: share the identical root-pool datasets.
+   devices/nixos-build01/disko.nix:42, devices/nixos-ext/disko.nix:42,
+   devices/nixos-desktop/disko.nix:40, devices/nixos-orin/disko.nix:30.
+   The complete datasets block, root@blank creation hook and lengthy Nix
+   recordsize rationale are copied four times; only disk identity/topology
+   varies. Move these datasets into util.nix's zfsStripedPoolCommonConfig
+   (or a separate named common root-pool config). Host files can reference
+   the common pool directly, retaining recursiveUpdate only for real future
+   host overrides. Preserve all dataset names, mountpoints and properties.
+   This removes roughly 100 duplicated lines and makes rollback/root dataset
+   naming drift harder. Disko already provides the underlying generic types;
+   no upstream custom workaround is required for this shared layout.
+   Root snapshot existence can also be tested directly instead of listing
+   snapshots from every pool: zfs list -H -o name -t snapshot rpool/root@blank
+   >/dev/null 2>&1 || zfs snapshot rpool/root@blank. This is optional smaller
+   cleanup; the existing guard is valid and matches the upstream example.
+   https://github.com/nix-community/disko/blob/725ea35e410ad83be4931d1bff7e090eacaf3563/example/zfs.nix
+
+3. P3, safe stale-code removal: delete ext's commented dpool rollback.
+   devices/nixos-ext/default.nix:34.
+   No dpool exists in its declared layout. The old postDeviceCommands snippet
+   is a scripted-initrd hook; current upstream defaults to systemd initrd,
+   and re-enabling that snippet would trigger the migration assertion.
+   The actual ZFS rollback is already correctly implemented as a systemd
+   initrd service at modules/zfs.nix:20. Keep its ordering before sysroot.mount
+   and zfs-import.target and after zfs-import-rpool.service.
+   Nixpkgs changed boot.initrd.systemd.enable to true in commit 5620d245,
+   committed 2026-04-08 and documented as a 26.05 default. Its author timestamp
+   is 2025-08-15; use committer/release timing when describing availability.
+   https://github.com/NixOS/nixpkgs/commit/5620d245adf03c58b74f803031ba2a85d204db31
+   https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/nixos/doc/manual/release-notes/rl-2605.section.md
+
+4. P3, optional default cleanup: compressor and zram algorithm.
+   modules/boot.nix:4; modules/zram.nix:17.
+   boot.initrd.compressor is already zstd for kernel>=5.9, including all host
+   kernels; zramSwap.algorithm is already zstd. Both defaults were present in
+   23.11 and remain unchanged. Removing these lines changes no present value,
+   unless explicit policy pinning is preferred. Do NOT classify memoryPercent
+   =400 or the custom swap sysctls as duplicates: defaults differ.
+   modules/boot.nix:5 selects zstd -19 instead of Nixpkgs' -10. This remains a
+   genuine compression policy, not obsolete syntax. As builders rebuild the
+   initrd often, compare build elapsed time and compressed size with -10 before
+   changing it; this audit made no measurement and claims no speedup.
+   The 2025 zram documentation correction clarifies that memoryPercent limits
+   logical uncompressed data, not physical RAM consumed. 400 does not eagerly
+   allocate 4x RAM, but it also does not provide a physical-memory cap.
+   https://github.com/NixOS/nixpkgs/blob/nixos-23.11/nixos/modules/system/boot/stage-1.nix#L589
+   https://github.com/NixOS/nixpkgs/blob/nixos-23.11/nixos/modules/config/zram.nix#L73
+   https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/pkgs/build-support/kernel/initrd-compressor-meta.nix#L45
+   https://github.com/NixOS/nixpkgs/commit/c2ecb970df59abf6be254caa137ca951527369bb
+
+5. P2 opportunity, behavior change requiring boot validation: boot assessment.
+   devices/nixos-build01/hardware.nix:19, devices/nixos-ext/hardware.nix:19,
+   devices/nixos-desktop/hardware.nix:21, devices/nixos-orin/hardware.nix:30.
+   All four use systemd-boot and currently have bootCounting.enable=false.
+   Upstream reintroduced boot counting in commit 69ce6b2, committed 2026-06-02,
+   and documents the feature in current 26.11 release notes. Its author date is
+   2025-09-24; this is not evidence that it shipped in 25.11.
+   Consider boot.loader.systemd-boot.bootCounting.enable=true for remote hosts
+   without console access. tries defaults to 3. New entries count unsuccessful
+   boots and an older generation is preferred once the counter is exhausted;
+   success is marked at boot-complete.target. This does not itself restart a
+   hung host and boot success does not automatically prove SSH/Tailscale/
+   Tribuchet readiness. A tailored boot-complete health gate and a recovery
+   rehearsal would make it useful for the real remote-host availability goal.
+   Keep as a separate reviewed behavior change, not part of mechanical cleanup.
+   https://github.com/NixOS/nixpkgs/commit/69ce6b2391607b960184eede5db97f155090a554
+   https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/nixos/modules/system/boot/loader/systemd-boot/systemd-boot.nix#L421
+   https://systemd.io/AUTOMATIC_BOOT_ASSESSMENT/
+
+Defaults/history that do NOT justify removal or migration
+
+- modules/impermanence.nix:2, /persist neededForBoot=true, is necessary. Pinned
+  impermanence explicitly asserts this. Its Jan 2026 assertion also checks
+  ephemeral backing filesystem paths. Existing configurations pass these
+  assertions. /var/lib and /var/log bind mounts appear in evaluated initrd
+  mounts before activation. Broad /var/lib persistence includes NixOS UID/GID
+  state, random-seed and service state; narrowing it requires a separate state
+  inventory, not mechanical removal. Current sops age.sshKeyPaths points
+  directly to /persist/etc/ssh/... and avoids the late-/etc/ssh mount problem.
+  Impermanence changed bind mounts from fileSystems to systemd.mounts in a
+  commit authored 2025 but delivered Jan 2026. Thus future examples based on
+  marking its generated fileSystems entries neededForBoot may be stale.
+  https://github.com/nix-community/impermanence/commit/7b1d382faf603b6d264f58627330f9faa5cba149
+  https://github.com/nix-community/impermanence/commit/2b99fefbfdbbc1f9423b7695b04b194064ccb260
+  https://github.com/nix-community/impermanence/issues/294
+
+- modules/boot.nix:7, tmp.cleanOnBoot=true, is still meaningful because /tmp
+  is its own retained ZFS dataset, unaffected by root rollback. Its upstream
+  default is false. Do not remove it as if /tmp were inside ephemeral root.
+  modules/boot.nix:9, systemd.enableEmergencyMode=false, is also a genuine
+  stage-2 policy; it is independent of initrd emergencyAccess (default false).
+
+- modules/zfs.nix:60, forceImportRoot=true, is explicit availability policy.
+  Upstream now defaults false only for stateVersion>=26.11. Three hosts have
+  stateVersion24.05 and Orin25.05; inherited value would still be true today.
+  Keep the explicit value/comment, which also records deliberate acceptance
+  of the changed upstream policy. Never bump stateVersion for cleanup.
+  https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/nixos/modules/tasks/filesystems/zfs.nix#L355
+
+- The new 26.11 /etc/machine-id behavior applies to immutable /etc overlay.
+  Evaluated system.etc.overlay.enable=false and mutable=true on all four hosts.
+  It therefore supplies no reason to migrate their persistence config. Missing
+  /etc/machine-id persistence is not proven to rotate machine identity here:
+  systemd may derive a stable firmware identifier. No host observation was made.
+  https://github.com/NixOS/nixpkgs/blob/7fd4004d0511991fff3a0524856a9be09e28c5f0/nixos/doc/manual/release-notes/rl-2611.section.md#L452
+
+- Explicit AMD/Intel microcode updates in x86 hardware files remain required
+  because their current upstream module defaults are false. They are not
+  implied by hardware.enableAllFirmware=true. No removal recommended.
+
+- Native zfs-mount remains intentionally disabled. init_on_alloc/free, txg=30,
+  checksum=off and sync=disabled are retained policies already investigated in
+  the existing ZFS report. linux_7_2/ZFS package selection is likewise covered
+  there; no newly obsolete storage workaround found beyond the stale comment.
+
+Evidence and validation limits
+Only Nix evaluation plus source/history inspection. The evaluated source is
+Nix's immutable workspace snapshot, and substitution of the filesystem lists
+was restricted to temporary extendModules evaluation. No disk script was run.
+Temporary GitHub history JSON files are /tmp/storage-history-*.json,
+/tmp/storage-impermanence-history.json and /tmp/storage-systemdboot-history.json.
+All source-derived changes above distinguish genuine new upstream changes,
+already-established defaults, intentional overrides, and optional behavior.
