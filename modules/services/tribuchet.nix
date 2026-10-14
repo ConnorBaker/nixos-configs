@@ -1,15 +1,11 @@
 {
   config,
   lib,
-  pkgs,
-  nixOptimization,
+  patchedNix,
   ...
 }:
 let
   isHub = config.networking.hostName == "nixos-ext";
-  # This package includes automatic Tarmac evaluation, PGO, and the ported
-  # Tribuchet patches. Its wrappers preserve separately configured plugins.
-  patchedNix = nixOptimization.packages.${pkgs.stdenv.hostPlatform.system}.tarmac-pgo;
 in
 {
   imports = [ ./nix-grpc-store.nix ];
@@ -18,7 +14,10 @@ in
     openFirewall = false;
     externalBuilders = {
       enable = true;
-      systems = [ "x86_64-linux" ];
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
       nixPackage = patchedNix;
       patchNix = false;
     };
@@ -39,7 +38,6 @@ in
     };
   };
 
-  nix.package = lib.mkIf (!isHub) patchedNix;
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = lib.mkIf isHub [ 7437 ];
 
   systemd.services.tribuchet-worker = {

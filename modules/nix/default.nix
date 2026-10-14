@@ -1,9 +1,12 @@
 {
   config,
   lib,
+  pkgs,
+  nixOptimization,
   ...
 }:
 let
+  patchedNix = nixOptimization.packages.${pkgs.stdenv.hostPlatform.system}.tarmac-pgo;
   inherit (lib.attrsets)
     attrNames
     attrValues
@@ -30,34 +33,50 @@ let
   # hostNameToSystem :: AttrSet String (AttrSet String Any)
   hostNameToBuildMachineConfig =
     let
-      mkBuildMachineConfig = hostName: extraSupportedFeatures: {
+      mkBuildMachineConfig = hostName: machine: {
         hostName =
           if config.programs.nix-grpc-store.enable then
-            "grpc://${hostName}.rove-hexatonic.ts.net:50051?insecure=1"
+            "grpc://${hostName}.rove-hexatonic.ts.net:50051?insecure=1&connect-timeout=5"
           else
             hostName + "?max-connections=1&want-mass-query=true";
-        supportedFeatures = baselineSupportedFeatures ++ extraSupportedFeatures;
+        supportedFeatures = baselineSupportedFeatures ++ machine.features;
         maxJobs = 3;
-        # The hub schedules CPU jobs through Tribuchet. Keep the ordinary
-        # desktop SSH builder for GPU jobs, which the worker cannot advertise.
-        mandatoryFeatures = lib.optionals (
-          config.services.tribuchet-hub.enable && hostName == "nixos-desktop"
-        ) [ "cuda" ];
+        # Ext schedules CPU jobs through Tribuchet. Direct gRPC builders
+        # serve GPU jobs, which Tribuchet workers cannot advertise.
+        mandatoryFeatures = lib.optionals (builtins.elem "cuda" machine.features) [ "cuda" ];
         protocol = if config.programs.nix-grpc-store.enable then null else "ssh-ng";
         speedFactor = 1;
         sshKey =
           if config.programs.nix-grpc-store.enable then null else config.sops.secrets.${nixPrivateKey}.path;
-        systems = [ "x86_64-linux" ];
+        inherit (machine) systems;
       };
     in
     mapAttrs mkBuildMachineConfig {
-      # nixos-build01 = [ ];
-      nixos-desktop = [ "cuda" ];
-      # Ext's external builder provides UID-range sandboxing through its pool.
-      nixos-ext = [ "uid-range" ];
+      nixos-build01 = {
+        systems = [ "x86_64-linux" ];
+        features = [ ];
+      };
+      nixos-desktop = {
+        systems = [ "x86_64-linux" ];
+        features = [ "cuda" ];
+      };
+      # Ext's external builder routes both architectures through its pool.
+      nixos-ext = {
+        systems = [
+          "x86_64-linux"
+          "aarch64-linux"
+        ];
+        features = [ "uid-range" ];
+      };
+      nixos-orin = {
+        systems = [ "aarch64-linux" ];
+        features = [ "cuda" ];
+      };
     };
 in
 {
+  imports = [ ../services/tribuchet.nix ];
+  _module.args.patchedNix = patchedNix;
   networking.hosts = {
     "192.168.1.12" = [ "nixos-desktop" ];
     "192.168.1.13" = [ "nixos-ext" ];
@@ -68,11 +87,15 @@ in
     # Use flakes for everything
     channel.enable = false;
 
-    # By default, package is pkgs.nix, which is an alias to pkgs.nixVersions.stable.
-    # package = pkgs.nixVersions.latest;
+    # The hub module selects this same package through externalBuilders.
+    package = lib.mkDefault patchedNix;
 
     buildMachines = attrValues (
-      removeAttrs hostNameToBuildMachineConfig [ config.networking.hostName ]
+      lib.filterAttrs (
+        hostName: machine:
+        hostName != config.networking.hostName
+        && (hostName == "nixos-ext" || builtins.elem "cuda" machine.supportedFeatures)
+      ) hostNameToBuildMachineConfig
     );
 
     distributedBuilds = true;

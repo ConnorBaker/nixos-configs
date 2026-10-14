@@ -504,14 +504,19 @@
         "treefmt-nix": "treefmt-nix_3"
       },
       "locked": {
-        "path": "./inputs/nix-optimization",
-        "type": "path"
+        "lastModified": 1791957142,
+        "narHash": "sha256-dmw+Mb7/K9BP+YPKaf73YuP7WbrILQ7FW4zgs60N7rg=",
+        "owner": "ConnorBaker",
+        "repo": "nix-optimization",
+        "rev": "e1ba036f0acc2a13aac48f4d57e2fddc78445690",
+        "type": "github"
       },
       "original": {
-        "path": "./inputs/nix-optimization",
-        "type": "path"
-      },
-      "parent": []
+        "owner": "ConnorBaker",
+        "ref": "nixos-nix-tarmac",
+        "repo": "nix-optimization",
+        "type": "github"
+      }
     },
     "nix-tarmac": {
       "inputs": {

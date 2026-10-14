@@ -27,7 +27,6 @@
     ../../modules/services/openssh.nix
     ../../modules/services/prometheus-exporters.nix
     ../../modules/services/tailscale.nix
-    ../../modules/services/tribuchet.nix
 
     # Users
     ../../users/connorbaker.nix

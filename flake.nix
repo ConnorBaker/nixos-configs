@@ -34,9 +34,8 @@
 
     nix.url = "github:NixOS/nix";
 
-    # Local snapshot of nix-optimization's nixos-nix-tarmac branch at e1ba036.
-    # Keep its tested dependency pins; the branch has not been published.
-    nix-optimization.url = "path:./inputs/nix-optimization";
+    # Keep the optimization branch's tested dependency pins.
+    nix-optimization.url = "github:ConnorBaker/nix-optimization/nixos-nix-tarmac";
 
     nix-grpc-store = {
       inputs.nixpkgs.follows = "nixpkgs";
@@ -191,7 +190,16 @@
                 inputs.tribuchet.nixosModules.default
                 inputs.nix-grpc-store.nixosModules.client
                 inputs.nix-grpc-store.nixosModules.server
-                { _module.args.nixOptimization = inputs.nix-optimization; }
+                (
+                  { config, ... }:
+                  {
+                    _module.args = {
+                      nixOptimization = inputs.nix-optimization;
+                      nixGrpcStore = inputs.nix-grpc-store;
+                      nixInfrastructurePkgs = nixpkgsInstances.${config.nixpkgs.hostPlatform.system};
+                    };
+                  }
+                )
                 {
                   nixpkgs = { inherit config overlays; };
                 }
