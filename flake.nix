@@ -81,10 +81,12 @@
         })
         inputs.nix.overlays.default
         (final: prev: {
-          nixVersions = prev.nixVersions.extend (finalNixVersions: _: {
-            latest = final.nix; # Provided by nix overlay
-            stable = finalNixVersions.latest;
-          });
+          nixVersions = prev.nixVersions.extend (
+            finalNixVersions: _: {
+              latest = final.nix; # Provided by nix overlay
+              stable = finalNixVersions.latest;
+            }
+          );
         })
       ];
 
