@@ -1,0 +1,52 @@
+{
+  "nixos-desktop": {
+    "networkd_pid_before_and_after": 1898,
+    "primary_interface": "eno1",
+    "primary_mac": "58:11:22:b4:9d:69",
+    "primary_addresses": [
+      "192.168.1.12/24",
+      "fe80::5a11:22ff:feb4:9d69/64",
+      "2600:4040:2adf:7400:5a11:22ff:feb4:9d69/64"
+    ],
+    "primary_identity_and_addresses_preserved": true,
+    "secondary_interface": "eno2",
+    "secondary_mac": "58:11:22:b4:9d:68",
+    "secondary_factory_mac_restored": true,
+    "secondary_carrier": "no-carrier",
+    "ipv4_default_route_count_after": 1,
+    "ipv6_default_metric_after": 1024,
+    "fresh_lan_and_tailscale_ssh_passed": true,
+    "bpftune_tuners_active": 9,
+    "tailscale_peer_transport": "direct LAN UDP41641"
+  },
+  "nixos-ext": {
+    "networkd_pid_before_and_after": 1535,
+    "primary_interface": "enp2s0",
+    "primary_mac": "e8:9c:25:5e:3c:6d",
+    "primary_addresses": [
+      "2600:4040:2adf:7400:ea9c:25ff:fe5e:3c6d/64",
+      "192.168.1.13/24",
+      "fe80::ea9c:25ff:fe5e:3c6d/64"
+    ],
+    "primary_identity_and_addresses_preserved": true,
+    "secondary_interface": "eno1",
+    "secondary_mac": "08:bf:b8:13:a2:61",
+    "secondary_factory_mac_restored": true,
+    "secondary_carrier": "no-carrier",
+    "ipv4_default_route_count_after": 1,
+    "ipv6_default_metric_after": 1024,
+    "fresh_lan_and_tailscale_ssh_passed": true,
+    "bpftune_tuners_active": 9,
+    "tailscale_peer_transport": "direct LAN UDP41641"
+  },
+  "desktop_reload_ping": {
+    "transmitted": 337,
+    "received": 337,
+    "packet_loss_percent": 0
+  },
+  "vm_reload_ping": {
+    "transmitted": 200,
+    "received": 200,
+    "packet_loss_percent": 0
+  }
+}

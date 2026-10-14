@@ -25,10 +25,10 @@ Implemented
   options; remove Orin CUDA values supplied by its JetPack SOM module.
 - Raise the systemd file-descriptor hard ceiling to 524288 while retaining the
   custom 32000 soft limit. Drop the unsupported extreme vm.max_map_count override.
-- Drop Nix's old 256MiB download-buffer workaround: the selected upstream source
-  already includes curl pause/resume and its new 1MiB default. Drop the separate
-  1GiB NAR buffer override after an isolated 128MiB builtins.toFile probe measured
-  peak RSS about 583MiB vs 296MiB with the default 32MiB buffer. Identical output
+- Drop Nix's old 256 MiB download-buffer workaround: the selected upstream source
+  already includes curl pause/resume and its new 1 MiB default. Drop the separate
+  1 GiB NAR buffer override after an isolated 128 MiB builtins.toFile probe measured
+  peak RSS about 583 MiB vs 296 MiB with the default 32 MiB buffer. Identical output
   bytes were verified. This one probe is not a fleet workload benchmark.
 - Automatic Tarmac CLI and embedded nix-eval-jobs wrappers now select a private
   build-sandbox cache when HOME is /homeless-shelter/unset and XDG_CACHE_HOME is
@@ -36,15 +36,15 @@ Implemented
   This fixes a real system documentation build failure with unwritable HOME.
 
 Sergei's change
-Upstream draft Nix PR16427, reviewed head36bdf2ab83431794a8740e4bb61d1d8c45b91843:
+Upstream draft Nix PR16427, reviewed head 36bdf2ab83431794a8740e4bb61d1d8c45b91843:
 https://github.com/NixOS/nix/pull/16427
 The source-only port is maintained in ConnorBaker/nix-optimization's
-nixos-nix-tarmac branch, initially commit4f958df80feaa562bd759887918fdf7930bac90b.
+nixos-nix-tarmac branch, initially commit 4f958df80feaa562bd759887918fdf7930bac90b.
 The root flake follows that branch normally and was updated to
 bcacbe17f37b1265db2764a546465d44ad1a671c through nix flake update nix-optimization.
 
 This is the full dependency change, not merely the Nix diff: Nix's scoped
-libgit2 uses2.0.0-rc.1 atae45d0d168f7e8dbfdb8c623589cb51caac96ab3 plus the draft's
+libgit2 uses 2.0.0-rc.1 at ae45d0d168f7e8dbfdb8c623589cb51caac96ab3 plus the draft's
 zlib-ng, memory-config-backend and packbuilder configuration patches. Global
 pkgs.libgit2 is unchanged. The source port keeps upstream's existing parallel
 writer pool, sets dontFindDeltas in shared options, and uses an in-memory
@@ -63,7 +63,7 @@ System Nix now reports2.36.0pre20261013_a9f38ea+5.
 
 Validation before activation
 - Complete desktop and ext system closures built successfully.
-- Nix unit gates: util819, store803, expr394, fetchers83, flake25 passed.
+- Nix unit gates: util 819, store 803, expr 394, fetchers 83, flake 25 passed.
   There is one util skip and existing disabled tests in util/store/expr.
 - nix-eval-jobs functional tests:33 passed raw,33 passed Tarmac-wrapped.
 - Scoped libgit2's offline suite passed;392 suites loaded with platform skips.
@@ -75,7 +75,7 @@ Validation before activation
   files (only factory MACs substituted for virtual hardware). It retains the
   networkd PID, primary MAC, static IPv4, SLAAC/DHCPv6 addresses, records no
   deleted primary addresses, restores the secondary factory MAC, removes the
-  duplicate routes, and proves secondary DHCPv4/RA metrics4096. Two hundred
+  duplicate routes, and proves secondary DHCPv4/RA metrics 4096. Two hundred
   continuous primary IPv4 pings show zero packet loss. No explicit networkctl
   reconfigure is used; that API would discard more dynamic state.
 - All-four-host evaluation: zero failed assertions; preserved effective local
