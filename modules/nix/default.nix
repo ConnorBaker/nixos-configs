@@ -34,6 +34,11 @@ let
         hostName = hostName + "?max-connections=1&want-mass-query=true";
         supportedFeatures = baselineSupportedFeatures ++ extraSupportedFeatures;
         maxJobs = 3;
+        # The hub schedules CPU jobs through Tribuchet. Keep the ordinary
+        # desktop SSH builder for GPU jobs, which the worker cannot advertise.
+        mandatoryFeatures = lib.optionals (
+          config.services.tribuchet-hub.enable && hostName == "nixos-desktop"
+        ) [ "cuda" ];
         protocol = "ssh-ng";
         speedFactor = 1;
         sshKey = config.sops.secrets.${nixPrivateKey}.path;
@@ -43,7 +48,8 @@ let
     mapAttrs mkBuildMachineConfig {
       # nixos-build01 = [ ];
       nixos-desktop = [ "cuda" ];
-      nixos-ext = [ ];
+      # Ext's external builder provides UID-range sandboxing through its pool.
+      nixos-ext = [ "uid-range" ];
     };
 in
 {
