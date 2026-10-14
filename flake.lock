@@ -358,6 +358,28 @@
         "type": "github"
       }
     },
+    "niks3": {
+      "inputs": {
+        "nixpkgs": [
+          "nix-grpc-store",
+          "nixpkgs"
+        ],
+        "treefmt-nix": "treefmt-nix_2"
+      },
+      "locked": {
+        "lastModified": 1791200506,
+        "narHash": "sha256-30TaZWBnx/yfQnNKBw4LFMhBUYxU+qpgOwtfoXE8vY0=",
+        "owner": "Mic92",
+        "repo": "niks3",
+        "rev": "dd1fd4d887727cdb2c8366aa036a63f3acfc101b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Mic92",
+        "repo": "niks3",
+        "type": "github"
+      }
+    },
     "nil": {
       "inputs": {
         "nixpkgs": [
@@ -446,6 +468,28 @@
         "type": "github"
       }
     },
+    "nix-grpc-store": {
+      "inputs": {
+        "niks3": "niks3",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791799695,
+        "narHash": "sha256-nOBXtYq1l3Vl4JeUSNHOkTI+vYuR4vT6KH2wcgCVxB4=",
+        "owner": "Mic92",
+        "repo": "nix-grpc-store",
+        "rev": "8d0368860b4c3865bd15b22f86605b2e2472f7b5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Mic92",
+        "repo": "nix-grpc-store",
+        "rev": "8d0368860b4c3865bd15b22f86605b2e2472f7b5",
+        "type": "github"
+      }
+    },
     "nix-optimization": {
       "inputs": {
         "flake-parts": [
@@ -457,7 +501,7 @@
         "nix": "nix_2",
         "nix-tarmac": "nix-tarmac",
         "nixpkgs": "nixpkgs_4",
-        "treefmt-nix": "treefmt-nix_2"
+        "treefmt-nix": "treefmt-nix_3"
       },
       "locked": {
         "path": "./inputs/nix-optimization",
@@ -683,10 +727,11 @@
         "nil": "nil",
         "nix": "nix",
         "nix-direnv": "nix-direnv",
+        "nix-grpc-store": "nix-grpc-store",
         "nix-optimization": "nix-optimization",
         "nixpkgs": "nixpkgs_6",
         "sops-nix": "sops-nix",
-        "treefmt-nix": "treefmt-nix_3",
+        "treefmt-nix": "treefmt-nix_4",
         "tribuchet": "tribuchet"
       }
     },
@@ -733,6 +778,28 @@
     },
     "treefmt-nix_2": {
       "inputs": {
+        "nixpkgs": [
+          "nix-grpc-store",
+          "niks3",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1786901030,
+        "narHash": "sha256-WSFCsDSE5ffgD2MqzkM2CYjeFiKhRF/dJUN8uedb6YE=",
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "rev": "27b3b12a8e6375f28ebe122f07d230ca5459bbfa",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "treefmt-nix",
+        "type": "github"
+      }
+    },
+    "treefmt-nix_3": {
+      "inputs": {
         "nixpkgs": "nixpkgs_5"
       },
       "locked": {
@@ -749,7 +816,7 @@
         "type": "github"
       }
     },
-    "treefmt-nix_3": {
+    "treefmt-nix_4": {
       "inputs": {
         "nixpkgs": [
           "nixpkgs"

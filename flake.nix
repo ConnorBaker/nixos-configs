@@ -34,9 +34,14 @@
 
     nix.url = "github:NixOS/nix";
 
-    # Local snapshot of nix-optimization's nixos-nix-tarmac branch at 7d156f4.
+    # Local snapshot of nix-optimization's nixos-nix-tarmac branch at 452d5a8.
     # Keep its tested dependency pins; the branch has not been published.
     nix-optimization.url = "path:./inputs/nix-optimization";
+
+    nix-grpc-store = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:Mic92/nix-grpc-store/8d0368860b4c3865bd15b22f86605b2e2472f7b5";
+    };
 
     nix-direnv = {
       inputs = {
@@ -184,6 +189,8 @@
                 inputs.disko.nixosModules.disko
                 inputs.impermanence.nixosModules.impermanence
                 inputs.tribuchet.nixosModules.default
+                inputs.nix-grpc-store.nixosModules.client
+                inputs.nix-grpc-store.nixosModules.server
                 { _module.args.nixOptimization = inputs.nix-optimization; }
                 {
                   nixpkgs = { inherit config overlays; };

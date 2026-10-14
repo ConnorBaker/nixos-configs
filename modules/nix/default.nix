@@ -31,7 +31,11 @@ let
   hostNameToBuildMachineConfig =
     let
       mkBuildMachineConfig = hostName: extraSupportedFeatures: {
-        hostName = hostName + "?max-connections=1&want-mass-query=true";
+        hostName =
+          if config.programs.nix-grpc-store.enable then
+            "grpc://${hostName}.rove-hexatonic.ts.net:50051?insecure=1"
+          else
+            hostName + "?max-connections=1&want-mass-query=true";
         supportedFeatures = baselineSupportedFeatures ++ extraSupportedFeatures;
         maxJobs = 3;
         # The hub schedules CPU jobs through Tribuchet. Keep the ordinary
@@ -39,9 +43,10 @@ let
         mandatoryFeatures = lib.optionals (
           config.services.tribuchet-hub.enable && hostName == "nixos-desktop"
         ) [ "cuda" ];
-        protocol = "ssh-ng";
+        protocol = if config.programs.nix-grpc-store.enable then null else "ssh-ng";
         speedFactor = 1;
-        sshKey = config.sops.secrets.${nixPrivateKey}.path;
+        sshKey =
+          if config.programs.nix-grpc-store.enable then null else config.sops.secrets.${nixPrivateKey}.path;
         systems = [ "x86_64-linux" ];
       };
     in

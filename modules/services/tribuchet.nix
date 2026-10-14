@@ -12,6 +12,7 @@ let
   patchedNix = nixOptimization.packages.${pkgs.stdenv.hostPlatform.system}.tarmac-pgo;
 in
 {
+  imports = [ ./nix-grpc-store.nix ];
   services.tribuchet-hub = lib.mkIf isHub {
     enable = true;
     openFirewall = false;
