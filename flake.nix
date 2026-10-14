@@ -165,6 +165,19 @@
                 nix-eval-jobs = pkgs.nixEvalJobsUnwrapped;
               };
               nix-eval-jobs-tarmac = pkgs.callPackage (inputs.nix-eval-jobs + "/dev/functional-tests.nix") { };
+              tarmac-inherited-plugins =
+                pkgs.runCommand "tarmac-inherited-plugins"
+                  {
+                    nativeBuildInputs = [ pkgs.jq ];
+                  }
+                  ''
+                    bash ${inputs.nix-optimization}/tests/tarmac-inheritance.sh \
+                      ${pkgs.nix}/bin/nix \
+                      ${pkgs.nix-eval-jobs}/bin/nix-eval-jobs \
+                      ${pkgs.nix.plugin} \
+                      ${pkgs.nix-grpc-store}/lib/nix/plugins
+                    touch "$out"
+                  '';
               tarmac-sandbox-cache =
                 pkgs.runCommand "tarmac-sandbox-cache"
                   {
