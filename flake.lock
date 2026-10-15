@@ -459,11 +459,11 @@
         "treefmt-nix": "treefmt-nix_3"
       },
       "locked": {
-        "lastModified": 1792091827,
-        "narHash": "sha256-WF0HJegPe2Vp3ZC4tJlefXtiMwO96r6BLdjD/wr3DyM=",
+        "lastModified": 1792095144,
+        "narHash": "sha256-YfOF4feiLC+Np9Q4iTD5X06LidSpqosz+mWkPn5kgAE=",
         "owner": "ConnorBaker",
         "repo": "nix-optimization",
-        "rev": "1876eea2a1997befd35275de6f6a2c67d05e8e5a",
+        "rev": "b6be1a69e31af75865625452db70c34113a0bb12",
         "type": "github"
       },
       "original": {
