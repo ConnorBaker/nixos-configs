@@ -15,10 +15,16 @@ let
     '';
     hash = "sha256-YRlzkEWcYBndSiCYXCr2IAJXuKDZnDKD8EJupTf3gaU=";
   };
+  # Nix PR #16433 passes the evaluation store through queryMissing. A gRPC
+  # daemon cannot see that store, so traverse on the client as RemoteStore does.
+  grpcEvalStoreFix = ../packages/nix-grpc-store-query-missing-eval-store.patch;
   patchGrpc =
     package:
     package.overrideAttrs (old: {
-      patches = (old.patches or [ ]) ++ [ grpcDrainFix ];
+      patches = (old.patches or [ ]) ++ [
+        grpcDrainFix
+        grpcEvalStoreFix
+      ];
     });
 in
 {

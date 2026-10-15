@@ -1,0 +1,25 @@
+diff --git a/src/client/store.hh b/src/client/store.hh
+index de5389b..3570d83 100644
+--- a/src/client/store.hh
++++ b/src/client/store.hh
+@@ -289 +289 @@ public:
+-    auto queryMissing(const std::vector<DerivedPath> & targets)
++    auto queryMissing(const std::vector<DerivedPath> & targets, Store * evalStore = nullptr)
+diff --git a/src/client/transfer.cc b/src/client/transfer.cc
+index 78c10e8..e704fde 100644
+--- a/src/client/transfer.cc
++++ b/src/client/transfer.cc
+@@ -64 +64 @@ auto GrpcStore::queryValidPathsRouted(const StorePathSet & paths, SubstituteFlag
+-auto GrpcStore::queryMissing(const std::vector<DerivedPath> & targets)
++auto GrpcStore::queryMissing(const std::vector<DerivedPath> & targets, Store * evalStore)
+@@ -65,0 +66,7 @@ auto GrpcStore::queryMissing(const std::vector<DerivedPath> & targets)
++  if (evalStore != nullptr && evalStore != this) {
++    // The remote daemon cannot read the caller's evaluation store. Walk the
++    // graph client-side, using native RPCs for build-store path queries.
++    // NOLINTNEXTLINE(bugprone-parent-virtual-call)
++    return Store::queryMissing(targets, evalStore);
++  }
++
+@@ -83 +90 @@ auto GrpcStore::queryMissing(const std::vector<DerivedPath> & targets)
+-    return Store::queryMissing(targets);
++    return Store::queryMissing(targets, evalStore);
