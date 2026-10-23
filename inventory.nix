@@ -20,7 +20,7 @@
     nixos-desktop = {
       systems = [ "x86_64-linux" ];
       features = [ "cuda" ];
-      maxJobs = 3;
+      maxJobs = 2;
       mandatoryFeatures = [ "cuda" ];
       nixos = true;
       sshHostKey = ./devices/nixos-desktop/keys/ssh_host_ed25519_key.pub;

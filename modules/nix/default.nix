@@ -108,7 +108,7 @@ in
       fsync-metadata = false;
       http-connections = 32;
       log-lines = 100;
-      max-jobs = 3;
+      max-jobs = 2;
       max-substitution-jobs = 32;
       require-drop-supplementary-groups = true;
       # NixOS contributes benchmark/big-parallel/kvm/nixos-test and gccarch.
