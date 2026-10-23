@@ -7,6 +7,11 @@
 let
   inventory = import ../../inventory.nix;
   isHub = config.networking.hostName == inventory.hub;
+  # Concurrent Tribuchet builds per worker. Builds run with cores = 0, so
+  # each may use every core: two already saturate a 32-core host, which
+  # also runs our own compiles and analyses. Each build needs one agent.
+  # spark-nix-infra (the Spark and Brev workers) uses the same value.
+  jobs = 2;
 in
 {
   imports = [ ./nix-grpc-store.nix ];
@@ -35,11 +40,11 @@ in
   services.tribuchet-worker = {
     enable = true;
     package = pkgs.tribuchet;
-    agents = 3;
+    agents = jobs;
     settings = {
       auth = "tailscale";
       hub = "http://${inventory.hub}.${inventory.tailnet}:7437";
-      max-jobs = 3;
+      max-jobs = jobs;
       recursive-nix = true;
     };
   };
