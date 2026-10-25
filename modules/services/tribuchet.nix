@@ -51,6 +51,15 @@ in
 
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = lib.mkIf isHub [ 7437 ];
 
+  # The hub service is WantedBy=multi-user.target but only ordered After= its
+  # socket. A switch that starts multi-user.target can then start the service
+  # without the socket; the service binds the listeners itself and the socket
+  # refuses to start ("already active"), failing the switch. Requiring the
+  # socket puts its start job in the same transaction, ordered first.
+  systemd.services.tribuchet-hub = lib.mkIf isHub {
+    requires = [ "tribuchet-hub.socket" ];
+  };
+
   systemd.services.tribuchet-worker = {
     after = [ "tailscaled-autoconnect.service" ];
     wants = [ "tailscaled-autoconnect.service" ];
