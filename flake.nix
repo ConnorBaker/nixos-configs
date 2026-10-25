@@ -44,7 +44,8 @@
 
     nix-grpc-store = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:Mic92/nix-grpc-store";
+      # Upstream main plus the PRs and patches we run; see its merge history.
+      url = "github:ConnorBaker/nix-grpc-store/integration";
     };
 
     nix-eval-jobs = {

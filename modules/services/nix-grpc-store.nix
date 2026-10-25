@@ -1,11 +1,22 @@
 {
   config,
+  lib,
   pkgs,
   ...
 }:
 let
   # Use exactly the optimized Nix libraries selected for the running daemon.
   grpc = config.programs.nix-grpc-store.packageSet.default;
+  hub = config.services.tribuchet-hub;
+  systemctl = "${config.systemd.package}/bin/systemctl";
+  # The daemon takes nix's max-jobs at start and again on SIGHUP, never by
+  # itself. Only a daemon running this configuration's package handles the
+  # signal; an older one still draining after a switch would die of it.
+  reread = pkgs.writeShellScript "nix-grpc-daemon-reread" ''
+    pid=$(${systemctl} show --property MainPID --value nix-grpc-daemon.service)
+    [ "$pid" -gt 0 ] && [ "$(readlink /proc/"$pid"/exe)" = ${lib.getExe' grpc "nix-grpc-daemon"} ] || exit 0
+    exec ${systemctl} kill --kill-whom=main --signal=SIGHUP nix-grpc-daemon.service
+  '';
 in
 {
   programs.nix-grpc-store = {
@@ -27,4 +38,30 @@ in
     workerName = config.networking.hostName;
   };
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = [ 50051 ];
+
+  # A switch that changes nix.conf.
+  systemd.services.nix-grpc-daemon-nix-conf = {
+    description = "Have nix-grpc-daemon read nix.conf's max-jobs again";
+    after = [ "nix-grpc-daemon.service" ];
+    wantedBy = [ "multi-user.target" ];
+    restartTriggers = [ config.environment.etc."nix/nix.conf".source ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = reread;
+    };
+  };
+  # On the hub, each rewrite of the max-jobs fragment nix.conf includes, as
+  # Tribuchet's own tribuchet-nix-reload does for nix-daemon.
+  systemd.paths.nix-grpc-daemon-reread = lib.mkIf (hub.enable && hub.externalBuilders.enable && hub.externalBuilders.dynamic) {
+    wantedBy = [ "multi-user.target" ];
+    pathConfig.PathModified = toString hub.externalBuilders.nixConfigPath;
+  };
+  systemd.services.nix-grpc-daemon-reread = {
+    description = "Have nix-grpc-daemon read nix's max-jobs again";
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = reread;
+    };
+  };
 }
