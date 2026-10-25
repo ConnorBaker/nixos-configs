@@ -217,7 +217,73 @@
                   _: unit: unit.text
                 ) inputs.self.nixosConfigurations.nixos-desktop.config.systemd.network.units;
               };
-            };
+              # zfs-dedup on nixos-ext's ZFS (the FIDEDUPERANGE backport), and
+              # the stock pair as its negative control.
+              zfs-fideduperange = pkgs.callPackage ./tests/zfs-fideduperange.nix {
+                hostConfig = inputs.self.nixosConfigurations.nixos-ext.config;
+                patched = true;
+              };
+              zfs-fideduperange-stock = pkgs.callPackage ./tests/zfs-fideduperange.nix {
+                hostConfig = inputs.self.nixosConfigurations.nixos-ext.config;
+                patched = false;
+              };
+            }
+            // (
+              let
+                zts =
+                  patched: suffix: tests:
+                  pkgs.callPackage ./tests/zfs-fideduperange-zts.nix {
+                    hostConfig = inputs.self.nixosConfigurations.nixos-ext.config;
+                    inherit patched suffix tests;
+                  };
+                # The commit's own ZTS cases.
+                dedupeTests = [
+                  "block_cloning_fideduperange"
+                  "block_cloning_fideduperange_blksz"
+                  "block_cloning_fideduperange_compress"
+                  "block_cloning_fideduperange_differs"
+                  "block_cloning_fideduperange_eof"
+                  "block_cloning_fideduperange_mtime"
+                  "block_cloning_fideduperange_partial"
+                  "block_cloning_fideduperange_replay"
+                  "block_cloning_fideduperange_sparse"
+                  "block_cloning_fideduperange_subblock"
+                  "block_cloning_fideduperange_tail"
+                  "block_cloning_disabled_fideduperange"
+                ];
+                # 2.4.4's existing block_cloning cases: the backport reworks
+                # zfs_clone_range() and the two fixes change it and
+                # dmu_read_l0_bps(), which FICLONE and copy_file_range use.
+                cloneTests = [
+                  "block_cloning_clone_mmap_cached"
+                  "block_cloning_copyfilerange"
+                  "block_cloning_copyfilerange_partial"
+                  "block_cloning_copyfilerange_fallback"
+                  "block_cloning_disabled_copyfilerange"
+                  "block_cloning_copyfilerange_cross_dataset"
+                  "block_cloning_cross_enc_dataset"
+                  "block_cloning_copyfilerange_fallback_same_txg"
+                  "block_cloning_replay"
+                  "block_cloning_replay_encrypted"
+                  "block_cloning_lwb_buffer_overflow"
+                  "block_cloning_clone_mmap_write"
+                  "block_cloning_rlimit_fsize"
+                  "block_cloning_large_offset"
+                  "block_cloning_after_device_removal"
+                  "block_cloning_after_trunc"
+                  "block_cloning_ficlone"
+                  "block_cloning_ficlonerange"
+                  "block_cloning_ficlonerange_partial"
+                  "block_cloning_disabled_ficlone"
+                  "block_cloning_disabled_ficlonerange"
+                ];
+              in
+              lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 {
+                zfs-fideduperange-zts = zts true "dedupe" dedupeTests;
+                zfs-fideduperange-zts-stock = zts false "dedupe" dedupeTests;
+                zfs-fideduperange-zts-clone = zts true "clone" cloneTests;
+              }
+            );
 
           # packages = lib.mkIf (system == "x86_64-linux") {
           #   orin-flash-script =
