@@ -7,6 +7,13 @@
 let
   inherit (import ../packages/zfs-fideduperange { inherit lib; }) withFideduperange;
   zfsPkg = config.boot.zfs.package;
+  # The FIDEDUPERANGE backport goes to nixos-ext and nixos-desktop only. The
+  # other hosts keep stock zfs_unstable, and nixpkgs' zfs module picks its
+  # kernel module, as before the backport.
+  fideduperange = lib.elem config.networking.hostName [
+    "nixos-desktop"
+    "nixos-ext"
+  ];
 in
 {
   boot = {
@@ -52,10 +59,13 @@ in
       # Prefer availability for remote hosts without KVM access: force-import
       # root after unclean shutdowns or installer boots that did not export pools.
       forceImportRoot = true;
-      # Userspace and kernel module carry the same FIDEDUPERANGE backport.
-      # modulePackage is selected the way nixpkgs' zfs module does it.
-      package = withFideduperange pkgs.zfs_unstable;
-      modulePackage = withFideduperange config.boot.kernelPackages.${zfsPkg.kernelModuleAttribute};
+      # Where it applies, userspace and kernel module carry the same
+      # FIDEDUPERANGE backport. modulePackage is selected the way nixpkgs'
+      # zfs module does it.
+      package = if fideduperange then withFideduperange pkgs.zfs_unstable else pkgs.zfs_unstable;
+      modulePackage = lib.mkIf fideduperange (
+        withFideduperange config.boot.kernelPackages.${zfsPkg.kernelModuleAttribute}
+      );
     };
   };
 
