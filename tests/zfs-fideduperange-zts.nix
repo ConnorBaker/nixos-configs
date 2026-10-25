@@ -10,9 +10,12 @@
   pkgs,
   hostConfig,
   patched,
-  # Test names in tests/functional/block_cloning.
+  # Test names in tests/functional/<dir>.
   tests,
   suffix,
+  dir ? "block_cloning",
+  # Per test, in seconds. The whole check must finish within 600 s.
+  timeout ? 120,
 }:
 let
   hostBoot = hostConfig.boot;
@@ -38,16 +41,16 @@ let
     quiet = False
     pre_user = root
     user = root
-    timeout = 120
+    timeout = ${toString timeout}
     post_user = root
     post = cleanup
     failsafe_user = root
     failsafe = callbacks/zfs_failsafe
     tags = ['functional']
 
-    [tests/functional/block_cloning]
+    [tests/functional/${dir}]
     tests = [${lib.concatMapStringsSep ", " (t: "'${t}'") tests}]
-    tags = ['functional', 'block_cloning']
+    tags = ['functional', '${dir}']
   '';
 
   # Parses zfs-tests.sh output in the VM: the test driver's console transport
@@ -58,13 +61,15 @@ let
     res = {}
     for l in out.splitlines():
         # "<time>Test: <path> (run as <user>) <padding>[<runtime>] [<result>]"
-        m = re.search(r"Test: \S*/block_cloning/(\S+) \(run as \w+\)\s+\[[0-9:]+\] \[(\w+)\]", l)
+        m = re.search(r"Test: \S*/${dir}/(\S+) \(run as \w+\)\s+\[[0-9:]+\] \[(\w+)\]", l)
         if m:
             res[m.group(1)] = m.group(2)
     tail = out[out.find("Results Summary"):] if "Results Summary" in out else ""
     logdir = re.search(r"^Log directory:\s+(/\S+)", out, re.M)
+    missing = re.search(r"^Missing util\(s\):(.*)$", out, re.M)
     print(json.dumps({"results": res, "summary": tail.splitlines()[:12],
-                      "logdir": logdir.group(1) if logdir else None}))
+                      "logdir": logdir.group(1) if logdir else None,
+                      "missing_utils": missing.group(1).split() if missing else []}))
   '';
 in
 pkgs.testers.runNixOSTest {
@@ -124,7 +129,10 @@ pkgs.testers.runNixOSTest {
       rsync
       sysstat
       xfsprogs
-      xxhash
+      # libtest.shlib's xxh128digest runs xxh128sum, which nixpkgs' xxhash
+      # does not install. Without it every digest is empty, and every check
+      # that compares two digests passes whatever the data.
+      (writeShellScriptBin "xxh128sum" ''exec ${xxhash}/bin/xxhsum -H2 "$@"'')
     ];
   };
 
@@ -149,10 +157,20 @@ pkgs.testers.runNixOSTest {
         machine.copy_from_machine("/tmp/zts-logs.tar.gz", "")
     results: dict[str, str] = parsed["results"]
     summary: dict[str, Any] = {"exit": rc, "patched": ${if patched then "True" else "False"},
-               "module": info.splitlines(), "results": results, "summary": parsed["summary"]}
+               "module": info.splitlines(), "results": results, "summary": parsed["summary"],
+               "missing_utils": parsed["missing_utils"]}
     print("ZTS " + json.dumps(summary, sort_keys=True))
     (machine.out_dir / "zts.json").write_text(json.dumps(summary, indent=1, sort_keys=True))
     want = ${builtins.toJSON tests}
+    # A failed build discards $out, so print each failing case's logs, up to
+    # the dmesg and debug dumps of the test-fail callbacks. test-runner writes
+    # stdout, stderr and merged only when nonempty.
+    for t in want:
+        if results.get(t) != "PASS" and parsed["logdir"]:
+            print(f"LOG {t}\n" + machine.succeed(
+                f"for f in $(find {parsed['logdir']} -path '*/{t}/*' -type f); do"
+                " echo \"== $f\"; sed '/Performing test-fail callback/q' $f | tail -c 4000; done"))
+    assert "xxh128sum" not in parsed["missing_utils"], parsed["missing_utils"]
     missing = [t for t in want if t not in results]
     assert not missing, ("did not run", missing, results)
     ${

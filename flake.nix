@@ -282,12 +282,54 @@
                   "block_cloning_disabled_ficlone"
                   "block_cloning_disabled_ficlonerange"
                 ];
+                # One check per case, so that each fits in 600 s: 2.4.4's
+                # functional/bclone cases (common.run gives them 7200 s), and
+                # the ZTS cases of 0005 (c0688a275).
+                oneTests = {
+                  bclone = [
+                    "bclone_crossfs_corner_cases_limited"
+                    "bclone_crossfs_data"
+                    "bclone_crossfs_embedded"
+                    "bclone_crossfs_hole"
+                    "bclone_diffprops_all"
+                    "bclone_diffprops_checksum"
+                    "bclone_diffprops_compress"
+                    "bclone_diffprops_copies"
+                    "bclone_diffprops_recordsize"
+                    "bclone_prop_sync"
+                    "bclone_samefs_corner_cases_limited"
+                    "bclone_samefs_data"
+                    "bclone_samefs_embedded"
+                    "bclone_samefs_hole"
+                  ];
+                  block_cloning = [ "block_cloning_replay_indirect" ];
+                  slog = [
+                    "slog_indirect_shared_error"
+                    "slog_replay_indirect_eof"
+                    "slog_replay_indirect_order"
+                  ];
+                };
+                ztsOne =
+                  dir: test:
+                  lib.nameValuePair "zfs-fideduperange-zts-${test}" (
+                    pkgs.callPackage ./tests/zfs-fideduperange-zts.nix {
+                      hostConfig = inputs.self.nixosConfigurations.nixos-ext.config;
+                      patched = true;
+                      suffix = test;
+                      tests = [ test ];
+                      inherit dir;
+                      timeout = 420;
+                    }
+                  );
               in
-              lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 {
-                zfs-fideduperange-zts = zts true "dedupe" dedupeTests;
-                zfs-fideduperange-zts-stock = zts false "dedupe" dedupeTests;
-                zfs-fideduperange-zts-clone = zts true "clone" cloneTests;
-              }
+              lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 (
+                {
+                  zfs-fideduperange-zts = zts true "dedupe" dedupeTests;
+                  zfs-fideduperange-zts-stock = zts false "dedupe" dedupeTests;
+                  zfs-fideduperange-zts-clone = zts true "clone" cloneTests;
+                }
+                // lib.listToAttrs (lib.concatLists (lib.mapAttrsToList (dir: map (ztsOne dir)) oneTests))
+              )
             );
 
           # packages = lib.mkIf (system == "x86_64-linux") {
