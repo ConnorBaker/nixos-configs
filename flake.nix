@@ -34,7 +34,9 @@
       url = "github:oxalica/nil";
     };
 
-    nix.url = "github:NixOS/nix";
+    # Upstream master plus the PRs and patches we run; see its merge history.
+    # nix-optimization applies no patches of its own on top.
+    nix.url = "github:ConnorBaker/nix/integration";
 
     nix-optimization = {
       inputs.nix.follows = "nix";

@@ -136,11 +136,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1788450739,
-        "narHash": "sha256-glZLQlzIn1fXH6PazR2iUmTo7kzzyYSshrWhLS9TqCU=",
+        "lastModified": 1790898470,
+        "narHash": "sha256-zTwuwezD0w3hpga6a6P8emidzAZFyWqlNeRBlpWOOl8=",
         "owner": "hercules-ci",
         "repo": "flake-parts",
-        "rev": "31729ca8cbdb4fa927b34e5f4353e6a83f39e993",
+        "rev": "024633cd702b10285db5cb19b40ad48d2399ba60",
         "type": "github"
       },
       "original": {
@@ -181,11 +181,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1788267358,
-        "narHash": "sha256-nt+lUqYVpc9Y6JeMd2WmXzCDojasdadKo0mWcluvY2Y=",
+        "lastModified": 1790500375,
+        "narHash": "sha256-XN3sDtn8TU9hAc9xqZ+SqRB/HHm2wjxM6aSWYLJU+oo=",
         "owner": "cachix",
         "repo": "git-hooks.nix",
-        "rev": "27555e2624241fb116b49095df4caaee85a25691",
+        "rev": "a0e4241b51206fbcbf52fd322eb5f0cd80f153c4",
         "type": "github"
       },
       "original": {
@@ -346,15 +346,16 @@
         "nixpkgs-regression": "nixpkgs-regression"
       },
       "locked": {
-        "lastModified": 1791909832,
-        "narHash": "sha256-jUzXXzi1x8Ub4kdBCMcrz1LoCuElBq4mFjOw59rFPCE=",
-        "owner": "NixOS",
+        "lastModified": 1792897001,
+        "narHash": "sha256-MSnlyDwAVjlZ1mvRmDR3QjBSRrqTZvv5PxtPUWp7p7s=",
+        "owner": "ConnorBaker",
         "repo": "nix",
-        "rev": "a9f38ea0ee89f550616f342386f45e896f4abd18",
+        "rev": "7587788a8203017a340587a01b20b6606b9fd5c3",
         "type": "github"
       },
       "original": {
-        "owner": "NixOS",
+        "owner": "ConnorBaker",
+        "ref": "integration",
         "repo": "nix",
         "type": "github"
       }
@@ -428,11 +429,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792891641,
-        "narHash": "sha256-jalVLWvT9MKmFF9RHFn+ioGFDhFaxWV7GhaOqkfZvYI=",
+        "lastModified": 1792898168,
+        "narHash": "sha256-QH4+Cr36Ckg7EKuXextJIB3HhK2GhhPAZDuhnEuEETk=",
         "owner": "ConnorBaker",
         "repo": "nix-grpc-store",
-        "rev": "4d56e962381a23fabc6c59f96cb35a247ba9dd69",
+        "rev": "886a1d1b075b9eaf3c3086d82ce76e4ba71f9f74",
         "type": "github"
       },
       "original": {
@@ -460,11 +461,11 @@
         "treefmt-nix": "treefmt-nix_3"
       },
       "locked": {
-        "lastModified": 1792099675,
-        "narHash": "sha256-NrQNXqlmCRc4NEF1SIfdlryeUYQ7Twp3bloa6j60G78=",
+        "lastModified": 1792899258,
+        "narHash": "sha256-Cb1ULgWjYxkqZ5L6tutT3IP9Z9e3kU5Fyd0RwH8eM1w=",
         "owner": "ConnorBaker",
         "repo": "nix-optimization",
-        "rev": "5c6a0055f4605bbe6132b8bbc6afe84fc42d5ec9",
+        "rev": "39f8e3dcf67ad23a94a4110dc243c20808a1df73",
         "type": "github"
       },
       "original": {
@@ -738,11 +739,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792893751,
-        "narHash": "sha256-djZdpvEi3zje4qM/NhXvSz/IMA+1fPRM+dxJ09kbT0Q=",
+        "lastModified": 1792903449,
+        "narHash": "sha256-cMQ1Il8LRprHxfRl3O4S4ct31gBrhLyucmYvykOl9Qg=",
         "owner": "ConnorBaker",
         "repo": "tribuchet",
-        "rev": "444062539b4dc217f42dbc099e208dce15a647d0",
+        "rev": "3b7e8b7978cc8c578e96bc67550741e95bc9b688",
         "type": "github"
       },
       "original": {
