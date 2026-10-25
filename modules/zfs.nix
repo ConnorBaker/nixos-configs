@@ -5,6 +5,7 @@
   ...
 }:
 let
+  inherit (import ../packages/zfs-fideduperange { inherit lib; }) withFideduperange;
   zfsPkg = config.boot.zfs.package;
 in
 {
@@ -47,10 +48,15 @@ in
       "init_on_alloc=0"
       "init_on_free=0"
     ];
-    # Prefer availability for remote hosts without KVM access: force-import
-    # root after unclean shutdowns or installer boots that did not export pools.
-    zfs.forceImportRoot = true;
-    zfs.package = pkgs.zfs_unstable;
+    zfs = {
+      # Prefer availability for remote hosts without KVM access: force-import
+      # root after unclean shutdowns or installer boots that did not export pools.
+      forceImportRoot = true;
+      # Userspace and kernel module carry the same FIDEDUPERANGE backport.
+      # modulePackage is selected the way nixpkgs' zfs module does it.
+      package = withFideduperange pkgs.zfs_unstable;
+      modulePackage = withFideduperange config.boot.kernelPackages.${zfsPkg.kernelModuleAttribute};
+    };
   };
 
   services.zfs = {

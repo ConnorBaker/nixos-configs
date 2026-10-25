@@ -1,0 +1,1106 @@
+From a54698237a0847b704adafe5fce6b67d7dbd2df2 Mon Sep 17 00:00:00 2001
+From: MorganaFuture <103630661+MorganaFuture@users.noreply.github.com>
+Date: Mon, 3 Aug 2026 17:19:03 +0300
+Subject: [PATCH 4/4] ZTS: Add FIDEDUPERANGE tests
+
+Cover the new ioctl in the block_cloning group: whole-file dedupe,
+files that differ, partial and sub-block requests, the path taken when
+the feature is disabled, mtime and ctime staying put, a trailing block
+only partly covered by the request, mismatched block sizes, identical
+data stored with different compression, a truncated file's grown tail,
+sparse files, an intent log replay of a dedupe, and a request whose
+destination range runs past the destination EOF.
+
+The last one needs the covered bytes to be identical, so that a range
+trimmed to EOF rather than refused would compare equal and be reported
+as a successful dedupe.  That is the shape xfstests generic/158 uses
+and the one a random-data test would miss, since the comparison would
+report DIFFERS before the length was ever examined.  The differs and
+subblock tests insist on the DIFFERS report itself rather than
+accepting any failure.
+
+stat_blksz and stat_blocks join the stat helpers, so no test needs a
+raw stat -c.
+
+Reviewed-by: Brian Behlendorf <behlendorf1@llnl.gov>
+Reviewed-by: Alexander Motin <alexander.motin@TrueNAS.com>
+Reviewed-by: Chunwei Chen <david.chen@nutanix.com>
+Signed-off-by: MorganaFuture <103630661+MorganaFuture@users.noreply.github.com>
+Closes #11065
+Closes #18745
+(cherry picked from commit a5b536566a4bbb8afc0566f6d9dc98d995c6152d)
+---
+ tests/runfiles/linux.run                      |  13 ++-
+ tests/zfs-tests/include/libtest.shlib         |  28 +++++
+ tests/zfs-tests/tests/Makefile.am             |  12 ++
+ .../block_cloning_disabled_fideduperange.ksh  |  52 +++++++++
+ .../block_cloning_fideduperange.ksh           |  64 +++++++++++
+ .../block_cloning_fideduperange_blksz.ksh     |  84 ++++++++++++++
+ .../block_cloning_fideduperange_compress.ksh  |  75 +++++++++++++
+ .../block_cloning_fideduperange_differs.ksh   |  69 ++++++++++++
+ .../block_cloning_fideduperange_eof.ksh       |  81 ++++++++++++++
+ .../block_cloning_fideduperange_mtime.ksh     |  70 ++++++++++++
+ .../block_cloning_fideduperange_partial.ksh   |  60 ++++++++++
+ .../block_cloning_fideduperange_replay.ksh    | 105 ++++++++++++++++++
+ .../block_cloning_fideduperange_sparse.ksh    |  75 +++++++++++++
+ .../block_cloning_fideduperange_subblock.ksh  |  74 ++++++++++++
+ .../block_cloning_fideduperange_tail.ksh      |  72 ++++++++++++
+ 15 files changed, 933 insertions(+), 1 deletion(-)
+ create mode 100755 tests/zfs-tests/tests/functional/block_cloning/block_cloning_disabled_fideduperange.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_blksz.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_compress.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_differs.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_eof.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_mtime.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_partial.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_replay.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_sparse.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_subblock.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_tail.ksh
+
+diff --git a/tests/runfiles/linux.run b/tests/runfiles/linux.run
+index 2e2fb4575..f7eb1dcc1 100644
+--- a/tests/runfiles/linux.run
++++ b/tests/runfiles/linux.run
+@@ -38,7 +38,18 @@ tags = ['functional', 'atime']
+ [tests/functional/block_cloning:Linux]
+ tests = ['block_cloning_ficlone', 'block_cloning_ficlonerange',
+     'block_cloning_ficlonerange_partial', 'block_cloning_disabled_ficlone',
+-    'block_cloning_disabled_ficlonerange']
++    'block_cloning_disabled_ficlonerange', 'block_cloning_fideduperange',
++    'block_cloning_fideduperange_blksz',
++    'block_cloning_fideduperange_compress',
++    'block_cloning_fideduperange_differs',
++    'block_cloning_fideduperange_eof',
++    'block_cloning_fideduperange_mtime',
++    'block_cloning_fideduperange_partial',
++    'block_cloning_fideduperange_replay',
++    'block_cloning_fideduperange_sparse',
++    'block_cloning_fideduperange_subblock',
++    'block_cloning_fideduperange_tail',
++    'block_cloning_disabled_fideduperange']
+ tags = ['functional', 'block_cloning']
+ 
+ [tests/functional/chattr:Linux]
+diff --git a/tests/zfs-tests/include/libtest.shlib b/tests/zfs-tests/include/libtest.shlib
+index 23460d665..6237d8752 100644
+--- a/tests/zfs-tests/include/libtest.shlib
++++ b/tests/zfs-tests/include/libtest.shlib
+@@ -3579,6 +3579,34 @@ function stat_size #<path>
+ 	esac
+ }
+ 
++function stat_blksz #<path>
++{
++	typeset path=$1
++
++	case "$UNAME" in
++	FreeBSD)
++		stat -f %k "$path"
++		;;
++	*)
++		stat -c %o "$path"
++		;;
++	esac
++}
++
++function stat_blocks #<path>
++{
++	typeset path=$1
++
++	case "$UNAME" in
++	FreeBSD)
++		stat -f %b "$path"
++		;;
++	*)
++		stat -c %b "$path"
++		;;
++	esac
++}
++
+ function stat_mtime #<path>
+ {
+ 	typeset path=$1
+diff --git a/tests/zfs-tests/tests/Makefile.am b/tests/zfs-tests/tests/Makefile.am
+index f29ba9660..71cefc1d1 100644
+--- a/tests/zfs-tests/tests/Makefile.am
++++ b/tests/zfs-tests/tests/Makefile.am
+@@ -485,9 +485,21 @@ nobase_dist_datadir_zfs_tests_tests_SCRIPTS += \
+ 	functional/block_cloning/block_cloning_disabled_copyfilerange.ksh \
+ 	functional/block_cloning/block_cloning_disabled_ficlone.ksh \
+ 	functional/block_cloning/block_cloning_disabled_ficlonerange.ksh \
++	functional/block_cloning/block_cloning_disabled_fideduperange.ksh \
+ 	functional/block_cloning/block_cloning_ficlone.ksh \
+ 	functional/block_cloning/block_cloning_ficlonerange.ksh \
+ 	functional/block_cloning/block_cloning_ficlonerange_partial.ksh \
++	functional/block_cloning/block_cloning_fideduperange.ksh \
++	functional/block_cloning/block_cloning_fideduperange_blksz.ksh \
++	functional/block_cloning/block_cloning_fideduperange_compress.ksh \
++	functional/block_cloning/block_cloning_fideduperange_differs.ksh \
++	functional/block_cloning/block_cloning_fideduperange_eof.ksh \
++	functional/block_cloning/block_cloning_fideduperange_mtime.ksh \
++	functional/block_cloning/block_cloning_fideduperange_partial.ksh \
++	functional/block_cloning/block_cloning_fideduperange_replay.ksh \
++	functional/block_cloning/block_cloning_fideduperange_sparse.ksh \
++	functional/block_cloning/block_cloning_fideduperange_subblock.ksh \
++	functional/block_cloning/block_cloning_fideduperange_tail.ksh \
+ 	functional/block_cloning/block_cloning_cross_enc_dataset.ksh \
+ 	functional/block_cloning/block_cloning_replay.ksh \
+ 	functional/block_cloning/block_cloning_replay_encrypted.ksh \
+diff --git a/tests/zfs-tests/tests/functional/block_cloning/block_cloning_disabled_fideduperange.ksh b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_disabled_fideduperange.ksh
+new file mode 100755
+index 000000000..65b971a89
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_disabled_fideduperange.ksh
+@@ -0,0 +1,52 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# CDDL HEADER START
++#
++# The contents of this file are subject to the terms of the
++# Common Development and Distribution License (the "License").
++# You may not use this file except in compliance with the License.
++#
++# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
++# or https://opensource.org/licenses/CDDL-1.0.
++# See the License for the specific language governing permissions
++# and limitations under the License.
++#
++# When distributing Covered Code, include this CDDL HEADER in each
++# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
++# If applicable, add the following below this CDDL HEADER, with the
++# fields enclosed by brackets "[]" replaced with your own identifying
++# information: Portions Copyright [yyyy] [name of copyright owner]
++#
++# CDDL HEADER END
++#
++
++#
++# Copyright (c) 2026 by MorganaFuture. All rights reserved.
++#
++
++. $STF_SUITE/include/libtest.shlib
++. $STF_SUITE/tests/functional/block_cloning/block_cloning.kshlib
++
++verify_runnable "global"
++
++claim="The FIDEDUPERANGE ioctl fails when block cloning is disabled."
++
++log_assert $claim
++
++function cleanup
++{
++	datasetexists $TESTPOOL && destroy_pool $TESTPOOL
++}
++
++log_onexit cleanup
++
++log_must zpool create -o feature@block_cloning=disabled $TESTPOOL $DISKS
++
++log_must dd if=/dev/urandom of=/$TESTPOOL/file1 bs=128K count=4
++log_must dd if=/$TESTPOOL/file1 of=/$TESTPOOL/file2 bs=128K count=4
++log_must sync_pool $TESTPOOL
++
++log_mustnot clonefile -d /$TESTPOOL/file1 /$TESTPOOL/file2 0 0 524288
++
++log_pass $claim
+diff --git a/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange.ksh b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange.ksh
+new file mode 100755
+index 000000000..c6361b229
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange.ksh
+@@ -0,0 +1,64 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# CDDL HEADER START
++#
++# The contents of this file are subject to the terms of the
++# Common Development and Distribution License (the "License").
++# You may not use this file except in compliance with the License.
++#
++# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
++# or https://opensource.org/licenses/CDDL-1.0.
++# See the License for the specific language governing permissions
++# and limitations under the License.
++#
++# When distributing Covered Code, include this CDDL HEADER in each
++# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
++# If applicable, add the following below this CDDL HEADER, with the
++# fields enclosed by brackets "[]" replaced with your own identifying
++# information: Portions Copyright [yyyy] [name of copyright owner]
++#
++# CDDL HEADER END
++#
++
++#
++# Copyright (c) 2026 by MorganaFuture. All rights reserved.
++#
++
++. $STF_SUITE/include/libtest.shlib
++. $STF_SUITE/tests/functional/block_cloning/block_cloning.kshlib
++
++verify_runnable "global"
++
++claim="The FIDEDUPERANGE ioctl shares blocks between two identical files."
++
++log_assert $claim
++
++function cleanup
++{
++	datasetexists $TESTPOOL && destroy_pool $TESTPOOL
++}
++
++log_onexit cleanup
++
++log_must zpool create -o feature@block_cloning=enabled -O recordsize=128k $TESTPOOL $DISKS
++
++# Two independent copies of the same data: file2 gets its own blocks.
++log_must dd if=/dev/urandom of=/$TESTPOOL/file1 bs=128K count=4
++log_must dd if=/$TESTPOOL/file1 of=/$TESTPOOL/file2 bs=128K count=4
++log_must sync_pool $TESTPOOL
++
++# They are identical but not yet sharing any blocks.
++log_must have_same_content /$TESTPOOL/file1 /$TESTPOOL/file2
++typeset blocks=$(get_same_blocks $TESTPOOL file1 $TESTPOOL file2)
++log_must [ -z "$blocks" ]
++
++# Deduplicate the whole file; every block should now be shared.
++log_must clonefile -d /$TESTPOOL/file1 /$TESTPOOL/file2 0 0 524288
++log_must sync_pool $TESTPOOL
++
++log_must have_same_content /$TESTPOOL/file1 /$TESTPOOL/file2
++blocks=$(get_same_blocks $TESTPOOL file1 $TESTPOOL file2)
++log_must [ "$blocks" = "0 1 2 3" ]
++
++log_pass $claim
+diff --git a/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_blksz.ksh b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_blksz.ksh
+new file mode 100755
+index 000000000..ad4321189
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_blksz.ksh
+@@ -0,0 +1,84 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# CDDL HEADER START
++#
++# The contents of this file are subject to the terms of the
++# Common Development and Distribution License (the "License").
++# You may not use this file except in compliance with the License.
++#
++# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
++# or https://opensource.org/licenses/CDDL-1.0.
++# See the License for the specific language governing permissions
++# and limitations under the License.
++#
++# When distributing Covered Code, include this CDDL HEADER in each
++# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
++# If applicable, add the following below this CDDL HEADER, with the
++# fields enclosed by brackets "[]" replaced with your own identifying
++# information: Portions Copyright [yyyy] [name of copyright owner]
++#
++# CDDL HEADER END
++#
++
++#
++# Copyright (c) 2026 by MorganaFuture. All rights reserved.
++#
++
++. $STF_SUITE/include/libtest.shlib
++. $STF_SUITE/tests/functional/block_cloning/block_cloning.kshlib
++
++verify_runnable "global"
++
++claim="The FIDEDUPERANGE ioctl rejects files with differing block sizes."
++
++log_assert $claim
++
++function cleanup
++{
++	datasetexists $TESTPOOL && destroy_pool $TESTPOOL
++}
++
++log_onexit cleanup
++
++log_must zpool create -o feature@block_cloning=enabled $TESTPOOL $DISKS
++
++# Two files with identical content but different block sizes.  The clone step
++# can only replace whole destination blocks with whole source blocks, so such a
++# pair can never be deduped however equal its bytes are.
++log_must zfs set recordsize=128K $TESTPOOL
++log_must dd if=/dev/urandom of=/$TESTPOOL/file1 bs=128K count=4
++log_must zfs set recordsize=64K $TESTPOOL
++log_must dd if=/$TESTPOOL/file1 of=/$TESTPOOL/file2 bs=64K count=8
++log_must sync_pool $TESTPOOL
++
++# Confirm the setup really produced different block sizes, otherwise the test
++# would pass for the wrong reason.
++typeset inblksz=$(stat_blksz /$TESTPOOL/file1)
++typeset outblksz=$(stat_blksz /$TESTPOOL/file2)
++log_must [ "$inblksz" = "131072" ]
++log_must [ "$outblksz" = "65536" ]
++
++typeset digest=$(xxh128digest /$TESTPOOL/file2)
++
++# The request must be refused outright.  It must not be reported as merely
++# differing: the bytes are identical, it is the layout that cannot be deduped.
++# Assign without typeset so $? is the exit status of clonefile itself.
++typeset out
++typeset ret
++out=$(clonefile -d /$TESTPOOL/file1 /$TESTPOOL/file2 0 0 524288 2>&1)
++ret=$?
++log_note "clonefile exited $ret saying: $out"
++log_must [ $ret -ne 0 ]
++echo "$out" | grep -q "Invalid argument" || \
++    log_fail "expected EINVAL, got: $out"
++echo "$out" | grep -q "range differs" && \
++    log_fail "reported DIFFERS for identical bytes: $out"
++
++log_must sync_pool $TESTPOOL
++
++log_must [ "$digest" = "$(xxh128digest /$TESTPOOL/file2)" ]
++typeset blocks=$(get_same_blocks $TESTPOOL file1 $TESTPOOL file2)
++log_must [ -z "$blocks" ]
++
++log_pass $claim
+diff --git a/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_compress.ksh b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_compress.ksh
+new file mode 100755
+index 000000000..76e1bd1b2
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_compress.ksh
+@@ -0,0 +1,75 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# CDDL HEADER START
++#
++# The contents of this file are subject to the terms of the
++# Common Development and Distribution License (the "License").
++# You may not use this file except in compliance with the License.
++#
++# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
++# or https://opensource.org/licenses/CDDL-1.0.
++# See the License for the specific language governing permissions
++# and limitations under the License.
++#
++# When distributing Covered Code, include this CDDL HEADER in each
++# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
++# If applicable, add the following below this CDDL HEADER, with the
++# fields enclosed by brackets "[]" replaced with your own identifying
++# information: Portions Copyright [yyyy] [name of copyright owner]
++#
++# CDDL HEADER END
++#
++
++#
++# Copyright (c) 2026 by MorganaFuture. All rights reserved.
++#
++
++. $STF_SUITE/include/libtest.shlib
++. $STF_SUITE/tests/functional/block_cloning/block_cloning.kshlib
++
++verify_runnable "global"
++
++claim="FIDEDUPERANGE dedupes identical data stored with different compression."
++
++log_assert $claim
++
++function cleanup
++{
++	datasetexists $TESTPOOL && destroy_pool $TESTPOOL
++}
++
++log_onexit cleanup
++
++log_must zpool create -o feature@block_cloning=enabled -O recordsize=128k $TESTPOOL $DISKS
++
++# The same bytes written either side of a compression property change: file1
++# is stored verbatim, file2 compressed.  Their block pointers therefore differ
++# in compression, psize and checksum, while the data they hold is identical.
++# A block-pointer comparison must not conclude anything from that; only
++# reading the data can settle it, and it must settle it as equal.
++log_must zfs set compression=off $TESTPOOL
++log_must file_write -o create -f /$TESTPOOL/file1 -b 131072 -c 4 -d 1
++log_must zfs set compression=lz4 $TESTPOOL
++log_must file_write -o create -f /$TESTPOOL/file2 -b 131072 -c 4 -d 1
++log_must sync_pool $TESTPOOL
++
++# Confirm the setup: file2 must really be stored smaller, or the two files
++# would have identical block pointers and the test would prove nothing.
++typeset b1=$(stat_blocks /$TESTPOOL/file1)
++typeset b2=$(stat_blocks /$TESTPOOL/file2)
++log_note "allocated blocks: file1=$b1 file2=$b2"
++log_must [ "$b2" -lt "$b1" ]
++
++log_must have_same_content /$TESTPOOL/file1 /$TESTPOOL/file2
++log_must [ -z "$(get_same_blocks $TESTPOOL file1 $TESTPOOL file2)" ]
++
++# Identical data must dedupe, however differently it happens to be stored.
++log_must clonefile -d /$TESTPOOL/file1 /$TESTPOOL/file2 0 0 524288
++log_must sync_pool $TESTPOOL
++
++log_must have_same_content /$TESTPOOL/file1 /$TESTPOOL/file2
++typeset blocks=$(get_same_blocks $TESTPOOL file1 $TESTPOOL file2)
++log_must [ "$blocks" = "0 1 2 3" ]
++
++log_pass $claim
+diff --git a/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_differs.ksh b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_differs.ksh
+new file mode 100755
+index 000000000..d5c611d55
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_differs.ksh
+@@ -0,0 +1,69 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# CDDL HEADER START
++#
++# The contents of this file are subject to the terms of the
++# Common Development and Distribution License (the "License").
++# You may not use this file except in compliance with the License.
++#
++# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
++# or https://opensource.org/licenses/CDDL-1.0.
++# See the License for the specific language governing permissions
++# and limitations under the License.
++#
++# When distributing Covered Code, include this CDDL HEADER in each
++# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
++# If applicable, add the following below this CDDL HEADER, with the
++# fields enclosed by brackets "[]" replaced with your own identifying
++# information: Portions Copyright [yyyy] [name of copyright owner]
++#
++# CDDL HEADER END
++#
++
++#
++# Copyright (c) 2026 by MorganaFuture. All rights reserved.
++#
++
++. $STF_SUITE/include/libtest.shlib
++. $STF_SUITE/tests/functional/block_cloning/block_cloning.kshlib
++
++verify_runnable "global"
++
++claim="The FIDEDUPERANGE ioctl does not share blocks between differing files."
++
++log_assert $claim
++
++function cleanup
++{
++	datasetexists $TESTPOOL && destroy_pool $TESTPOOL
++}
++
++log_onexit cleanup
++
++log_must zpool create -o feature@block_cloning=enabled -O recordsize=128k $TESTPOOL $DISKS
++
++log_must dd if=/dev/urandom of=/$TESTPOOL/file1 bs=128K count=4
++log_must dd if=/dev/urandom of=/$TESTPOOL/file2 bs=128K count=4
++log_must sync_pool $TESTPOOL
++
++typeset digest=$(xxh128digest /$TESTPOOL/file2)
++
++# The ranges differ, so the ioctl must report DIFFERS specifically, not just
++# any failure, and change nothing.
++# Assign without typeset so $? is the exit status of clonefile itself.
++typeset out
++typeset ret
++out=$(clonefile -d /$TESTPOOL/file1 /$TESTPOOL/file2 0 0 524288 2>&1)
++ret=$?
++log_note "clonefile exited $ret saying: $out"
++log_must [ $ret -ne 0 ]
++echo "$out" | grep -q "range differs" || \
++    log_fail "expected DIFFERS, got: $out"
++log_must sync_pool $TESTPOOL
++
++log_must [ "$digest" = "$(xxh128digest /$TESTPOOL/file2)" ]
++typeset blocks=$(get_same_blocks $TESTPOOL file1 $TESTPOOL file2)
++log_must [ -z "$blocks" ]
++
++log_pass $claim
+diff --git a/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_eof.ksh b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_eof.ksh
+new file mode 100755
+index 000000000..00f1ed6be
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_eof.ksh
+@@ -0,0 +1,81 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# CDDL HEADER START
++#
++# The contents of this file are subject to the terms of the
++# Common Development and Distribution License (the "License").
++# You may not use this file except in compliance with the License.
++#
++# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
++# or https://opensource.org/licenses/CDDL-1.0.
++# See the License for the specific language governing permissions
++# and limitations under the License.
++#
++# When distributing Covered Code, include this CDDL HEADER in each
++# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
++# If applicable, add the following below this CDDL HEADER, with the
++# fields enclosed by brackets "[]" replaced with your own identifying
++# information: Portions Copyright [yyyy] [name of copyright owner]
++#
++# CDDL HEADER END
++#
++
++#
++# Copyright (c) 2026 by MorganaFuture. All rights reserved.
++#
++
++. $STF_SUITE/include/libtest.shlib
++. $STF_SUITE/tests/functional/block_cloning/block_cloning.kshlib
++
++verify_runnable "global"
++
++claim="The FIDEDUPERANGE ioctl rejects a range running past the destination EOF."
++
++log_assert $claim
++
++function cleanup
++{
++	datasetexists $TESTPOOL && destroy_pool $TESTPOOL
++}
++
++log_onexit cleanup
++
++log_must zpool create -o feature@block_cloning=enabled -O recordsize=128k \
++    $TESTPOOL $DISKS
++
++# file2 holds the first three blocks of file1, so everything the request below
++# actually covers is identical.  That is what makes this test meaningful: were
++# the range trimmed to the destination EOF instead of refused, the trimmed part
++# would compare equal and the dedupe would report success.
++log_must dd if=/dev/urandom of=/$TESTPOOL/file1 bs=128K count=4
++log_must dd if=/$TESTPOOL/file1 of=/$TESTPOOL/file2 bs=128K count=3
++log_must sync_pool $TESTPOOL
++
++log_must [ "$(stat_size /$TESTPOOL/file1)" = "524288" ]
++log_must [ "$(stat_size /$TESTPOOL/file2)" = "393216" ]
++
++typeset digest=$(xxh128digest /$TESTPOOL/file2)
++
++# The source range ends exactly at file1's EOF, while the destination range
++# runs one block past file2's.  A shortened dedupe cannot be reported as such
++# (the ioctl hands back the length it was asked for), so the request has to
++# fail rather than share what happens to fit.
++# Assign without typeset so $? is the exit status of clonefile itself.
++typeset out
++typeset ret
++out=$(clonefile -d /$TESTPOOL/file1 /$TESTPOOL/file2 262144 262144 262144 2>&1)
++ret=$?
++log_note "clonefile exited $ret saying: $out"
++log_must [ $ret -ne 0 ]
++echo "$out" | grep -q "Invalid argument" || \
++    log_fail "expected EINVAL, got: $out"
++echo "$out" | grep -q "range differs" && \
++    log_fail "reported DIFFERS for identical bytes: $out"
++
++log_must sync_pool $TESTPOOL
++
++log_must [ "$digest" = "$(xxh128digest /$TESTPOOL/file2)" ]
++log_must [ -z "$(get_same_blocks $TESTPOOL file1 $TESTPOOL file2)" ]
++
++log_pass $claim
+diff --git a/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_mtime.ksh b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_mtime.ksh
+new file mode 100755
+index 000000000..ef71f25fc
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_mtime.ksh
+@@ -0,0 +1,70 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# CDDL HEADER START
++#
++# The contents of this file are subject to the terms of the
++# Common Development and Distribution License (the "License").
++# You may not use this file except in compliance with the License.
++#
++# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
++# or https://opensource.org/licenses/CDDL-1.0.
++# See the License for the specific language governing permissions
++# and limitations under the License.
++#
++# When distributing Covered Code, include this CDDL HEADER in each
++# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
++# If applicable, add the following below this CDDL HEADER, with the
++# fields enclosed by brackets "[]" replaced with your own identifying
++# information: Portions Copyright [yyyy] [name of copyright owner]
++#
++# CDDL HEADER END
++#
++
++#
++# Copyright (c) 2026 by MorganaFuture. All rights reserved.
++#
++
++. $STF_SUITE/include/libtest.shlib
++. $STF_SUITE/tests/functional/block_cloning/block_cloning.kshlib
++
++verify_runnable "global"
++
++claim="FIDEDUPERANGE leaves the destination's mtime and ctime unchanged."
++
++log_assert $claim
++
++function cleanup
++{
++	datasetexists $TESTPOOL && destroy_pool $TESTPOOL
++}
++
++log_onexit cleanup
++
++log_must zpool create -o feature@block_cloning=enabled -O recordsize=128k $TESTPOOL $DISKS
++
++log_must dd if=/dev/urandom of=/$TESTPOOL/file1 bs=128K count=4
++log_must dd if=/$TESTPOOL/file1 of=/$TESTPOOL/file2 bs=128K count=4
++log_must sync_pool $TESTPOOL
++
++typeset mtime0=$(stat_mtime /$TESTPOOL/file2)
++typeset ctime0=$(stat_ctime /$TESTPOOL/file2)
++
++# Sleep so that, were the timestamps updated, they would move to a later
++# second and the comparison below would notice.
++sleep 2
++
++# Unlike a copy, a dedupe does not change the file content, so per the Linux
++# REMAP_FILE_DEDUP convention it must not update mtime/ctime.
++log_must clonefile -d /$TESTPOOL/file1 /$TESTPOOL/file2 0 0 524288
++log_must sync_pool $TESTPOOL
++
++typeset blocks=$(get_same_blocks $TESTPOOL file1 $TESTPOOL file2)
++log_must [ "$blocks" = "0 1 2 3" ]
++
++typeset mtime1=$(stat_mtime /$TESTPOOL/file2)
++typeset ctime1=$(stat_ctime /$TESTPOOL/file2)
++log_must [ "$mtime0" = "$mtime1" ]
++log_must [ "$ctime0" = "$ctime1" ]
++
++log_pass $claim
+diff --git a/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_partial.ksh b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_partial.ksh
+new file mode 100755
+index 000000000..fa2a0389e
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_partial.ksh
+@@ -0,0 +1,60 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# CDDL HEADER START
++#
++# The contents of this file are subject to the terms of the
++# Common Development and Distribution License (the "License").
++# You may not use this file except in compliance with the License.
++#
++# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
++# or https://opensource.org/licenses/CDDL-1.0.
++# See the License for the specific language governing permissions
++# and limitations under the License.
++#
++# When distributing Covered Code, include this CDDL HEADER in each
++# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
++# If applicable, add the following below this CDDL HEADER, with the
++# fields enclosed by brackets "[]" replaced with your own identifying
++# information: Portions Copyright [yyyy] [name of copyright owner]
++#
++# CDDL HEADER END
++#
++
++#
++# Copyright (c) 2026 by MorganaFuture. All rights reserved.
++#
++
++. $STF_SUITE/include/libtest.shlib
++. $STF_SUITE/tests/functional/block_cloning/block_cloning.kshlib
++
++verify_runnable "global"
++
++claim="The FIDEDUPERANGE ioctl shares only the requested matching range."
++
++log_assert $claim
++
++function cleanup
++{
++	datasetexists $TESTPOOL && destroy_pool $TESTPOOL
++}
++
++log_onexit cleanup
++
++log_must zpool create -o feature@block_cloning=enabled -O recordsize=128k $TESTPOOL $DISKS
++
++# file2 is a copy of file1 with a different first block; only block 1
++# (offset 131072) is identical between the two files.
++log_must dd if=/dev/urandom of=/$TESTPOOL/file1 bs=128K count=4
++log_must dd if=/$TESTPOOL/file1 of=/$TESTPOOL/file2 bs=128K count=4
++log_must dd if=/dev/urandom of=/$TESTPOOL/file2 bs=128K count=1 conv=notrunc
++log_must sync_pool $TESTPOOL
++
++# Deduplicate just the matching block.
++log_must clonefile -d /$TESTPOOL/file1 /$TESTPOOL/file2 131072 131072 131072
++log_must sync_pool $TESTPOOL
++
++typeset blocks=$(get_same_blocks $TESTPOOL file1 $TESTPOOL file2)
++log_must [ "$blocks" = "1" ]
++
++log_pass $claim
+diff --git a/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_replay.ksh b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_replay.ksh
+new file mode 100755
+index 000000000..d053a3053
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_replay.ksh
+@@ -0,0 +1,105 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# CDDL HEADER START
++#
++# The contents of this file are subject to the terms of the
++# Common Development and Distribution License (the "License").
++# You may not use this file except in compliance with the License.
++#
++# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
++# or https://opensource.org/licenses/CDDL-1.0.
++# See the License for the specific language governing permissions
++# and limitations under the License.
++#
++# When distributing Covered Code, include this CDDL HEADER in each
++# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
++# If applicable, add the following below this CDDL HEADER, with the
++# fields enclosed by brackets "[]" replaced with your own identifying
++# information: Portions Copyright [yyyy] [name of copyright owner]
++#
++# CDDL HEADER END
++#
++
++#
++# Copyright (c) 2026 by MorganaFuture. All rights reserved.
++#
++
++. $STF_SUITE/include/libtest.shlib
++. $STF_SUITE/tests/functional/block_cloning/block_cloning.kshlib
++
++#
++# DESCRIPTION:
++#	A FIDEDUPERANGE is not logged to the ZIL, so a crash before the txg
++#	syncs loses only the block sharing.  In particular replaying the log
++#	must not restamp the deduped file's timestamps.
++#
++# STRATEGY:
++#	1. Create a file system with a slog and two identical files
++#	2. Freeze the pool
++#	3. Dedupe one file against the other
++#	4. Unmount and export, then import to replay the intent log
++#	5. The content and the timestamps must be exactly as they were
++#
++
++verify_runnable "global"
++
++export VDIR=$TEST_BASE_DIR/disk-fidedupe
++export VDEV="$VDIR/a $VDIR/b $VDIR/c"
++export LDEV="$VDIR/e $VDIR/f"
++log_must rm -rf $VDIR
++log_must mkdir -p $VDIR
++log_must truncate -s $MINVDEVSIZE $VDEV $LDEV
++
++claim="A deduped file's timestamps survive an intent log replay."
++
++log_assert $claim
++
++function cleanup
++{
++	datasetexists $TESTPOOL && destroy_pool $TESTPOOL
++	rm -rf $TESTDIR $VDIR
++}
++
++log_onexit cleanup
++
++log_must zpool create -o feature@block_cloning=enabled $TESTPOOL $VDEV \
++    log mirror $LDEV
++log_must zfs create -o recordsize=128k $TESTPOOL/$TESTFS
++
++log_must dd if=/dev/urandom of=/$TESTPOOL/$TESTFS/file1 \
++    oflag=sync bs=128K count=4
++log_must dd if=/$TESTPOOL/$TESTFS/file1 of=/$TESTPOOL/$TESTFS/file2 \
++    oflag=sync bs=128K count=4
++sync_pool $TESTPOOL
++
++typeset digest=$(xxh128digest /$TESTPOOL/$TESTFS/file2)
++typeset mtime=$(stat_mtime /$TESTPOOL/$TESTFS/file2)
++typeset ctime=$(stat_ctime /$TESTPOOL/$TESTFS/file2)
++
++# Checkpoint for ZIL replay.
++log_must zpool freeze $TESTPOOL
++
++log_must clonefile -d /$TESTPOOL/$TESTFS/file1 /$TESTPOOL/$TESTFS/file2 \
++    0 0 524288
++
++log_must zfs unmount /$TESTPOOL/$TESTFS
++
++# The dedupe must have left nothing behind to replay.
++log_note "Verify transactions to replay:"
++log_must zdb -iv $TESTPOOL/$TESTFS
++zdb -iv $TESTPOOL/$TESTFS 2>&1 | grep -q "TX_CLONE_RANGE" && \
++    log_fail "dedupe logged a TX_CLONE_RANGE record"
++
++log_must zpool export $TESTPOOL
++
++# Import to unfreeze and replay the log.  It has to be `zpool import -f`
++# because we can't write a frozen pool's labels.
++log_must zpool import -f -d $VDIR $TESTPOOL
++
++# Nothing the dedupe did may show through: same bytes, same times.
++log_must [ "$digest" = "$(xxh128digest /$TESTPOOL/$TESTFS/file2)" ]
++log_must [ "$mtime" = "$(stat_mtime /$TESTPOOL/$TESTFS/file2)" ]
++log_must [ "$ctime" = "$(stat_ctime /$TESTPOOL/$TESTFS/file2)" ]
++
++log_pass $claim
+diff --git a/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_sparse.ksh b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_sparse.ksh
+new file mode 100755
+index 000000000..aba8daf54
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_sparse.ksh
+@@ -0,0 +1,75 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# CDDL HEADER START
++#
++# The contents of this file are subject to the terms of the
++# Common Development and Distribution License (the "License").
++# You may not use this file except in compliance with the License.
++#
++# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
++# or https://opensource.org/licenses/CDDL-1.0.
++# See the License for the specific language governing permissions
++# and limitations under the License.
++#
++# When distributing Covered Code, include this CDDL HEADER in each
++# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
++# If applicable, add the following below this CDDL HEADER, with the
++# fields enclosed by brackets "[]" replaced with your own identifying
++# information: Portions Copyright [yyyy] [name of copyright owner]
++#
++# CDDL HEADER END
++#
++
++#
++# Copyright (c) 2026 by MorganaFuture. All rights reserved.
++#
++
++. $STF_SUITE/include/libtest.shlib
++. $STF_SUITE/tests/functional/block_cloning/block_cloning.kshlib
++
++verify_runnable "global"
++
++claim="FIDEDUPERANGE compares the grown tail of a truncated file correctly."
++
++log_assert $claim
++
++function cleanup
++{
++	datasetexists $TESTPOOL && destroy_pool $TESTPOOL
++}
++
++log_onexit cleanup
++
++log_must zpool create -o feature@block_cloning=enabled -O recordsize=128k $TESTPOOL $DISKS
++
++# Two files written small and then truncated well out.  The truncate grows the
++# block, so almost all of what gets compared is tail that was never written by
++# anyone: the file's own bytes end at 1000 and the rest of the block reads back
++# as zeros.  Both files are built the same way, so they must compare equal.
++log_must file_write -o create -f /$TESTPOOL/file1 -b 1000 -c 1 -d 0
++log_must file_write -o create -f /$TESTPOOL/file2 -b 1000 -c 1 -d 0
++log_must truncate -s 65536 /$TESTPOOL/file1
++log_must truncate -s 65536 /$TESTPOOL/file2
++log_must sync_pool $TESTPOOL
++
++typeset blksz=$(stat_blksz /$TESTPOOL/file1)
++log_note "block size: $blksz, size: $(stat_size /$TESTPOOL/file1)"
++
++# Both tails are zeros, so the two files are identical and must dedupe.
++log_must have_same_content /$TESTPOOL/file1 /$TESTPOOL/file2
++log_must clonefile -d /$TESTPOOL/file1 /$TESTPOOL/file2 0 0 $blksz
++log_must sync_pool $TESTPOOL
++log_must have_same_content /$TESTPOOL/file1 /$TESTPOOL/file2
++
++# Now make the tails differ, and the same request must report DIFFERS.
++log_must dd if=/dev/urandom of=/$TESTPOOL/file2 bs=1 count=16 seek=2000 \
++    conv=notrunc
++log_must sync_pool $TESTPOOL
++
++typeset digest=$(xxh128digest /$TESTPOOL/file2)
++log_mustnot clonefile -d /$TESTPOOL/file1 /$TESTPOOL/file2 0 0 $blksz
++log_must sync_pool $TESTPOOL
++log_must [ "$digest" = "$(xxh128digest /$TESTPOOL/file2)" ]
++
++log_pass $claim
+diff --git a/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_subblock.ksh b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_subblock.ksh
+new file mode 100755
+index 000000000..b590e714f
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_subblock.ksh
+@@ -0,0 +1,74 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# CDDL HEADER START
++#
++# The contents of this file are subject to the terms of the
++# Common Development and Distribution License (the "License").
++# You may not use this file except in compliance with the License.
++#
++# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
++# or https://opensource.org/licenses/CDDL-1.0.
++# See the License for the specific language governing permissions
++# and limitations under the License.
++#
++# When distributing Covered Code, include this CDDL HEADER in each
++# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
++# If applicable, add the following below this CDDL HEADER, with the
++# fields enclosed by brackets "[]" replaced with your own identifying
++# information: Portions Copyright [yyyy] [name of copyright owner]
++#
++# CDDL HEADER END
++#
++
++#
++# Copyright (c) 2026 by MorganaFuture. All rights reserved.
++#
++
++. $STF_SUITE/include/libtest.shlib
++. $STF_SUITE/tests/functional/block_cloning/block_cloning.kshlib
++
++verify_runnable "global"
++
++claim="FIDEDUPERANGE compares the whole range, so a differing sub-block reports DIFFERS."
++
++log_assert $claim
++
++function cleanup
++{
++	datasetexists $TESTPOOL && destroy_pool $TESTPOOL
++}
++
++log_onexit cleanup
++
++log_must zpool create -o feature@block_cloning=enabled -O recordsize=128k $TESTPOOL $DISKS
++
++# Two single-block (128K) files that differ only in their first 4K.  A dedupe
++# request shorter than the record size is rounded down to nothing by block
++# alignment; the ioctl must still compare the requested bytes and report the
++# ranges as differing rather than silently claiming they are the same.
++log_must dd if=/dev/urandom of=/$TESTPOOL/file1 bs=128K count=1
++log_must dd if=/$TESTPOOL/file1 of=/$TESTPOOL/file2 bs=128K count=1
++log_must dd if=/dev/urandom of=/$TESTPOOL/file2 bs=4K count=1 conv=notrunc
++log_must sync_pool $TESTPOOL
++
++typeset digest=$(xxh128digest /$TESTPOOL/file2)
++
++# The first 4K differ, so the ioctl must report DIFFERS specifically, not
++# just any failure, and share nothing.
++# Assign without typeset so $? is the exit status of clonefile itself.
++typeset out
++typeset ret
++out=$(clonefile -d /$TESTPOOL/file1 /$TESTPOOL/file2 0 0 4096 2>&1)
++ret=$?
++log_note "clonefile exited $ret saying: $out"
++log_must [ $ret -ne 0 ]
++echo "$out" | grep -q "range differs" || \
++    log_fail "expected DIFFERS, got: $out"
++log_must sync_pool $TESTPOOL
++
++log_must [ "$digest" = "$(xxh128digest /$TESTPOOL/file2)" ]
++typeset blocks=$(get_same_blocks $TESTPOOL file1 $TESTPOOL file2)
++log_must [ -z "$blocks" ]
++
++log_pass $claim
+diff --git a/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_tail.ksh b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_tail.ksh
+new file mode 100755
+index 000000000..b217e828e
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_fideduperange_tail.ksh
+@@ -0,0 +1,72 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# CDDL HEADER START
++#
++# The contents of this file are subject to the terms of the
++# Common Development and Distribution License (the "License").
++# You may not use this file except in compliance with the License.
++#
++# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
++# or https://opensource.org/licenses/CDDL-1.0.
++# See the License for the specific language governing permissions
++# and limitations under the License.
++#
++# When distributing Covered Code, include this CDDL HEADER in each
++# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
++# If applicable, add the following below this CDDL HEADER, with the
++# fields enclosed by brackets "[]" replaced with your own identifying
++# information: Portions Copyright [yyyy] [name of copyright owner]
++#
++# CDDL HEADER END
++#
++
++#
++# Copyright (c) 2026 by MorganaFuture. All rights reserved.
++#
++
++. $STF_SUITE/include/libtest.shlib
++. $STF_SUITE/tests/functional/block_cloning/block_cloning.kshlib
++
++verify_runnable "global"
++
++claim="FIDEDUPERANGE compares only the bytes the range covers in a trailing block."
++
++log_assert $claim
++
++function cleanup
++{
++	datasetexists $TESTPOOL && destroy_pool $TESTPOOL
++}
++
++log_onexit cleanup
++
++log_must zpool create -o feature@block_cloning=enabled -O recordsize=128k $TESTPOOL $DISKS
++
++# Two 256K (2 x 128K block) files that agree over the first 132K and differ
++# from 132K on.  A 132K dedupe request covers all of block 0 and only the
++# first 4K of block 1, so the bytes it covers are identical even though the
++# two block 1s are not: it must report the ranges as the same.  Comparing any
++# byte past the requested 132K would wrongly report DIFFERS.
++log_must dd if=/dev/urandom of=/$TESTPOOL/file1 bs=128K count=2
++log_must dd if=/$TESTPOOL/file1 of=/$TESTPOOL/file2 bs=128K count=2
++log_must dd if=/dev/urandom of=/$TESTPOOL/file2 bs=4K count=31 seek=33 \
++    conv=notrunc
++log_must sync_pool $TESTPOOL
++
++log_must [ -z "$(get_same_blocks $TESTPOOL file1 $TESTPOOL file2)" ]
++
++# The covered bytes match, so the dedupe succeeds.  Only whole blocks can be
++# shared, so the request is aligned down to block 0; block 1 keeps its own
++# (differing) content.
++log_must clonefile -d /$TESTPOOL/file1 /$TESTPOOL/file2 0 0 135168
++log_must sync_pool $TESTPOOL
++
++typeset blocks=$(get_same_blocks $TESTPOOL file1 $TESTPOOL file2)
++log_must [ "$blocks" = "0" ]
++
++# The dedupe must not have disturbed the part of file2 outside the range.
++log_must cmp -n 135168 /$TESTPOOL/file1 /$TESTPOOL/file2
++log_mustnot cmp -s /$TESTPOOL/file1 /$TESTPOOL/file2
++
++log_pass $claim
+-- 
+2.43.0
+
