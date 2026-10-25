@@ -1,0 +1,1354 @@
+From 59c065ea832d8d883007899baa457d0d5a6bb636 Mon Sep 17 00:00:00 2001
+From: Matthew Ahrens <matt@mahrens.org>
+Date: Sat, 17 Oct 2026 10:13:40 -0700
+Subject: [PATCH 8/8] ZIL replay can apply part of a split WR_NEED_COPY write
+
+After a crash while an fsync() is still writing the log, ZIL replay can
+apply the first part of a write without the rest, leaving the write
+torn at an arbitrary 8-byte-aligned offset.  This exposes a state that
+no reader could have observed before the crash: new data up to the
+tear, old data after it.  While POSIX doesn't specify anything before
+fsync() completes, ZFS intends to preserve the atomicity of writes as
+much as possible: writes within a single block are intended to be
+atomic, with larger writes torn only on recordsize boundaries.
+
+The problem occurs with WR_NEED_COPY TX_WRITE records.  When such a
+record does not fit in the current log block, zil_lwb_assign() splits
+it into several TX_WRITE records in consecutive log blocks.  If the
+system crashes after the first of those blocks is on disk but before
+all of them are, zil_parse() stops at the missing block, but replay
+has already applied the pieces before it.  Files are affected for
+async writes that a later fsync() commits, and for writes of any size
+with a slog.  Zvols are affected too, where a tear inside a sector
+breaks the sector atomicity that consumers of a block device expect.
+
+Mark the pieces of a split write in the log, and have replay apply the
+write only once it holds every piece:
+
+- Rename the unused lr_blkoff field of lr_write_t to lr_flags.  Set
+  LR_WRITE_MORE (bit 63) on every piece but the last, and
+  LR_WRITE_CONT (bit 62) on every piece but the first.
+
+- If zl_get_data() returns ENOENT for a piece (the file was truncated
+  below it or removed since the write), log that piece as zeros.
+  Otherwise replay would drop the whole write, losing the other
+  pieces' data.  The TX_TRUNCATE or TX_REMOVE that follows undoes the
+  zeros.  So that this happens only for a file that is gone,
+  zfs_get_data() now reports any other zfs_zget() failure as EIO
+  rather than ENOENT (such as EBUSY on FreeBSD during unmount, or
+  ENOENT when no znode could be allocated for an object that still
+  exists), and zil_lwb_commit() waits for the txg to sync instead.
+
+- Replay gathers the pieces in its record buffer.  A piece joins the
+  pending write only if its lrc_seq is the next one and its txg,
+  object and offset match; otherwise the pending write and the piece
+  are dropped.  The last piece replays the gathered write as one
+  TX_WRITE.  Any other record, or the end of the log, drops a pending
+  write.  On an opposite-endian host, whose log blocks the ARC swaps
+  as 8-byte words, each piece's data is swapped back as it's
+  gathered.  If replay by older software was interrupted partway through
+  a split write, the first record left to replay is a later piece;
+  replay treats it as the start of a write.
+
+- Replay gathers up to 32M of data (DMU_MAX_ACCESS / 2), as much as
+  zfs_write() and zvol_write() apply in one transaction, and so log in
+  one record.  The replay buffer grows by a record header to hold it.
+  A larger write can't be applied in one transaction anyway; replay
+  applies it in parts.  If a piece doesn't fit, replay applies the
+  gathered data up to its last multiple of SPA_MAXBLOCKSIZE (always a
+  block boundary) first.  If that replay is interrupted, it resumes
+  with the piece after the last one wholly applied.
+
+No feature flag is needed.  lr_blkoff was last set by 2007-2009
+software, which read it at replay only for WR_INDIRECT records, and
+later software ignores it.  So old logs replay as before, and older
+software replays new logs as before (still torn).
+
+New kstats zil_replay_split_merged (writes) and
+zil_replay_split_dropped (pieces), global and per dataset, count what
+replay did.  zdb -ivvv prints the markers.
+
+This is a port of the illumos fix, with these OpenZFS differences:
+
+- OpenZFS already assigns lrc_seq before calling zl_get_data(), so a
+  piece it leaves out leaves a gap in the sequence.
+
+- illumos splits a record after fetching the data for its first piece,
+  so if that fails the whole record is skipped, and only later pieces
+  are logged as zeros.  OpenZFS splits it in zil_lwb_assign(), and the
+  pieces' data may be fetched concurrently by different threads, so
+  the first piece is logged as zeros too.  The file ends up the same.
+
+- illumos gathers up to DMU_MAX_ACCESS, which is 32M there.
+
+- The zvol tests set sync=always, since FreeBSD's GEOM zvols ignore
+  O_SYNC, and write with O_DIRECT so that Linux submits the write as
+  one request.  Like slog_replay_volume, they retry a busy export.
+
+New ZTS tests in functional/slog lose a log block by overwriting it
+with zeros, and check the data and the replay kstats:
+slog_replay_fs_split_write, slog_replay_volume_split_write,
+slog_replay_volume_split_boundary and slog_replay_fs_split_truncate.
+
+Reviewed by: George Wilson <gwilson@zfsmail.com>
+Reviewed-by: Alexander Motin <alexander.motin@TrueNAS.com>
+Reviewed-by: Brian Behlendorf <behlendorf1@llnl.gov>
+Signed-off-by: Matthew Ahrens <matt@mahrens.org>
+Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+Closes #19356
+(cherry picked from commit 7c3d85aaf1670d7386b0d4a157ef4ce96e17cba2)
+
+Backport notes (zfs-2.4.4): upstream applied this before c0688a275,
+which this tree already carries (fca938dff).  Every conflict comes from
+that order or from master-only test changes, and is resolved so the
+result is master's 7c3d85aaf followed by c0688a275:
+- zil.c, zil_replay(): keep c0688a275's err next to split_lr, and after
+  the replay parse drop a pending split write, free ZIL_REPLAY_BUFSZ,
+  then clear zl_replay_write2.  zil_replay() is now the same as master's
+  at c0688a275.  The split functions go between zil_replay_error() and
+  c0688a275's zil_replay_scan_blk(), as on master.
+- common.run, Makefile.am: the four new tests join 2.4's slog lists,
+  which already hold c0688a275's tests.  Master's Makefile.am context
+  also has the snapdir group (73ba07c67, "ZTS: create snapdir test
+  group"), which 2.4 lacks.  Both slog lists now match master's at
+  c0688a275.
+Every other hunk applies as is.  The code also applies to plain
+zfs-2.4.4 without conflict.  The functions it changes, and those it
+relies on (zil_parse(), zil_read_log_data(), zil_itx_create(),
+zil_lwb_write_issue(), zfs_get_done(), zvol_get_data(),
+zfs_replay_write(), zvol_replay_write(), the dataset kstats, zdb's
+print_log_block()), are the same in 2.4.4 as on master before it.
+zfs_write() and zil_process_commit_list() differ only by master-only
+changes it does not use (z_seq, uncached I/O, ZILSAXATTR activation).
+DMU_MAX_ACCESS is 64M in 2.4 too, and zfs_write() and zvol_write()
+write at most DMU_MAX_ACCESS / 2 per transaction, so
+ZIL_REPLAY_WRITE_MAX still covers one logged write.  The ZTS helpers
+the new tests use (kstat, log_must_busy, block_device_wait, slog
+setup/cleanup) are the same on Linux as on master.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ cmd/zdb/zdb_il.c                              |   9 +-
+ cmd/ztest.c                                   |   2 +-
+ include/sys/zil.h                             |  25 +-
+ module/zfs/dataset_kstats.c                   |   4 +-
+ module/zfs/zfs_log.c                          |   3 +-
+ module/zfs/zfs_vnops.c                        |  16 +-
+ module/zfs/zil.c                              | 282 +++++++++++++++++-
+ module/zfs/zvol.c                             |   2 +-
+ tests/runfiles/common.run                     |   8 +-
+ tests/zfs-tests/tests/Makefile.am             |   4 +
+ .../tests/functional/slog/slog.kshlib         |  30 ++
+ .../slog/slog_replay_fs_split_truncate.ksh    |  89 ++++++
+ .../slog/slog_replay_fs_split_write.ksh       | 130 ++++++++
+ .../slog_replay_volume_split_boundary.ksh     | 159 ++++++++++
+ .../slog/slog_replay_volume_split_write.ksh   | 134 +++++++++
+ 15 files changed, 877 insertions(+), 20 deletions(-)
+ create mode 100755 tests/zfs-tests/tests/functional/slog/slog_replay_fs_split_truncate.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/slog/slog_replay_fs_split_write.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/slog/slog_replay_volume_split_boundary.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/slog/slog_replay_volume_split_write.ksh
+
+diff --git a/cmd/zdb/zdb_il.c b/cmd/zdb/zdb_il.c
+index 3d91fb28a..7a8367794 100644
+--- a/cmd/zdb/zdb_il.c
++++ b/cmd/zdb/zdb_il.c
+@@ -27,6 +27,7 @@
+ 
+ /*
+  * Copyright (c) 2013, 2017 by Delphix. All rights reserved.
++ * Copyright 2026 Oxide Computer Company
+  */
+ 
+ /*
+@@ -165,9 +166,11 @@ zil_prt_rec_write(zilog_t *zilog, int txtype, const void *arg)
+ 	int verbose = MAX(dump_opt['d'], dump_opt['i']);
+ 	int error;
+ 
+-	(void) printf("%sfoid %llu, offset %llx, length %llx\n", tab_prefix,
+-	    (u_longlong_t)lr->lr_foid, (u_longlong_t)lr->lr_offset,
+-	    (u_longlong_t)lr->lr_length);
++	(void) printf("%sfoid %llu, offset %llx, length %llx%s%s\n",
++	    tab_prefix, (u_longlong_t)lr->lr_foid,
++	    (u_longlong_t)lr->lr_offset, (u_longlong_t)lr->lr_length,
++	    (lr->lr_flags & LR_WRITE_CONT) ? ", continued" : "",
++	    (lr->lr_flags & LR_WRITE_MORE) ? ", more follows" : "");
+ 
+ 	if (txtype == TX_WRITE2 || verbose < 4)
+ 		return;
+diff --git a/cmd/ztest.c b/cmd/ztest.c
+index af62d4669..e16a31826 100644
+--- a/cmd/ztest.c
++++ b/cmd/ztest.c
+@@ -2737,7 +2737,7 @@ ztest_write(ztest_ds_t *zd, uint64_t object, uint64_t offset, uint64_t size,
+ 	lr->lr_foid = object;
+ 	lr->lr_offset = offset;
+ 	lr->lr_length = size;
+-	lr->lr_blkoff = 0;
++	lr->lr_flags = 0;
+ 	BP_ZERO(&lr->lr_blkptr);
+ 
+ 	memcpy(&lr->lr_data[0], data, size);
+diff --git a/include/sys/zil.h b/include/sys/zil.h
+index e5e1d40f4..aa8e4b043 100644
+--- a/include/sys/zil.h
++++ b/include/sys/zil.h
+@@ -22,6 +22,7 @@
+ /*
+  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
+  * Copyright (c) 2012, 2018 by Delphix. All rights reserved.
++ * Copyright 2026 Oxide Computer Company
+  */
+ 
+ /* Portions Copyright 2010 Robert Milkowski */
+@@ -355,12 +356,24 @@ typedef struct {
+ 	uint64_t	lr_foid;	/* file object to write */
+ 	uint64_t	lr_offset;	/* offset to write to */
+ 	uint64_t	lr_length;	/* user data length to write */
+-	uint64_t	lr_blkoff;	/* no longer used */
++	uint64_t	lr_flags;	/* LR_WRITE_* flags, see below */
+ 	blkptr_t	lr_blkptr;	/* spa block pointer for replay */
+ 	/* write data will follow for small writes */
+ 	uint8_t		lr_data[];
+ } lr_write_t;
+ 
++/*
++ * A TX_WRITE record that carries data (WR_NEED_COPY) may be split across log
++ * blocks.  Its pieces are marked in lr_flags so that replay will apply the
++ * write only once all pieces are present, except that a write larger than
++ * replay can gather (32M) may be applied in parts that end at multiples of
++ * SPA_MAXBLOCKSIZE (block boundaries).  Older software (before 2026) named
++ * the field lr_blkoff.  Software from 2007 to 2009 set it to the offset
++ * within the block; other software ignored it.
++ */
++#define	LR_WRITE_MORE	(1ULL << 63)	/* next record continues this write */
++#define	LR_WRITE_CONT	(1ULL << 62)	/* continues the previous record */
++
+ typedef struct {
+ 	lr_t		lr_common;	/* common portion of log record */
+ 	uint64_t	lr_foid;	/* object id of file to truncate */
+@@ -544,6 +557,14 @@ typedef struct zil_stats {
+ 	kstat_named_t zil_itx_metaslab_slog_bytes;
+ 	kstat_named_t zil_itx_metaslab_slog_write;
+ 	kstat_named_t zil_itx_metaslab_slog_alloc;
++
++	/*
++	 * Replay of WR_NEED_COPY writes that were split across log blocks:
++	 * the number of such writes replayed whole, and the number of pieces
++	 * not replayed because their write was missing a piece.
++	 */
++	kstat_named_t zil_replay_split_merged;
++	kstat_named_t zil_replay_split_dropped;
+ } zil_kstat_values_t;
+ 
+ typedef struct zil_sums {
+@@ -568,6 +589,8 @@ typedef struct zil_sums {
+ 	wmsum_t zil_itx_metaslab_slog_bytes;
+ 	wmsum_t zil_itx_metaslab_slog_write;
+ 	wmsum_t zil_itx_metaslab_slog_alloc;
++	wmsum_t zil_replay_split_merged;
++	wmsum_t zil_replay_split_dropped;
+ } zil_sums_t;
+ 
+ #define	ZIL_STAT_INCR(zil, stat, val) \
+diff --git a/module/zfs/dataset_kstats.c b/module/zfs/dataset_kstats.c
+index 1f263c786..b8c0f025d 100644
+--- a/module/zfs/dataset_kstats.c
++++ b/module/zfs/dataset_kstats.c
+@@ -59,7 +59,9 @@ static dataset_kstat_values_t empty_dataset_kstats = {
+ 	{ "zil_itx_metaslab_slog_count",	KSTAT_DATA_UINT64 },
+ 	{ "zil_itx_metaslab_slog_bytes",	KSTAT_DATA_UINT64 },
+ 	{ "zil_itx_metaslab_slog_write",	KSTAT_DATA_UINT64 },
+-	{ "zil_itx_metaslab_slog_alloc",	KSTAT_DATA_UINT64 }
++	{ "zil_itx_metaslab_slog_alloc",	KSTAT_DATA_UINT64 },
++	{ "zil_replay_split_merged",		KSTAT_DATA_UINT64 },
++	{ "zil_replay_split_dropped",		KSTAT_DATA_UINT64 }
+ 	}
+ };
+ 
+diff --git a/module/zfs/zfs_log.c b/module/zfs/zfs_log.c
+index f220240e2..c0e224aa3 100644
+--- a/module/zfs/zfs_log.c
++++ b/module/zfs/zfs_log.c
+@@ -23,6 +23,7 @@
+  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
+  * Copyright (c) 2015, 2018 by Delphix. All rights reserved.
+  * Copyright (c) 2022 by Pawel Jakub Dawidek
++ * Copyright 2026 Oxide Computer Company
+  */
+ 
+ 
+@@ -659,7 +660,7 @@ zfs_log_write(zilog_t *zilog, dmu_tx_t *tx, int txtype,
+ 		lr->lr_foid = zp->z_id;
+ 		lr->lr_offset = off;
+ 		lr->lr_length = len;
+-		lr->lr_blkoff = 0;
++		lr->lr_flags = 0;
+ 		BP_ZERO(&lr->lr_blkptr);
+ 
+ 		itx->itx_private = ZTOZSB(zp);
+diff --git a/module/zfs/zfs_vnops.c b/module/zfs/zfs_vnops.c
+index cb5d6ef53..77a207b85 100644
+--- a/module/zfs/zfs_vnops.c
++++ b/module/zfs/zfs_vnops.c
+@@ -28,6 +28,7 @@
+  * Copyright (c) 2021, 2022 by Pawel Jakub Dawidek
+  * Copyright (c) 2025, Rob Norris <robn@despairlabs.com>
+  * Copyright (c) 2025, Klara, Inc.
++ * Copyright 2026 Oxide Computer Company
+  */
+ 
+ /* Portions Copyright 2007 Jeremy Teo */
+@@ -1353,10 +1354,19 @@ zfs_get_data(void *arg, uint64_t gen, lr_write_t *lr, char *buf,
+ 	ASSERT3U(size, !=, 0);
+ 
+ 	/*
+-	 * Nothing to do if the file has been removed
++	 * Nothing to do if the file has been removed.  Any other failure
++	 * to get the znode (e.g. EBUSY on FreeBSD while the file system is
++	 * being unmounted, or ENOENT because a znode couldn't be allocated
++	 * for an object that still exists) is not a sign that the file is
++	 * gone: report EIO, and the ZIL waits for the txg to sync instead.
+ 	 */
+-	if (zfs_zget(zfsvfs, object, &zp) != 0)
+-		return (SET_ERROR(ENOENT));
++	error = zfs_zget(zfsvfs, object, &zp);
++	if (error != 0) {
++		if (error == ENOENT &&
++		    dmu_object_info(os, object, NULL) == ENOENT)
++			return (SET_ERROR(ENOENT));
++		return (SET_ERROR(EIO));
++	}
+ 	if (zp->z_unlinked) {
+ 		/*
+ 		 * Release the vnode asynchronously as we currently have the
+diff --git a/module/zfs/zil.c b/module/zfs/zil.c
+index ee55d5a15..387c3968e 100644
+--- a/module/zfs/zil.c
++++ b/module/zfs/zil.c
+@@ -25,6 +25,7 @@
+  * Copyright (c) 2014 Integros [integros.com]
+  * Copyright (c) 2018 Datto Inc.
+  * Copyright (c) 2025, Klara, Inc.
++ * Copyright 2026 Oxide Computer Company
+  */
+ 
+ /* Portions Copyright 2010 Robert Milkowski */
+@@ -120,6 +121,8 @@ static zil_kstat_values_t zil_stats = {
+ 	{ "zil_itx_metaslab_slog_bytes",	KSTAT_DATA_UINT64 },
+ 	{ "zil_itx_metaslab_slog_write",	KSTAT_DATA_UINT64 },
+ 	{ "zil_itx_metaslab_slog_alloc",	KSTAT_DATA_UINT64 },
++	{ "zil_replay_split_merged",		KSTAT_DATA_UINT64 },
++	{ "zil_replay_split_dropped",		KSTAT_DATA_UINT64 },
+ };
+ 
+ static zil_sums_t zil_sums_global;
+@@ -385,6 +388,8 @@ zil_sums_init(zil_sums_t *zs)
+ 	wmsum_init(&zs->zil_itx_metaslab_slog_bytes, 0);
+ 	wmsum_init(&zs->zil_itx_metaslab_slog_write, 0);
+ 	wmsum_init(&zs->zil_itx_metaslab_slog_alloc, 0);
++	wmsum_init(&zs->zil_replay_split_merged, 0);
++	wmsum_init(&zs->zil_replay_split_dropped, 0);
+ }
+ 
+ void
+@@ -411,6 +416,8 @@ zil_sums_fini(zil_sums_t *zs)
+ 	wmsum_fini(&zs->zil_itx_metaslab_slog_bytes);
+ 	wmsum_fini(&zs->zil_itx_metaslab_slog_write);
+ 	wmsum_fini(&zs->zil_itx_metaslab_slog_alloc);
++	wmsum_fini(&zs->zil_replay_split_merged);
++	wmsum_fini(&zs->zil_replay_split_dropped);
+ }
+ 
+ void
+@@ -458,6 +465,10 @@ zil_kstat_values_update(zil_kstat_values_t *zs, zil_sums_t *zil_sums)
+ 	    wmsum_value(&zil_sums->zil_itx_metaslab_slog_write);
+ 	zs->zil_itx_metaslab_slog_alloc.value.ui64 =
+ 	    wmsum_value(&zil_sums->zil_itx_metaslab_slog_alloc);
++	zs->zil_replay_split_merged.value.ui64 =
++	    wmsum_value(&zil_sums->zil_replay_split_merged);
++	zs->zil_replay_split_dropped.value.ui64 =
++	    wmsum_value(&zil_sums->zil_replay_split_dropped);
+ }
+ 
+ /*
+@@ -2364,8 +2375,10 @@ cont:
+ 		clr = &citx->itx_lr;
+ 		lr_write_t *clrw = (lr_write_t *)clr;
+ 		clrw->lr_length = dnow;
++		clrw->lr_flags |= LR_WRITE_MORE;
+ 		lrw->lr_offset += dnow;
+ 		lrw->lr_length -= dnow;
++		lrw->lr_flags |= LR_WRITE_CONT;
+ 		zilog->zl_cur_left -= dnow;
+ 	} else {
+ 		citx = itx;
+@@ -2471,6 +2484,27 @@ zil_lwb_commit(zilog_t *zilog, lwb_t *lwb, itx_t *itx)
+ 			error = zilog->zl_get_data(itx->itx_private,
+ 			    itx->itx_gen, lrwb, dbuf, lwb,
+ 			    lwb->lwb_child_zio);
++
++			/*
++			 * A piece of a split write can be gone even though
++			 * other pieces were not: after the write, the file
++			 * was removed or truncated below this piece's
++			 * offset.  Replay drops a write that is missing a
++			 * piece, which would lose the other pieces' data.
++			 * Log this piece as zeros instead; the TX_TRUNCATE
++			 * or TX_REMOVE that follows removes the zeros.  The
++			 * pieces are fetched independently, possibly by
++			 * different threads, so we can't tell whether the
++			 * others were logged; this applies to the first
++			 * piece too.
++			 */
++			if (error == ENOENT && (lrwb->lr_flags &
++			    (LR_WRITE_MORE | LR_WRITE_CONT)) != 0) {
++				ASSERT3P(dbuf, !=, NULL);
++				memset(dbuf, 0, lrwb->lr_length);
++				error = 0;
++			}
++
+ 			if (dbuf != NULL && error == 0) {
+ 				/* Zero any padding bytes in the last block. */
+ 				memset((char *)dbuf + lrwb->lr_length, 0,
+@@ -4671,8 +4705,28 @@ typedef struct zil_replay_arg {
+ 	void		*zr_arg;
+ 	boolean_t	zr_byteswap;
+ 	char		*zr_lr;
++	lr_write_t	*zr_split_lr;	/* the pending write, minus its data */
++	uint64_t	zr_split_seq;	/* lrc_seq of last pending piece */
++	uint64_t	zr_split_pieces; /* num pieces of the pending write */
++	uint64_t	zr_split_bseq;	/* last piece below a boundary */
+ } zil_replay_arg_t;
+ 
++/*
++ * The most data replay gathers for a split write: as much as one transaction
++ * of zfs_write() or zvol_write() writes and logs, and so as much as current
++ * software logs in one TX_WRITE record.
++ */
++#define	ZIL_REPLAY_WRITE_MAX	(DMU_MAX_ACCESS / 2)
++#define	ZIL_REPLAY_BUFSZ	(sizeof (lr_write_t) + ZIL_REPLAY_WRITE_MAX)
++
++typedef enum {
++	ZR_SPLIT_NONE,		/* not part of a split write: replay lr */
++	ZR_SPLIT_HELD,		/* held or dropped: nothing to replay now */
++	ZR_SPLIT_BAD,		/* malformed piece: stop replay */
++	ZR_SPLIT_CHUNK,		/* zr_lr holds the first part: replay it */
++	ZR_SPLIT_DONE		/* zr_lr holds the rest: replay it */
++} zr_split_t;
++
+ static int
+ zil_replay_error(zilog_t *zilog, const lr_t *lr, int error)
+ {
+@@ -4691,6 +4745,187 @@ zil_replay_error(zilog_t *zilog, const lr_t *lr, int error)
+ 	return (error);
+ }
+ 
++/*
++ * Drop the pending split write, if any, and count the dropped pieces.
++ */
++static void
++zil_replay_split_drop(zilog_t *zilog, zil_replay_arg_t *zr,
++    uint64_t dropped_pieces)
++{
++	dropped_pieces += zr->zr_split_pieces;
++	zr->zr_split_seq = 0;
++	zr->zr_split_pieces = 0;
++	if (dropped_pieces != 0)
++		ZIL_STAT_INCR(zilog, zil_replay_split_dropped, dropped_pieces);
++}
++
++/*
++ * Prepare to replay (part of) a split write, by filling in zr->zr_lr
++ * with the header for the first len bytes of the pending write, as
++ * record seq.
++ */
++static void
++zil_replay_split_record(zil_replay_arg_t *zr, uint64_t len, uint64_t seq)
++{
++	lr_write_t *lrw = (lr_write_t *)zr->zr_lr;
++
++	memcpy(lrw, zr->zr_split_lr, sizeof (*lrw));
++	lrw->lr_common.lrc_reclen = sizeof (*lrw) +
++	    P2ROUNDUP_TYPED(len, sizeof (uint64_t), uint64_t);
++	lrw->lr_common.lrc_seq = seq;
++	lrw->lr_length = len;
++	lrw->lr_flags &= ~(LR_WRITE_MORE | LR_WRITE_CONT);
++}
++
++/*
++ * The leading chunk of the pending split write was replayed: move the rest
++ * of its data to the front of zr_lr.
++ */
++static void
++zil_replay_split_next(zil_replay_arg_t *zr)
++{
++	lr_write_t *slr = zr->zr_split_lr;
++	uint8_t *data = ((lr_write_t *)zr->zr_lr)->lr_data;
++	uint64_t chunk = P2ALIGN_TYPED(slr->lr_offset + slr->lr_length,
++	    SPA_MAXBLOCKSIZE, uint64_t) - slr->lr_offset;
++
++	memmove(data, data + chunk, slr->lr_length - chunk);
++	slr->lr_offset += chunk;
++	slr->lr_length -= chunk;
++	zr->zr_split_pieces = zr->zr_split_seq - zr->zr_split_bseq;
++}
++
++/*
++ * Copy len bytes of a piece's data to the pending write.  If the log block
++ * was byteswapped (as 8-byte words, which the data starts on), each byte is
++ * at the mirror position within its word: put it back.
++ */
++static void
++zil_replay_split_copy(uint8_t *dst, const uint8_t *src, uint64_t len,
++    boolean_t byteswap)
++{
++	if (!byteswap) {
++		memcpy(dst, src, len);
++		return;
++	}
++	for (uint64_t i = 0; i < len; i++)
++		dst[i] = src[i ^ (sizeof (uint64_t) - 1)];
++}
++
++/*
++ * A WR_NEED_COPY TX_WRITE that doesn't fit in a log block is split into
++ * pieces, which are consecutive records (in consecutive log blocks).  All
++ * but the last piece have LR_WRITE_MORE set, all but the first have
++ * LR_WRITE_CONT set.  Gather the pieces in zr_lr, and replay the write only
++ * once the last piece is there, so that it's never partly applied.  A write
++ * that is missing a piece (because the log ends inside it, or because
++ * zl_get_data() left a piece out) was never acknowledged, so drop it.
++ *
++ * Open context applies at most ZIL_REPLAY_WRITE_MAX (32M) at once, and
++ * replay can't apply more than DMU_MAX_ACCESS in one transaction.  If a
++ * piece doesn't fit in zr_lr, replay the gathered data up to its last
++ * multiple of SPA_MAXBLOCKSIZE, then gather the new piece.
++ *
++ * The pending write lives in zr_lr, which is otherwise only used while a
++ * record is replayed; a record that isn't a continuation drops it first.
++ */
++static zr_split_t
++zil_replay_split(zilog_t *zilog, zil_replay_arg_t *zr, const lr_t *lr)
++{
++	const lr_write_t *lrw = (const lr_write_t *)lr;
++	lr_write_t *slr = zr->zr_split_lr;
++	uint8_t *data = ((lr_write_t *)zr->zr_lr)->lr_data;
++	uint64_t txtype = lr->lrc_txtype & ~TX_CI;
++	uint64_t reclen = lr->lrc_reclen;
++	boolean_t more = B_FALSE;
++	boolean_t cont = B_FALSE;
++
++	if (txtype == TX_WRITE && reclen > sizeof (lr_write_t)) {
++		more = (lrw->lr_flags & LR_WRITE_MORE) != 0;
++		cont = (lrw->lr_flags & LR_WRITE_CONT) != 0;
++	}
++
++	/*
++	 * Older software replays the pieces one by one, and we replay a large
++	 * write in chunks.  If either replay was interrupted partway through
++	 * a write, this is the first piece still to be replayed.
++	 */
++	if (cont && zr->zr_split_seq == 0 &&
++	    lr->lrc_seq == zilog->zl_header->zh_replay_seq + 1)
++		cont = B_FALSE;
++
++	if (!cont) {
++		/* Anything but a continuation ends a pending write. */
++		zil_replay_split_drop(zilog, zr, 0);
++		if (!more)
++			return (ZR_SPLIT_NONE);
++
++		/* The first piece of a split write. */
++		memcpy(slr, lrw, sizeof (*slr));
++		slr->lr_length = 0;
++	} else if (zr->zr_split_seq == 0 ||
++	    lr->lrc_seq != zr->zr_split_seq + 1 ||
++	    lr->lrc_txg != slr->lr_common.lrc_txg ||
++	    lrw->lr_foid != slr->lr_foid ||
++	    lrw->lr_offset != slr->lr_offset + slr->lr_length) {
++		/*
++		 * A later piece must continue the pending write.  If it
++		 * doesn't, an earlier piece is missing: drop it, and the
++		 * pending write.
++		 */
++		zil_replay_split_drop(zilog, zr, 1);
++		return (ZR_SPLIT_HELD);
++	}
++	if (P2ROUNDUP_TYPED(lrw->lr_length, sizeof (uint64_t), uint64_t) >
++	    reclen - sizeof (lr_write_t) ||
++	    lrw->lr_offset + lrw->lr_length < lrw->lr_offset) {
++		zil_replay_split_drop(zilog, zr, 1);
++		return (ZR_SPLIT_BAD);
++	}
++
++	if (slr->lr_length + lrw->lr_length > ZIL_REPLAY_WRITE_MAX) {
++		uint64_t chunk = P2ALIGN_TYPED(slr->lr_offset +
++		    slr->lr_length, SPA_MAXBLOCKSIZE, uint64_t);
++		if (chunk <= slr->lr_offset) {
++			zil_replay_split_drop(zilog, zr, 1);
++			return (ZR_SPLIT_BAD);
++		}
++
++		/*
++		 * Replay the data up to the block boundary, as the last
++		 * piece below it, so that an interrupted replay resumes with
++		 * the piece after that.  Then gather this piece.
++		 */
++		zilog->zl_replaying_seq = zr->zr_split_bseq;
++		zil_replay_split_record(zr, chunk - slr->lr_offset,
++		    zr->zr_split_bseq);
++		return (ZR_SPLIT_CHUNK);
++	}
++
++	zil_replay_split_copy(&data[slr->lr_length], lrw->lr_data,
++	    lrw->lr_length, zr->zr_byteswap);
++	slr->lr_length += lrw->lr_length;
++	zr->zr_split_seq = lr->lrc_seq;
++	zr->zr_split_pieces++;
++
++	uint64_t end = lrw->lr_offset + lrw->lr_length;
++	uint64_t boundary = P2ALIGN_TYPED(end, SPA_MAXBLOCKSIZE, uint64_t);
++	if (boundary > lrw->lr_offset) {
++		zr->zr_split_bseq = (boundary == end) ?
++		    lr->lrc_seq : lr->lrc_seq - 1;
++	}
++
++	if (!more) {
++		/* That was the last piece: replay the remainder. */
++		zil_replay_split_record(zr, slr->lr_length, lr->lrc_seq);
++		zr->zr_split_seq = 0;
++		zr->zr_split_pieces = 0;
++		ZIL_STAT_BUMP(zilog, zil_replay_split_merged);
++		return (ZR_SPLIT_DONE);
++	}
++	return (ZR_SPLIT_HELD);
++}
++
+ static int
+ zil_replay_scan_blk(zilog_t *zilog, const blkptr_t *bp, void *arg,
+     uint64_t claim_txg)
+@@ -4775,9 +5010,25 @@ zil_replay_log_record(zilog_t *zilog, const lr_t *lr, void *zra,
+ 	}
+ 
+ 	/*
+-	 * Make a copy of the data so we can revise and extend it.
++	 * Make a copy of the data so we can revise and extend it.  The
++	 * pieces of a split write are gathered there until it's complete.
+ 	 */
+-	memcpy(zr->zr_lr, lr, reclen);
++	zr_split_t split;
++again:
++	split = zil_replay_split(zilog, zr, lr);
++	switch (split) {
++	case ZR_SPLIT_NONE:
++		memcpy(zr->zr_lr, lr, reclen);
++		break;
++	case ZR_SPLIT_HELD:
++		return (0);
++	case ZR_SPLIT_BAD:
++		return (zil_replay_error(zilog, lr, EINVAL));
++	case ZR_SPLIT_CHUNK:
++	case ZR_SPLIT_DONE:
++		reclen = ((lr_t *)zr->zr_lr)->lrc_reclen;
++		break;
++	}
+ 
+ 	/*
+ 	 * If this is a TX_WRITE with a blkptr, suck in the data.
+@@ -4796,8 +5047,14 @@ zil_replay_log_record(zilog_t *zilog, const lr_t *lr, void *zra,
+ 	 * replay vectors know how to byteswap their records.  Therefore, if
+ 	 * the lr was byteswapped, undo it before invoking the replay vector.
+ 	 */
+-	if (zr->zr_byteswap)
+-		byteswap_uint64_array(zr->zr_lr, reclen);
++	if (zr->zr_byteswap) {
++		/*
++		 * A split write's data was already put back in order as it
++		 * was gathered, so only its header is in log block order.
++		 */
++		byteswap_uint64_array(zr->zr_lr, split == ZR_SPLIT_NONE ?
++		    reclen : sizeof (lr_write_t));
++	}
+ 
+ 	/*
+ 	 * We must now do two things atomically: replay this log record,
+@@ -4819,6 +5076,12 @@ zil_replay_log_record(zilog_t *zilog, const lr_t *lr, void *zra,
+ 		if (error != 0)
+ 			return (zil_replay_error(zilog, lr, error));
+ 	}
++	if (split == ZR_SPLIT_CHUNK) {
++		/* Now gather this piece. */
++		zil_replay_split_next(zr);
++		zilog->zl_replaying_seq = lr->lrc_seq;
++		goto again;
++	}
+ 	return (0);
+ }
+ 
+@@ -4843,6 +5106,7 @@ zil_replay(objset_t *os, void *arg,
+ 	zilog_t *zilog = dmu_objset_zil(os);
+ 	const zil_header_t *zh = zilog->zl_header;
+ 	zil_replay_arg_t zr;
++	lr_write_t split_lr;
+ 	int err;
+ 
+ 	if ((zh->zh_flags & ZIL_REPLAY_NEEDED) == 0) {
+@@ -4852,7 +5116,11 @@ zil_replay(objset_t *os, void *arg,
+ 	zr.zr_replay = replay_func;
+ 	zr.zr_arg = arg;
+ 	zr.zr_byteswap = BP_SHOULD_BYTESWAP(&zh->zh_log);
+-	zr.zr_lr = vmem_alloc(2 * SPA_MAXBLOCKSIZE, KM_SLEEP);
++	zr.zr_lr = vmem_alloc(ZIL_REPLAY_BUFSZ, KM_SLEEP);
++	zr.zr_split_lr = &split_lr;
++	zr.zr_split_seq = 0;
++	zr.zr_split_pieces = 0;
++	zr.zr_split_bseq = 0;
+ 
+ 	/*
+ 	 * Wait for in-progress removes to sync before starting replay.
+@@ -4877,7 +5145,9 @@ zil_replay(objset_t *os, void *arg,
+ 	ASSERT0(zilog->zl_replay_blks);
+ 	(void) zil_parse(zilog, zil_incr_blks, zil_replay_log_record, &zr,
+ 	    zh->zh_claim_txg, B_TRUE);
+-	vmem_free(zr.zr_lr, 2 * SPA_MAXBLOCKSIZE);
++	/* If the log ended inside a split write, count it as dropped. */
++	zil_replay_split_drop(zilog, &zr, 0);
++	vmem_free(zr.zr_lr, ZIL_REPLAY_BUFSZ);
+ 	zilog->zl_replay_write2 = B_FALSE;
+ 
+ 	zil_destroy(zilog, B_FALSE);
+diff --git a/module/zfs/zvol.c b/module/zfs/zvol.c
+index 6c893b33b..bab4f91e4 100644
+--- a/module/zfs/zvol.c
++++ b/module/zfs/zvol.c
+@@ -943,7 +943,7 @@ zvol_log_write(zvol_state_t *zv, dmu_tx_t *tx, uint64_t offset,
+ 		lr->lr_foid = ZVOL_OBJ;
+ 		lr->lr_offset = offset;
+ 		lr->lr_length = len;
+-		lr->lr_blkoff = 0;
++		lr->lr_flags = 0;
+ 		BP_ZERO(&lr->lr_blkptr);
+ 
+ 		itx->itx_private = zv;
+diff --git a/tests/runfiles/common.run b/tests/runfiles/common.run
+index 128bda33f..8e35bd245 100644
+--- a/tests/runfiles/common.run
++++ b/tests/runfiles/common.run
+@@ -1017,9 +1017,11 @@ tests = ['slog_001_pos', 'slog_002_pos', 'slog_003_pos', 'slog_004_pos',
+     'slog_005_pos', 'slog_006_pos', 'slog_007_pos', 'slog_008_neg',
+     'slog_009_neg', 'slog_010_neg', 'slog_011_neg', 'slog_012_neg',
+     'slog_013_pos', 'slog_014_pos', 'slog_015_neg', 'slog_replay_fs_001',
+-    'slog_replay_fs_002', 'slog_replay_indirect_eof',
+-    'slog_replay_indirect_order', 'slog_replay_volume', 'slog_016_pos',
+-    'slog_indirect_shared_error']
++    'slog_replay_fs_002', 'slog_replay_fs_split_truncate',
++    'slog_replay_fs_split_write', 'slog_replay_indirect_eof',
++    'slog_replay_indirect_order', 'slog_replay_volume',
++    'slog_replay_volume_split_boundary', 'slog_replay_volume_split_write',
++    'slog_016_pos', 'slog_indirect_shared_error']
+ tags = ['functional', 'slog']
+ 
+ [tests/functional/snapshot]
+diff --git a/tests/zfs-tests/tests/Makefile.am b/tests/zfs-tests/tests/Makefile.am
+index c2b1a2373..15f6015dc 100644
+--- a/tests/zfs-tests/tests/Makefile.am
++++ b/tests/zfs-tests/tests/Makefile.am
+@@ -2144,9 +2144,13 @@ nobase_dist_datadir_zfs_tests_tests_SCRIPTS += \
+ 	functional/slog/slog_indirect_shared_error.ksh \
+ 	functional/slog/slog_replay_fs_001.ksh \
+ 	functional/slog/slog_replay_fs_002.ksh \
++	functional/slog/slog_replay_fs_split_truncate.ksh \
++	functional/slog/slog_replay_fs_split_write.ksh \
+ 	functional/slog/slog_replay_indirect_eof.ksh \
+ 	functional/slog/slog_replay_indirect_order.ksh \
+ 	functional/slog/slog_replay_volume.ksh \
++	functional/slog/slog_replay_volume_split_boundary.ksh \
++	functional/slog/slog_replay_volume_split_write.ksh \
+ 	functional/snapshot/cleanup.ksh \
+ 	functional/snapshot/clone_001_pos.ksh \
+ 	functional/snapshot/rollback_001_pos.ksh \
+diff --git a/tests/zfs-tests/tests/functional/slog/slog.kshlib b/tests/zfs-tests/tests/functional/slog/slog.kshlib
+index 8b2be2c14..fc43c55f0 100644
+--- a/tests/zfs-tests/tests/functional/slog/slog.kshlib
++++ b/tests/zfs-tests/tests/functional/slog/slog.kshlib
+@@ -27,6 +27,7 @@
+ 
+ #
+ # Copyright (c) 2013, 2016 by Delphix. All rights reserved.
++# Copyright 2026 Oxide Computer Company
+ #
+ 
+ . $STF_SUITE/include/libtest.shlib
+@@ -156,3 +157,32 @@ function verify_slog_device
+ 
+ 	return 1
+ }
++
++#
++# Lose log block $2 (counting from 1) of dataset $1, as if the system had
++# crashed before it reached disk: export the pool and overwrite the block
++# with zeros on each of the log devices in $LDEV, so that the log ends
++# before it both when it is claimed and when it is replayed.
++#
++function lose_zil_block
++{
++	typeset ds=$1
++	typeset n=$2
++	typeset dva off size dev
++
++	# zdb prints xattr values (e.g. SELinux labels) raw, NUL included;
++	# -a keeps grep from taking that for binary output.
++	dva=$(zdb -ivvvvv $ds | grep -a "Block seqno" | \
++	    sed -n "${n}s/.*DVA\[0\]=<\([0-9a-f:]*\)>.*/\1/p")
++	[[ -n $dva ]] || log_fail "$ds has no log block $n"
++	# A DVA is vdev:offset:asize, in hex.  The offset is from the end of
++	# the 4M of labels and boot block at the start of the device.
++	dva=${dva#*:}
++	off=$(( (16#${dva%%:*} + 4 * 1024 * 1024) / 512 ))
++	size=$(( 16#${dva#*:} / 512 ))
++	log_must_busy zpool export ${ds%%/*}
++	for dev in $LDEV; do
++		log_must dd if=/dev/zero of=$dev bs=512 seek=$off count=$size \
++		    conv=notrunc
++	done
++}
+diff --git a/tests/zfs-tests/tests/functional/slog/slog_replay_fs_split_truncate.ksh b/tests/zfs-tests/tests/functional/slog/slog_replay_fs_split_truncate.ksh
+new file mode 100755
+index 000000000..c7a5f236f
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/slog/slog_replay_fs_split_truncate.ksh
+@@ -0,0 +1,89 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# This file and its contents are supplied under the terms of the
++# Common Development and Distribution License ("CDDL"), version 1.0.
++# You may only use this file in accordance with the terms of version
++# 1.0 of the CDDL.
++#
++# A full copy of the text of the CDDL should have accompanied this
++# source.  A copy of the CDDL is also available via the Internet at
++# https://opensource.org/license/CDDL-1.0.
++#
++
++#
++# Copyright 2026 Oxide Computer Company
++#
++
++. $STF_SUITE/tests/functional/slog/slog.kshlib
++
++#
++# DESCRIPTION:
++#	Verify that a split write is replayed when the file was truncated
++#	into it before the log was written.
++#
++# STRATEGY:
++#	1. Create a pool with a slog, so async writes are logged with
++#	   their data (WR_NEED_COPY), and freeze it.
++#	2. Write 1M in one write(2), then truncate the file to a size
++#	   inside the first piece of one of its 128K records, and fsync(2)
++#	   it to write the log.  By then, the pieces of that record past
++#	   the new end of file no longer exist.
++#	3. Export and import to replay the log.  The file must hold the
++#	   data written below the new end of file, and no piece may have
++#	   been dropped.
++#	4. Repeat for the first and the last record.
++#
++
++verify_runnable "global"
++
++#
++# Freeze the pool, write $1 to $2 in one write(2), truncate $2 to $3 bytes
++# and fsync it, then replay the log.  (Unmounting doesn't write the log on
++# FreeBSD: the file's vnode is gone by the time the log is committed, and
++# its data can't be read.)
++#
++function write_truncate_frozen_and_replay
++{
++	typeset src=$1
++	typeset dst=$2
++	typeset size=$3
++
++	# Make sure the dataset has a ZIL header before freezing.
++	log_must dd if=/dev/zero of=/$TESTPOOL/$TESTFS/sync \
++	    conv=fdatasync,fsync bs=1 count=1
++	log_must zpool freeze $TESTPOOL
++	log_must dd if=$src of=$dst bs=1024k count=1
++	log_must dd if=/dev/null of=$dst bs=1 seek=$size conv=fsync
++	log_must zfs unmount $TESTPOOL/$TESTFS
++	log_must zpool export $TESTPOOL
++	log_must zpool import -f -d $VDIR $TESTPOOL
++}
++
++log_assert "Replay keeps a split write whose tail was truncated away."
++log_onexit cleanup
++log_must setup
++
++log_must zpool create $TESTPOOL $VDEV log mirror $LDEV
++log_must zfs create -o compression=off -o recordsize=128k \
++    $TESTPOOL/$TESTFS
++log_must mkdir -p $TESTDIR
++log_must dd if=/dev/urandom of=$TESTDIR/src bs=1024k count=1
++
++#
++# The first piece of the first record is short and that of the last record
++# is long, so truncate into each of them.
++#
++for size in 1024 1000000; do
++	log_must eval "dd if=$TESTDIR/src bs=$size count=1 \
++	    >$TESTDIR/expect.$size"
++	dropped=$(kstat zil.zil_replay_split_dropped)
++	write_truncate_frozen_and_replay $TESTDIR/src \
++	    /$TESTPOOL/$TESTFS/file.$size $size
++	log_must cmp $TESTDIR/expect.$size /$TESTPOOL/$TESTFS/file.$size
++	dropped=$(( $(kstat zil.zil_replay_split_dropped) - dropped ))
++	log_note "zil_replay_split_dropped went up by $dropped"
++	log_must test $dropped -eq 0
++done
++
++log_pass "Replay keeps a split write whose tail was truncated away."
+diff --git a/tests/zfs-tests/tests/functional/slog/slog_replay_fs_split_write.ksh b/tests/zfs-tests/tests/functional/slog/slog_replay_fs_split_write.ksh
+new file mode 100755
+index 000000000..aa6264353
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/slog/slog_replay_fs_split_write.ksh
+@@ -0,0 +1,130 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# This file and its contents are supplied under the terms of the
++# Common Development and Distribution License ("CDDL"), version 1.0.
++# You may only use this file in accordance with the terms of version
++# 1.0 of the CDDL.
++#
++# A full copy of the text of the CDDL should have accompanied this
++# source.  A copy of the CDDL is also available via the Internet at
++# https://opensource.org/license/CDDL-1.0.
++#
++
++#
++# Copyright 2026 Oxide Computer Company
++#
++
++. $STF_SUITE/tests/functional/slog/slog.kshlib
++
++#
++# DESCRIPTION:
++#	Verify that a write split across log blocks is replayed whole, and
++#	that one whose later pieces are lost is not replayed at all.
++#
++# STRATEGY:
++#	1. Create a pool with a slog, so async writes are logged with
++#	   their data (WR_NEED_COPY), and freeze it.
++#	2. Write 1M in one write(2), and fsync(2) it to write the log:
++#	   eight 128K records, each larger than a log block, so each is
++#	   split across log blocks.
++#	3. Check with zdb that the pieces are marked, then export and
++#	   import to replay the log.  The file must match, and
++#	   zil_replay_split_merged must count the eight writes.
++#	4. Repeat, but overwrite the fourth log block with zeros before
++#	   importing, so the log ends after the third, as if the system
++#	   had crashed before the fourth reached disk.  Each 128K
++#	   of the file must then be either the data written or zeros: the
++#	   records wholly in the first three blocks are replayed, and the
++#	   one split into the fourth is dropped.
++#
++
++verify_runnable "global"
++
++#
++# Freeze the pool, write $1 to $2 in one write(2) and fsync it, then replay
++# the log.  (Unmounting doesn't write the log on FreeBSD: the file's vnode
++# is gone by the time the log is committed, and its data can't be read.)
++# If $3 is "check", first check that zdb shows the split pieces; if it is
++# "lose", make the log end after its third block.
++#
++function write_frozen_and_replay
++{
++	typeset src=$1
++	typeset dst=$2
++	typeset mode=$3
++
++	# Make sure the dataset has a ZIL header before freezing.
++	log_must dd if=/dev/zero of=/$TESTPOOL/$TESTFS/sync \
++	    conv=fdatasync,fsync bs=1 count=1
++	log_must zpool freeze $TESTPOOL
++	log_must dd if=$src of=$dst bs=1024k count=1 conv=fsync
++	log_must zfs unmount $TESTPOOL/$TESTFS
++	if [[ "$mode" == "check" ]]; then
++		typeset zdbout=$TESTDIR/zdb.out
++		log_must eval "zdb -ivvvvv $TESTPOOL/$TESTFS >$zdbout"
++		log_must test $(grep -c "more follows" $zdbout) -ge 8
++		log_must test $(grep -c "continued" $zdbout) -ge 8
++	fi
++	if [[ "$mode" == "lose" ]]; then
++		lose_zil_block $TESTPOOL/$TESTFS 4
++	else
++		log_must zpool export $TESTPOOL
++	fi
++	log_must zpool import -f -d $VDIR $TESTPOOL
++}
++
++log_assert "Replay applies a write split across log blocks whole or not at all."
++log_onexit cleanup
++log_must setup
++
++log_must zpool create $TESTPOOL $VDEV log mirror $LDEV
++log_must zfs create -o compression=off -o recordsize=128k \
++    $TESTPOOL/$TESTFS
++log_must mkdir -p $TESTDIR
++
++#
++# A split write is replayed whole.
++#
++log_must dd if=/dev/urandom of=$TESTDIR/src1 bs=1024k count=1
++merged=$(kstat zil.zil_replay_split_merged)
++write_frozen_and_replay $TESTDIR/src1 /$TESTPOOL/$TESTFS/file1 check
++log_must cmp $TESTDIR/src1 /$TESTPOOL/$TESTFS/file1
++merged=$(( $(kstat zil.zil_replay_split_merged) - merged ))
++log_note "zil_replay_split_merged went up by $merged"
++log_must test $merged -ge 8
++
++#
++# A split write whose later pieces are lost is not replayed.
++#
++log_must dd if=/dev/urandom of=$TESTDIR/src2 bs=1024k count=1
++merged=$(kstat zil.zil_replay_split_merged)
++dropped=$(kstat zil.zil_replay_split_dropped)
++write_frozen_and_replay $TESTDIR/src2 /$TESTPOOL/$TESTFS/file2 lose
++merged=$(( $(kstat zil.zil_replay_split_merged) - merged ))
++dropped=$(( $(kstat zil.zil_replay_split_dropped) - dropped ))
++log_note "zil_replay_split_merged went up by $merged," \
++    "zil_replay_split_dropped by $dropped"
++# Records past the last one replayed may be past the end of the file, so
++# compare a copy of it extended with zeros to 1M.
++log_must cp /$TESTPOOL/$TESTFS/file2 $TESTDIR/file2
++log_must truncate -s 1M $TESTDIR/file2
++whole=0
++for i in 0 1 2 3 4 5 6 7; do
++	log_must eval "dd if=$TESTDIR/src2 of=$TESTDIR/want bs=128k skip=$i \
++	    count=1"
++	log_must eval "dd if=$TESTDIR/file2 of=$TESTDIR/got bs=128k skip=$i \
++	    count=1"
++	if cmp -s $TESTDIR/want $TESTDIR/got; then
++		log_must test $whole -eq $i
++		(( whole += 1 ))
++	elif (( $(tr -d '\0' <$TESTDIR/got | wc -c) != 0 )); then
++		log_fail "record $i is neither the data written nor zeros"
++	fi
++done
++log_note "$whole of 8 records replayed"
++log_must test $whole -ge 1 -a $whole -lt 8
++log_must test $merged -eq $whole
++log_must test $dropped -ge 1
++
++log_pass "Replay applies a write split across log blocks whole or not at all."
+diff --git a/tests/zfs-tests/tests/functional/slog/slog_replay_volume_split_boundary.ksh b/tests/zfs-tests/tests/functional/slog/slog_replay_volume_split_boundary.ksh
+new file mode 100755
+index 000000000..c7edcdfe7
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/slog/slog_replay_volume_split_boundary.ksh
+@@ -0,0 +1,159 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# This file and its contents are supplied under the terms of the
++# Common Development and Distribution License ("CDDL"), version 1.0.
++# You may only use this file in accordance with the terms of version
++# 1.0 of the CDDL.
++#
++# A full copy of the text of the CDDL should have accompanied this
++# source.  A copy of the CDDL is also available via the Internet at
++# https://opensource.org/license/CDDL-1.0.
++#
++
++#
++# Copyright 2026 Oxide Computer Company
++#
++
++. $STF_SUITE/tests/functional/slog/slog.kshlib
++
++#
++# DESCRIPTION:
++#	Verify that a split zvol write that crosses a multiple of
++#	SPA_MAXBLOCKSIZE (16M) is replayed whole when all its pieces are
++#	in the log, and not at all if the log ends after that offset:
++#	replay applies a write in parts only if it is too large to gather.
++#
++# STRATEGY:
++#	1. Create a pool with a slog and a zvol with sync=always, and freeze
++#	   the pool.
++#	2. Write 768K at 15.75M in one synchronous O_DIRECT write(2).  It is
++#	   logged as one record split into about seven pieces, one of which
++#	   contains offset 16M.  768K reaches the zvol whole on Linux
++#	   (BIO_MAX_VECS pages, or with zvol_use_blk_mq, 8 volume blocks)
++#	   and FreeBSD (MAXPHYS).
++#	3. Export and import to replay the log.  The zvol must hold the
++#	   write, and zil_replay_split_merged must count it.
++#	4. Repeat with different data, but overwrite the log block holding
++#	   the first piece after 16M with zeros before importing, as if the
++#	   system had crashed before it reached disk.  None of the second
++#	   write may be replayed.
++#
++
++verify_runnable "global"
++
++VOLDEV=$ZVOL_DEVDIR/$TESTPOOL/$TESTVOL
++K=1024
++M=$((1024 * 1024))
++
++#
++# Freeze the pool, write $1 to the zvol at 15.75M in one write(2), leaving
++# the write only in the log.
++#
++function write_frozen
++{
++	typeset src=$1
++
++	# Make sure the zvol has a ZIL header before freezing.
++	log_must dd if=/dev/zero of=$VOLDEV bs=512 seek=$((47 * M / 512)) \
++	    count=1 oflag=direct,sync
++	log_must zpool freeze $TESTPOOL
++	log_must dd if=$src of=$VOLDEV bs=768k seek=21 count=1 \
++	    oflag=direct,sync
++}
++
++#
++# Print the number of the first log block of $1 that holds a TX_WRITE piece
++# at or after offset $2.
++#
++function block_after
++{
++	typeset ds=$1
++	typeset boundary=$2
++	typeset line off
++	typeset -i n=0
++
++	zdb -ivvvvv $ds | grep -a -E "Block seqno|foid .*, offset " | \
++	    while read line; do
++		case "$line" in
++		*"Block seqno"*)
++			n=$((n + 1))
++			;;
++		*)
++			off=${line#*offset }
++			off=${off%%,*}
++			if (( 16#$off >= boundary )); then
++				echo $n
++				return
++			fi
++			;;
++		esac
++	done
++}
++
++#
++# Compare $3 bytes of the zvol at offset $2 with file $1, at the same
++# offset within it as $4.
++#
++function zvol_cmp
++{
++	typeset src=$1
++	typeset off=$2
++	typeset len=$3
++	typeset srcoff=$4
++
++	log_must eval "dd if=$VOLDEV of=$TESTDIR/got bs=64k skip=$((off / \
++	    (64 * K))) count=$((len / (64 * K)))"
++	log_must eval "dd if=$src of=$TESTDIR/want bs=64k skip=$((srcoff / \
++	    (64 * K))) count=$((len / (64 * K)))"
++	log_must cmp $TESTDIR/want $TESTDIR/got
++}
++
++log_assert "Replay applies a split zvol write that crosses a multiple of" \
++    "16M only if all of it is in the log."
++log_onexit cleanup
++log_must setup
++
++log_must zpool create $TESTPOOL $VDEV log mirror $LDEV
++log_must zfs create -V 48m -o volblocksize=128k -o compression=off \
++    -o sync=always $TESTPOOL/$TESTVOL
++block_device_wait $VOLDEV
++log_must mkdir -p $TESTDIR
++
++#
++# A write crossing 16M is replayed whole.
++#
++log_must dd if=/dev/urandom of=$TESTDIR/src1 bs=768k count=1
++merged=$(kstat zil.zil_replay_split_merged)
++write_frozen $TESTDIR/src1
++log_must_busy zpool export $TESTPOOL
++log_must zpool import -f -d $VDIR $TESTPOOL
++block_device_wait $VOLDEV
++zvol_cmp $TESTDIR/src1 $((63 * 256 * K)) $((768 * K)) 0
++merged=$(( $(kstat zil.zil_replay_split_merged) - merged ))
++log_note "zil_replay_split_merged went up by $merged"
++log_must test $merged -eq 1
++
++#
++# A write crossing 16M whose pieces after 16M are lost is not replayed,
++# not even up to 16M.
++#
++log_must dd if=/dev/urandom of=$TESTDIR/src2 bs=768k count=1
++merged=$(kstat zil.zil_replay_split_merged)
++dropped=$(kstat zil.zil_replay_split_dropped)
++write_frozen $TESTDIR/src2
++n=$(block_after $TESTPOOL/$TESTVOL $((16 * M)))
++[[ -n $n ]] || log_fail "no log block after 16M"
++lose_zil_block $TESTPOOL/$TESTVOL $n
++log_must zpool import -f -d $VDIR $TESTPOOL
++block_device_wait $VOLDEV
++zvol_cmp $TESTDIR/src1 $((63 * 256 * K)) $((768 * K)) 0
++merged=$(( $(kstat zil.zil_replay_split_merged) - merged ))
++dropped=$(( $(kstat zil.zil_replay_split_dropped) - dropped ))
++log_note "zil_replay_split_merged went up by $merged," \
++    "zil_replay_split_dropped by $dropped"
++log_must test $merged -eq 0
++log_must test $dropped -ge 1
++
++log_pass "Replay applies a split zvol write that crosses a multiple of" \
++    "16M only if all of it is in the log."
+diff --git a/tests/zfs-tests/tests/functional/slog/slog_replay_volume_split_write.ksh b/tests/zfs-tests/tests/functional/slog/slog_replay_volume_split_write.ksh
+new file mode 100755
+index 000000000..14970577f
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/slog/slog_replay_volume_split_write.ksh
+@@ -0,0 +1,134 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# This file and its contents are supplied under the terms of the
++# Common Development and Distribution License ("CDDL"), version 1.0.
++# You may only use this file in accordance with the terms of version
++# 1.0 of the CDDL.
++#
++# A full copy of the text of the CDDL should have accompanied this
++# source.  A copy of the CDDL is also available via the Internet at
++# https://opensource.org/license/CDDL-1.0.
++#
++
++#
++# Copyright 2026 Oxide Computer Company
++#
++
++. $STF_SUITE/tests/functional/slog/slog.kshlib
++
++#
++# DESCRIPTION:
++#	Verify that a zvol write split into many pieces across log blocks
++#	is replayed whole, and that one whose later pieces are lost is not
++#	replayed at all.
++#
++# STRATEGY:
++#	1. Create a pool with a slog and a zvol, and freeze the pool.  The
++#	   zvol has sync=always, since FreeBSD's GEOM zvols ignore O_SYNC.
++#	2. Write 512K to the zvol in one synchronous O_DIRECT write(2).  It
++#	   is logged as a single record with its data (WR_NEED_COPY), split
++#	   into about five pieces: the first marked "more follows", the last
++#	   "continued", and the ones between both.  512K is well under the
++#	   largest single request on Linux (BIO_MAX_VECS pages, or with
++#	   zvol_use_blk_mq, zvol_blk_mq_blocks_per_thread volume blocks) and
++#	   FreeBSD (MAXPHYS), so the write reaches the zvol whole.
++#	3. Export and import to replay the log.  The zvol must hold the
++#	   write, and zil_replay_split_merged must count it.
++#	4. Repeat at the next 512K, but overwrite the fourth log block with
++#	   zeros before importing, so the log ends after the third, as if
++#	   the system had crashed before the fourth reached disk.  None of
++#	   that write may be replayed, the pieces in the first three blocks
++#	   must be counted in zil_replay_split_dropped, and the first write
++#	   must still be intact.
++#
++
++verify_runnable "global"
++
++VOLDEV=$ZVOL_DEVDIR/$TESTPOOL/$TESTVOL
++
++#
++# Freeze the pool, write $1 to the zvol at 512K offset $2 in one write(2),
++# leaving the write only in the log.
++#
++function write_frozen
++{
++	typeset src=$1
++	typeset seek=$2
++
++	# Make sure the zvol has a ZIL header before freezing.
++	log_must dd if=/dev/zero of=$VOLDEV bs=512 seek=8192 count=1 \
++	    oflag=direct,sync
++	log_must zpool freeze $TESTPOOL
++	log_must dd if=$src of=$VOLDEV bs=512k seek=$seek count=1 \
++	    oflag=direct,sync
++}
++
++#
++# Export and import to replay the log.  If $1 is "lose", make the log end
++# after its third block.
++#
++function replay_log
++{
++	if [[ "$1" == "lose" ]]; then
++		lose_zil_block $TESTPOOL/$TESTVOL 4
++	else
++		log_must_busy zpool export $TESTPOOL
++	fi
++	log_must zpool import -f -d $VDIR $TESTPOOL
++	block_device_wait $VOLDEV
++}
++
++log_assert "Replay applies a zvol write split into many pieces whole or" \
++    "not at all."
++log_onexit cleanup
++log_must setup
++
++log_must zpool create $TESTPOOL $VDEV log mirror $LDEV
++log_must zfs create -V 16m -o volblocksize=128k -o compression=off \
++    -o sync=always $TESTPOOL/$TESTVOL
++block_device_wait $VOLDEV
++log_must mkdir -p $TESTDIR
++
++#
++# A write split into many pieces is replayed whole.
++#
++log_must dd if=/dev/urandom of=$TESTDIR/src1 bs=512k count=1
++merged=$(kstat zil.zil_replay_split_merged)
++write_frozen $TESTDIR/src1 0
++
++log_note "Verify the split pieces in the log:"
++log_must eval "zdb -ivvvvv $TESTPOOL/$TESTVOL >$TESTDIR/zdb.out"
++log_must grep -q "continued, more follows" $TESTDIR/zdb.out
++log_must test $(grep -c "more follows" $TESTDIR/zdb.out) -ge 3
++log_must test $(grep -c "continued" $TESTDIR/zdb.out) -ge 3
++
++replay_log
++log_must eval "dd if=$VOLDEV of=$TESTDIR/got1 bs=512k count=1"
++log_must cmp $TESTDIR/src1 $TESTDIR/got1
++merged=$(( $(kstat zil.zil_replay_split_merged) - merged ))
++log_note "zil_replay_split_merged went up by $merged"
++log_must test $merged -eq 1
++
++#
++# A write whose later pieces are lost is not replayed.
++#
++log_must dd if=/dev/urandom of=$TESTDIR/src2 bs=512k count=1
++log_must dd if=/dev/zero of=$TESTDIR/zero bs=512k count=1
++merged=$(kstat zil.zil_replay_split_merged)
++dropped=$(kstat zil.zil_replay_split_dropped)
++write_frozen $TESTDIR/src2 1
++replay_log lose
++log_must eval "dd if=$VOLDEV of=$TESTDIR/got2 bs=512k skip=1 count=1"
++log_must cmp $TESTDIR/zero $TESTDIR/got2
++log_must eval "dd if=$VOLDEV of=$TESTDIR/got1 bs=512k count=1"
++log_must cmp $TESTDIR/src1 $TESTDIR/got1
++merged=$(( $(kstat zil.zil_replay_split_merged) - merged ))
++dropped=$(( $(kstat zil.zil_replay_split_dropped) - dropped ))
++log_note "zil_replay_split_merged went up by $merged," \
++    "zil_replay_split_dropped by $dropped"
++log_must test $merged -eq 0
++log_must test $dropped -ge 2
++
++log_pass "Replay applies a zvol write split into many pieces whole or" \
++    "not at all."
+-- 
+2.43.0
+

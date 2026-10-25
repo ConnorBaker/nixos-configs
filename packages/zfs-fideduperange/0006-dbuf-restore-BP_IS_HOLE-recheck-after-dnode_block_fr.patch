@@ -1,0 +1,89 @@
+From efe4880d65b68dc38e2f34a9b60a68a3d47510f9 Mon Sep 17 00:00:00 2001
+From: "Cyrille C." <18537428+CrochetFeve0251@users.noreply.github.com>
+Date: Tue, 6 Oct 2026 16:11:09 -0700
+Subject: [PATCH 6/8] dbuf: restore BP_IS_HOLE() recheck after
+ dnode_block_freed()
+
+Commit 79cf54582 ("Fix reads for blocks freed after being cloned")
+reworked the level-0 check in dbuf_read_hole() and dropped the
+BP_IS_HOLE() recheck that followed dnode_block_freed(), together with
+the comment explaining it.  That recheck was not about overrides: it
+closes a race with dnode_sync().
+
+dnode_sync_free_ranges() drops dn_mtx, clears the bps through
+dnode_sync_free_range_impl() -> free_blocks(), then retakes dn_mtx and
+removes the range from dn_free_ranges.  For blkptrs held in the dnode
+(dn_nlevels == 1), free_blocks() writes the bp without the parent's
+db_rwlock, so holding that lock in dbuf_read() does not serialize
+against it.  A reader that saw a non-hole bp, then waited on dn_mtx in
+dnode_block_freed() until the range was removed, gets "not freed" while
+the bp it is about to copy is already a hole (with HOLE_BIRTH, lsize
+and birth preserved).  dbuf_read_impl() then hands that hole to
+arc_read(): no child I/O is issued, checksum verification fails with
+EINVAL, and without ZIO_FLAG_CANFAIL the pool is suspended.
+
+Restore the recheck for the non-override path.  The override path
+(block clone / Direct I/O) checks the overriding bp, which
+free_blocks() does not touch, so it is left as is.
+
+Reproduced on 2.3.9 with a test-only delay widening the window between
+the first BP_IS_HOLE() and dnode_block_freed(): reads of punched
+single-block files return EINVAL with the same ereport as in #19185.
+With this change, the same test returns no error.
+
+This change, its analysis and its description were prepared with the
+help of an AI assistant (Claude), then reviewed and tested by the
+submitter.
+
+Reviewed-by: Brian Behlendorf <behlendorf1@llnl.gov>
+Signed-off-by: Cyrille C. <coquardcyr@gmail.com>
+Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+Fixes: 79cf54582 ("Fix reads for blocks freed after being cloned")
+Closes #19185
+Closes #19234
+(cherry picked from commit f1f96f5e7b01c791add67b27e8014e3986d10513)
+
+Backport notes (zfs-2.4.4): applies without conflict.  2.4.4 has the
+bug: a6f557c2c is 2.4's copy of 79cf54582 (9bf75b4b1 on master), which
+dropped the recheck.  dbuf_read_hole() here is the same as on master
+before this commit, as are dbuf_read_impl(), dbuf_read(),
+dnode_block_freed(), dnode_block_freed_after(), dnode_sync(),
+dnode_sync_free_ranges(), dnode_sync_free_range_impl() and
+free_blocks().
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ module/zfs/dbuf.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/module/zfs/dbuf.c b/module/zfs/dbuf.c
+index 9e899e3ea..3e3cd9d64 100644
+--- a/module/zfs/dbuf.c
++++ b/module/zfs/dbuf.c
+@@ -1484,6 +1484,13 @@ dbuf_read_hole(dmu_buf_impl_t *db, dnode_t *dn, blkptr_t *bp)
+ 	 * find frees from TXGs before the override, which should not make
+ 	 * the block appear freed.  Instead, check only free ranges from
+ 	 * TXGs after the override.
++	 *
++	 * Otherwise, recheck BP_IS_HOLE() after dnode_block_freed():
++	 * dnode_sync_free_ranges() clears the bp before it removes the
++	 * free range, and free_blocks() does not take the parent's
++	 * db_rwlock for blkptrs held in the dnode.  If we wait for dn_mtx
++	 * while that happens, block_freed says "no" but bp is now a hole,
++	 * which must not be handed to arc_read().
+ 	 */
+ 	if (!is_hole && db->db_level == 0) {
+ 		dbuf_dirty_record_t *dr = list_head(&db->db_dirty_records);
+@@ -1492,7 +1499,8 @@ dbuf_read_hole(dmu_buf_impl_t *db, dnode_t *dn, blkptr_t *bp)
+ 			is_hole = dnode_block_freed_after(dn,
+ 			    db->db_blkid, dr->dr_txg);
+ 		} else {
+-			is_hole = dnode_block_freed(dn, db->db_blkid);
++			is_hole = dnode_block_freed(dn, db->db_blkid) ||
++			    BP_IS_HOLE(bp);
+ 		}
+ 	}
+ 
+-- 
+2.43.0
+
