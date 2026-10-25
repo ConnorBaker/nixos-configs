@@ -76,7 +76,8 @@
     tribuchet = {
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.treefmt-nix.follows = "treefmt-nix";
-      url = "github:Mic92/tribuchet";
+      # Upstream main plus the PRs we run; see its merge history.
+      url = "github:ConnorBaker/tribuchet/integration";
     };
 
     zfs-dedup = {
