@@ -12,6 +12,11 @@ let
   # also runs our own compiles and analyses. Each build needs one agent.
   # spark-nix-infra (the Spark and Brev workers) uses the same value.
   jobs = 2;
+  # Placement A/B rotation window (UTC), e.g. { start =
+  # "2026-10-27T08:00:00Z"; end = "2026-11-03T08:00:00Z"; }. Each hour in
+  # it runs one arm; null leaves the arm file alone (hub.toml's arm).
+  placementAB = null;
+  rotating = isHub && placementAB != null;
 in
 {
   imports = [ ./nix-grpc-store.nix ];
@@ -93,6 +98,48 @@ in
   # socket puts its start job in the same transaction, ordered first.
   systemd.services.tribuchet-hub = lib.mkIf isHub {
     requires = [ "tribuchet-hub.socket" ];
+  };
+
+  # At the top of each UTC hour in the window, write that hour's arm:
+  # three hours per cycle, cycles taking the six orders of fcfs (F),
+  # speed-only (S) and speed-demand (D) in turn. Outside the window the
+  # file is removed, so hub.toml's fcfs applies. The hub reads the file
+  # at every placement decision; nothing restarts.
+  systemd.services.tribuchet-placement-arm = lib.mkIf rotating {
+    description = "Write this hour's Tribuchet placement A/B arm";
+    after = [ "tribuchet-hub.service" ];
+    path = [ pkgs.coreutils ];
+    serviceConfig.Type = "oneshot";
+    script = ''
+      file=/run/tribuchet/placement-arm
+      now=$(date -u +%s)
+      start=$(date -u -d ${placementAB.start} +%s)
+      end=$(date -u -d ${placementAB.end} +%s)
+      if [ "$now" -lt "$start" ] || [ "$now" -ge "$end" ]; then
+        rm -f "$file"
+        exit 0
+      fi
+      k=$((now / 3600 - start / 3600))
+      orders=(FSD SDF DFS DSF FDS SFD)
+      order=''${orders[$((k / 3 % 6))]}
+      case ''${order:$((k % 3)):1} in
+        F) arm=fcfs ;;
+        S) arm=speed-only ;;
+        D) arm=speed-demand ;;
+      esac
+      printf '%s\n' "$arm" > "$file.new"
+      mv "$file.new" "$file"
+      echo "hour $k of the window: $arm"
+    '';
+  };
+  systemd.timers.tribuchet-placement-arm = lib.mkIf rotating {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "*-*-* *:00:00 UTC";
+      AccuracySec = "1s";
+      # /run is empty after a reboot.
+      OnBootSec = "1min";
+    };
   };
 
   systemd.services.tribuchet-worker = {
