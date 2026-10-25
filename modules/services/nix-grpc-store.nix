@@ -39,6 +39,16 @@ in
   };
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = [ 50051 ];
 
+  # Leave a running daemon alone on switch. Upstream's reload is a drain, which
+  # assumes other builders take the new builds; each host here is its own
+  # scheduler's only builder, so the drain refused every new build until the
+  # slowest running one finished (nixos-ext, 2026-10-25 05:37-05:54Z). The new
+  # generation starts after --idle-timeout or a deliberate restart.
+  systemd.services.nix-grpc-daemon = {
+    reloadIfChanged = lib.mkForce false;
+    restartIfChanged = false;
+  };
+
   # A switch that changes nix.conf.
   systemd.services.nix-grpc-daemon-nix-conf = {
     description = "Have nix-grpc-daemon read nix.conf's max-jobs again";
