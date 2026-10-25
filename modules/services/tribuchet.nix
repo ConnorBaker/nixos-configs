@@ -35,6 +35,41 @@ in
       auth = "tailscale";
       tailscale-allowed-tags = [ "tag:ci" ];
     };
+    # Placement A/B: /run/tribuchet/placement-arm (fcfs, speed-only,
+    # speed-demand or count) overrides `arm` at every decision. Keyed by
+    # worker name; a value some candidate lacks is left out of that
+    # decision. speed: nixos-ext's low-load wall over the worker's, same
+    # pnames (calibrate.py); 1.0 unless the interval is outside 0.9-1.1.
+    # cores, memoryGiB: nproc and MemTotal read from the hosts 2026-10-25.
+    placement = {
+      arm = "fcfs";
+      workers = {
+        nixos-ext = {
+          speed = 1.0;
+          cores = 32;
+          memoryGiB = 93.5;
+        };
+        nixos-desktop = {
+          speed = 1.0;
+          cores = 32;
+          memoryGiB = 94.0;
+        };
+        # m8a.8xlarge, us-east-1a. speed: set from the calibration step
+        # before the first A/B block; until then it is left out.
+        brev-x86-10 = {
+          cores = 32;
+          memoryGiB = 123.5;
+        };
+        brev-x86-11 = {
+          cores = 32;
+          memoryGiB = 123.5;
+        };
+        brev-x86-12 = {
+          cores = 32;
+          memoryGiB = 123.5;
+        };
+      };
+    };
   };
 
   services.tribuchet-worker = {
