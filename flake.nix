@@ -227,6 +227,11 @@
                 hostConfig = inputs.self.nixosConfigurations.nixos-ext.config;
                 patched = false;
               };
+              # A dedupe between a write and its fsync(), then a crash before
+              # the txg syncs: ZIL replay must keep the write.
+              zfs-fideduperange-zil = pkgs.callPackage ./tests/zfs-fideduperange-zil.nix {
+                hostConfig = inputs.self.nixosConfigurations.nixos-ext.config;
+              };
             }
             // (
               let
