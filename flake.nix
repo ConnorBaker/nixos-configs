@@ -283,8 +283,10 @@
                   "block_cloning_disabled_ficlonerange"
                 ];
                 # One check per case, so that each fits in 600 s: 2.4.4's
-                # functional/bclone cases (common.run gives them 7200 s), and
-                # the ZTS cases of 0005 (c0688a275).
+                # functional/bclone cases (common.run gives them 7200 s), the
+                # ZTS cases of 0005 (c0688a275) and 0008 (7c3d85aaf), and
+                # 2.4.4's slog replay cases, since 0008 passes every replayed
+                # record through its split-write check.
                 oneTests = {
                   bclone = [
                     "bclone_crossfs_corner_cases_limited"
@@ -307,6 +309,13 @@
                     "slog_indirect_shared_error"
                     "slog_replay_indirect_eof"
                     "slog_replay_indirect_order"
+                    "slog_replay_fs_split_truncate"
+                    "slog_replay_fs_split_write"
+                    "slog_replay_volume_split_boundary"
+                    "slog_replay_volume_split_write"
+                    "slog_replay_fs_001"
+                    "slog_replay_fs_002"
+                    "slog_replay_volume"
                   ];
                 };
                 ztsOne =
@@ -319,8 +328,16 @@
                       tests = [ test ];
                       inherit dir;
                       timeout = 420;
+                      extraTmpfiles = ztsExtraTmpfiles.${test} or [ ];
                     }
                   );
+                # slog_replay_fs_001 copies /usr/share/dict into the pool and
+                # removes it again, as a working set of files to replay.
+                # miscfiles holds the classic word lists (web2 and others)
+                # directly in share/.
+                ztsExtraTmpfiles.slog_replay_fs_001 = [
+                  "C /usr/share/dict - - - - ${pkgs.miscfiles}/share"
+                ];
               in
               lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 (
                 {

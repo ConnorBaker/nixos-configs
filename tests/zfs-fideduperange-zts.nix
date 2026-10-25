@@ -16,6 +16,9 @@
   dir ? "block_cloning",
   # Per test, in seconds. The whole check must finish within 600 s.
   timeout ? 120,
+  # More systemd.tmpfiles.rules for the VM, for cases that need files that
+  # NixOS does not have.
+  extraTmpfiles ? [ ],
 }:
 let
   hostBoot = hostConfig.boot;
@@ -106,7 +109,8 @@ pkgs.testers.runNixOSTest {
       "L+ /usr/local/sbin - - - - /run/current-system/sw/bin"
       "L+ /sbin - - - - /run/current-system/sw/bin"
       "L+ /bin/ksh - - - - ${pkgs.ksh}/bin/ksh"
-    ];
+    ]
+    ++ extraTmpfiles;
     environment.systemPackages = with pkgs; [
       acl
       attr
