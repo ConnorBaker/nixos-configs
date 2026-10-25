@@ -1,0 +1,1513 @@
+From fca938dffbffe424b970c5fda6b65033bc6c9a48 Mon Sep 17 00:00:00 2001
+From: Matthew Ahrens <matt@mahrens.org>
+Date: Thu, 22 Oct 2026 09:53:51 -0700
+Subject: [PATCH 5/5] ZIL replay of an indirect write leaks later writes in the
+ same block
+
+Consider three sequential writes to a file, A, B and C, where A is
+logged WR_INDIRECT and C is to a different part of the same block in
+the same txg, and then an fsync().  If we crash during the fsync(),
+after we come back up we may see writes A and C but not B.  While
+POSIX doesn't specify anything before the fsync() completes, ZFS
+intends to preserve ordering in as many cases as possible.
+
+The problem occurs because when ZIL replay applies a WR_INDIRECT
+record, it restores the entire on-disk block, not just the range that
+the user wrote.  The on-disk block holds whatever the dbuf contained
+when the log was committed, including later writes in the same txg.
+So after a crash, replay can bring back writes whose own log records
+were never written, out of order with the rest of the log.  Also, a
+whole-block write into a file's last, partial block grows the file to
+the block boundary.
+
+Whole-block replay was added (with TX_WRITE2) to recover the data of a
+second indirect write to the same block in the same txg, whose
+dmu_sync() returned EALREADY.  That record is a TX_WRITE2, with no
+block pointer: its data is only in the block of the TX_WRITE that
+caused the EALREADY.  Since lwbs have been filled outside
+zl_issuer_lock (OpenZFS 2.2), that TX_WRITE can come later in the log,
+in a later lwb.  The earlier lwb's commit waiters are signaled without
+waiting for the later lwb, so a crash can also lose a write that
+fsync() acknowledged.  zvol_get_data() dropped such records instead,
+with the same problem.
+
+The fix is to give every WR_INDIRECT record the block pointer of a
+block that holds its data, then replay only the logged range.  Logs
+written by older software are still replayed as before.
+
+- dmu_sync() no longer returns EALREADY.  If another dmu_sync() of the
+  same buffer is in progress, it queues on that write, which gives it
+  its block pointer when it completes; until then, a child zio holds
+  the caller's log block.  If the buffer was already written, it
+  returns that write's block pointer.  The caller logs an ordinary
+  indirect TX_WRITE, so several records can share one block pointer,
+  and each record is durable by itself.
+  Claim and free already skip duplicate block pointers; scrub and
+  traversal now do too.  Traversal frees the log when a pool without
+  async_destroy destroys a filesystem, and the skip moves there from
+  zdb -b.  If a block clone replaced the buffer, dmu_sync() returns
+  EIO, so the caller waits for the txg to sync: the clone's block
+  pointer is for a block from an earlier txg, which the log can't
+  claim.
+- zfs_replay_write() writes only the record's range of the block.  A
+  record that extends past its block can only come from a damaged log
+  or very old software, and fails with EINVAL.  An old-style (all-zero)
+  hole block pointer is replayed as zeros.
+- Logs from older software can contain TX_WRITE2 records.  Before
+  replay, zil_replay() scans the log and stops at the first TX_WRITE2.
+  If it finds one, the log is replayed as before: whole blocks, with
+  z_replay_eof and zfs_replay_write2().
+- zvol replay keeps writing the whole block: older software's
+  zvol_get_data() dropped the record on EALREADY, leaving its data
+  only in the earlier record's block.  A block device makes no
+  ordering promise between unflushed writes.
+
+There is no on-disk format change or feature flag, and older software
+replays the new logs correctly.
+
+Add slog_replay_indirect_eof (the file growth) and
+slog_replay_indirect_order (indirect writes sharing a block: a log cut
+at each log block must replay a prefix of the writes, zdb -b must
+count each shared block once, and destroying the filesystem before
+replay must free it once), which both fail without the fix.
+Add block_cloning_replay_indirect, which checks that a clone over an
+indirectly logged write doesn't cut the log short, and
+slog_indirect_shared_error, which checks that when a shared block
+fails to be written, fsync falls back to a txg sync.
+
+This is also illumos 18510.
+
+Reviewed by: George Wilson <gwilson@zfsmail.com>
+Reviewed-by: Alexander Motin <alexander.motin@TrueNAS.com>
+Reviewed-by: Tigerblue77 <37409593+tigerblue77@users.noreply.github.com>
+Signed-off-by: Matthew Ahrens <matt@mahrens.org>
+Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+Closes #19274
+(cherry picked from commit c0688a2754c31d4ad89b3999f1ba0863601d47e0)
+
+Backport notes (zfs-2.4.4): every conflict was in context from
+master-only changes that zfs-2.4 does not have.  Resolved so the result
+is c0688a275 minus those changes:
+- dmu_impl.h, dmu.c, dmu_direct.c: 2.4 has no dsa_dio_verify_fails
+  (3f94b2031, "Redo a Direct I/O write that fails verify from a private
+  copy").  dmu_sync() and dmu_write_direct() set up dsa_waiters and
+  dr_sync_arg, and set DR_IN_DMU_SYNC under db_mtx, as c0688a275 does.
+- zil.c: zil_replay() keeps 2.4's replay buffer and has no split-write
+  state (7c3d85aaf, "ZIL replay can apply part of a split WR_NEED_COPY
+  write"); it gains only the TX_WRITE2 scan and its reset.
+- zdb.c: 2.4 has no zdb_count_ddt_log_frees() (db78d8b07), so there is
+  no call of it to update.
+- dsl_scan.c, zfs_replay.c: copyright lines.
+- common.run, Makefile.am: the four new tests join 2.4's lists, which
+  lack master's split-write tests.
+In each function c0688a275 changes, what still differs from master
+after it comes from master-only changes unrelated to it.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ cmd/zdb/zdb.c                                 |  13 +-
+ include/sys/dbuf.h                            |   6 +
+ include/sys/dmu_impl.h                        |  16 +-
+ include/sys/zil.h                             |   3 +-
+ include/sys/zil_impl.h                        |   2 +
+ module/zfs/dmu.c                              |  93 ++++++-
+ module/zfs/dmu_direct.c                       |  12 +-
+ module/zfs/dmu_traverse.c                     |   5 +
+ module/zfs/dsl_scan.c                         |   6 +-
+ module/zfs/zfs_replay.c                       |  59 ++--
+ module/zfs/zfs_vnops.c                        |  13 -
+ module/zfs/zil.c                              |  70 ++++-
+ module/zfs/zvol.c                             |   9 +-
+ tests/runfiles/common.run                     |   5 +-
+ tests/zfs-tests/tests/Makefile.am             |   4 +
+ .../block_cloning_replay_indirect.ksh         | 121 +++++++++
+ .../slog/slog_indirect_shared_error.ksh       | 143 ++++++++++
+ .../slog/slog_replay_indirect_eof.ksh         | 118 ++++++++
+ .../slog/slog_replay_indirect_order.ksh       | 252 ++++++++++++++++++
+ 19 files changed, 883 insertions(+), 67 deletions(-)
+ create mode 100755 tests/zfs-tests/tests/functional/block_cloning/block_cloning_replay_indirect.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/slog/slog_indirect_shared_error.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/slog/slog_replay_indirect_eof.ksh
+ create mode 100755 tests/zfs-tests/tests/functional/slog/slog_replay_indirect_order.ksh
+
+diff --git a/cmd/zdb/zdb.c b/cmd/zdb/zdb.c
+index acabafc52..db2ad1109 100644
+--- a/cmd/zdb/zdb.c
++++ b/cmd/zdb/zdb.c
+@@ -37,6 +37,7 @@
+  * Copyright (c) 2023, 2024, Klara Inc.
+  * Copyright (c) 2023, Rob Norris <robn@despairlabs.com>
+  * Copyright 2026 Edgecast Cloud LLC.
++ * Copyright 2026 Oxide Computer Company
+  */
+ 
+ #include <stdio.h>
+@@ -5980,8 +5981,7 @@ dump_size_histograms(zdb_cb_t *zcb)
+ }
+ 
+ static void
+-zdb_count_block(zdb_cb_t *zcb, zilog_t *zilog, const blkptr_t *bp,
+-    dmu_object_type_t type)
++zdb_count_block(zdb_cb_t *zcb, const blkptr_t *bp, dmu_object_type_t type)
+ {
+ 	int i;
+ 	boolean_t claimed = B_FALSE;
+@@ -5990,9 +5990,6 @@ zdb_count_block(zdb_cb_t *zcb, zilog_t *zilog, const blkptr_t *bp,
+ 
+ 	ASSERT(type < ZDB_OT_TOTAL);
+ 
+-	if (zilog && zil_bp_tree_add(zilog, bp) != 0)
+-		return;
+-
+ 	spa_config_enter(zcb->zcb_spa, SCL_CONFIG, FTAG, RW_READER);
+ 
+ 	blkptr_t tempbp;
+@@ -6367,6 +6364,7 @@ static int
+ zdb_blkptr_cb(spa_t *spa, zilog_t *zilog, const blkptr_t *bp,
+     const zbookmark_phys_t *zb, const dnode_phys_t *dnp, void *arg)
+ {
++	(void) zilog;
+ 	zdb_cb_t *zcb = arg;
+ 	dmu_object_type_t type;
+ 	boolean_t is_metadata;
+@@ -6391,8 +6389,7 @@ zdb_blkptr_cb(spa_t *spa, zilog_t *zilog, const blkptr_t *bp,
+ 
+ 	type = BP_GET_TYPE(bp);
+ 
+-	zdb_count_block(zcb, zilog, bp,
+-	    (type & DMU_OT_NEWTYPE) ? ZDB_OT_OTHER : type);
++	zdb_count_block(zcb, bp, (type & DMU_OT_NEWTYPE) ? ZDB_OT_OTHER : type);
+ 
+ 	is_metadata = (BP_GET_LEVEL(bp) != 0 || DMU_OT_IS_METADATA(type));
+ 
+@@ -7218,7 +7215,7 @@ count_block_cb(void *arg, const blkptr_t *bp, dmu_tx_t *tx)
+ 		(void) printf("[%s] %s\n",
+ 		    "deferred free", blkbuf);
+ 	}
+-	zdb_count_block(zcb, NULL, bp, ZDB_OT_DEFERRED);
++	zdb_count_block(zcb, bp, ZDB_OT_DEFERRED);
+ 	return (0);
+ }
+ 
+diff --git a/include/sys/dbuf.h b/include/sys/dbuf.h
+index 0b379ee79..870574a7b 100644
+--- a/include/sys/dbuf.h
++++ b/include/sys/dbuf.h
+@@ -85,6 +85,7 @@ typedef enum dbuf_cached_state {
+ 
+ struct dnode;
+ struct dmu_tx;
++struct dmu_sync_arg;
+ 
+ /*
+  * level = 0 means the user data
+@@ -159,6 +160,11 @@ typedef struct dbuf_dirty_record {
+ 			 */
+ 			arc_buf_t *dr_data;
+ 			override_states_t dr_override_state;
++			/*
++			 * The dmu_sync() or Direct I/O write in progress, if
++			 * dr_override_state is DR_IN_DMU_SYNC.
++			 */
++			struct dmu_sync_arg *dr_sync_arg;
+ 			uint8_t dr_copies;
+ 			uint8_t dr_gang_copies;
+ 			boolean_t dr_nopwrite;
+diff --git a/include/sys/dmu_impl.h b/include/sys/dmu_impl.h
+index bae872bd1..583cc066a 100644
+--- a/include/sys/dmu_impl.h
++++ b/include/sys/dmu_impl.h
+@@ -251,14 +251,28 @@ typedef struct dmu_sendstatus {
+ 	uint64_t dss_blocks; /* blocks visited during the sending process */
+ } dmu_sendstatus_t;
+ 
++/*
++ * A dmu_sync() that found another dmu_sync() of the same buffer in progress,
++ * and is waiting for that write's blkptr.  dsw_zio is an unissued child of
++ * the waiter's log block zio, which holds that log block until
++ * dmu_sync_done() fills in its blkptr and issues dsw_zio.
++ */
++typedef struct dmu_sync_waiter {
++	list_node_t		dsw_node;
++	void (*dsw_done)(struct zgd *, int);
++	struct zgd		*dsw_zgd;
++	zio_t			*dsw_zio;
++} dmu_sync_waiter_t;
++
+ /*
+  * dmu_sync_{ready/done} args
+  */
+-typedef struct {
++typedef struct dmu_sync_arg {
+ 	dbuf_dirty_record_t	*dsa_dr;
+ 	void (*dsa_done)(struct zgd *, int);
+ 	struct zgd		*dsa_zgd;
+ 	dmu_tx_t		*dsa_tx;
++	list_t			dsa_waiters;	/* dmu_sync_waiter_t */
+ } dmu_sync_arg_t;
+ 
+ void dmu_sync_done(zio_t *, arc_buf_t *buf, void *varg);
+diff --git a/include/sys/zil.h b/include/sys/zil.h
+index da0859988..e5e1d40f4 100644
+--- a/include/sys/zil.h
++++ b/include/sys/zil.h
+@@ -163,7 +163,7 @@ typedef enum zil_create {
+ #define	TX_MKDIR_ACL		17	/* mkdir with ACL */
+ #define	TX_MKDIR_ATTR		18	/* mkdir with attr */
+ #define	TX_MKDIR_ACL_ATTR	19	/* mkdir with ACL + attrs */
+-#define	TX_WRITE2		20	/* dmu_sync EALREADY write */
++#define	TX_WRITE2		20	/* dmu_sync EALREADY write (old) */
+ #define	TX_SETSAXATTR		21	/* Set sa xattrs on file */
+ #define	TX_RENAME_EXCHANGE	22	/* Atomic swap via renameat2 */
+ #define	TX_RENAME_WHITEOUT	23	/* Atomic whiteout via renameat2 */
+@@ -625,6 +625,7 @@ extern void	zil_close(zilog_t *zilog);
+ extern boolean_t zil_replay(objset_t *os, void *arg,
+     zil_replay_func_t *const replay_func[TX_MAX_TYPE]);
+ extern boolean_t zil_replaying(zilog_t *zilog, dmu_tx_t *tx);
++extern boolean_t zil_replay_whole_blocks(zilog_t *zilog);
+ extern boolean_t zil_destroy(zilog_t *zilog, boolean_t keep_first);
+ extern void	zil_destroy_sync(zilog_t *zilog, dmu_tx_t *tx);
+ 
+diff --git a/include/sys/zil_impl.h b/include/sys/zil_impl.h
+index ea1364a7e..c093c382f 100644
+--- a/include/sys/zil_impl.h
++++ b/include/sys/zil_impl.h
+@@ -22,6 +22,7 @@
+ /*
+  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
+  * Copyright (c) 2012, 2018 by Delphix. All rights reserved.
++ * Copyright 2026 Oxide Computer Company
+  */
+ 
+ /* Portions Copyright 2010 Robert Milkowski */
+@@ -229,6 +230,7 @@ struct zilog {
+ 	list_t		zl_lwb_list;	/* in-flight log write list */
+ 	list_t		zl_lwb_crash_list; /* log writes in-flight at crash */
+ 	avl_tree_t	zl_bp_tree;	/* track bps during log parse */
++	boolean_t	zl_replay_write2; /* replaying a log with TX_WRITE2 */
+ 	clock_t		zl_replay_time;	/* lbolt of when replay started */
+ 	uint64_t	zl_replay_blks;	/* number of log blocks replayed */
+ 	zil_header_t	zl_old_header;	/* debugging aid */
+diff --git a/module/zfs/dmu.c b/module/zfs/dmu.c
+index 229729672..06cffb153 100644
+--- a/module/zfs/dmu.c
++++ b/module/zfs/dmu.c
+@@ -31,6 +31,7 @@
+  * Copyright (c) 2019, Allan Jude
+  * Copyright (c) 2022 Hewlett Packard Enterprise Development LP.
+  * Copyright (c) 2021, 2022 by Pawel Jakub Dawidek
++ * Copyright 2026 Oxide Computer Company
+  */
+ 
+ #include <sys/dmu.h>
+@@ -1943,6 +1944,8 @@ dmu_sync_done(zio_t *zio, arc_buf_t *buf, void *varg)
+ 
+ 	mutex_enter(&db->db_mtx);
+ 	ASSERT(dr->dt.dl.dr_override_state == DR_IN_DMU_SYNC);
++	ASSERT3P(dr->dt.dl.dr_sync_arg, ==, dsa);
++	dr->dt.dl.dr_sync_arg = NULL;
+ 	if (zio->io_error == 0) {
+ 		ASSERT0(dr->dt.dl.dr_has_raw_params);
+ 		dr->dt.dl.dr_nopwrite = !!(zio->io_flags & ZIO_FLAG_NOPWRITE);
+@@ -1985,6 +1988,26 @@ dmu_sync_done(zio_t *zio, arc_buf_t *buf, void *varg)
+ 	if (dsa->dsa_done)
+ 		dsa->dsa_done(dsa->dsa_zgd, zio->io_error);
+ 
++	/*
++	 * Give our blkptr to the dmu_sync()s that waited for this write.
++	 * No more can be added, since dr_sync_arg is cleared.  Their log
++	 * blocks wait for their dsw_zio.
++	 */
++	dmu_sync_waiter_t *dsw;
++	while ((dsw = list_remove_head(&dsa->dsa_waiters)) != NULL) {
++		if (zio->io_error == 0) {
++			*dsw->dsw_zgd->zgd_bp = *zio->io_bp;
++			zil_lwb_add_block(dsw->dsw_zgd->zgd_lwb,
++			    dsw->dsw_zgd->zgd_bp);
++		} else {
++			dsw->dsw_zio->io_error = zio->io_error;
++		}
++		dsw->dsw_done(dsw->dsw_zgd, zio->io_error);
++		zio_nowait(dsw->dsw_zio);
++		kmem_free(dsw, sizeof (*dsw));
++	}
++	list_destroy(&dsa->dsa_waiters);
++
+ 	kmem_free(dsa, sizeof (*dsa));
+ }
+ 
+@@ -2105,17 +2128,20 @@ dmu_sync_late_arrival(zio_t *pio, objset_t *os, dmu_sync_cb_t *done, zgd_t *zgd,
+  *	ENOENT: the block was dbuf_free_range()'d, so there's nothing to do.
+  *		The caller should not log the write.
+  *
+- *	EALREADY: this block is already in the process of being synced.
+- *		The caller should track its progress (somehow).
+- *
+- *	EIO: could not do the I/O.
++ *	EIO: could not do the I/O, or the block was replaced by a block
++ *		clone.
+  *		The caller should do a txg_wait_synced().
+  *
+  *	0: the I/O has been initiated.
+  *		The caller should log this blkptr in the done callback.
+  *		It is possible that the I/O will fail, in which case
+  *		the error will be reported to the done callback and
+- *		propagated to pio from zio_done().
++ *		propagated to pio from zio_done().  If another dmu_sync()
++ *		of the block in this txg is in progress, *zgd_bp is set to
++ *		its blkptr, and the done callback is called with its error,
++ *		when it completes.  If one has completed, *zgd_bp is set to
++ *		its blkptr and the done callback is called before dmu_sync()
++ *		returns.
+  */
+ int
+ dmu_sync(zio_t *pio, uint64_t txg, dmu_sync_cb_t *done, zgd_t *zgd)
+@@ -2151,7 +2177,6 @@ dmu_sync(zio_t *pio, uint64_t txg, dmu_sync_cb_t *done, zgd_t *zgd)
+ 	 * sync thread will block in dbuf_sync_leaf() until we drop db_mtx.
+ 	 */
+ 	mutex_enter(&db->db_mtx);
+-
+ 	if (txg <= spa_last_synced_txg(os->os_spa)) {
+ 		/*
+ 		 * This txg has already synced.  There's nothing to do.
+@@ -2230,27 +2255,67 @@ dmu_sync(zio_t *pio, uint64_t txg, dmu_sync_cb_t *done, zgd_t *zgd)
+ 	}
+ 
+ 	ASSERT(dr->dr_txg == txg);
+-	if (dr->dt.dl.dr_override_state == DR_IN_DMU_SYNC ||
+-	    dr->dt.dl.dr_override_state == DR_OVERRIDDEN) {
++	if (dr->dt.dl.dr_override_state == DR_IN_DMU_SYNC) {
++		dmu_sync_arg_t *wdsa = dr->dt.dl.dr_sync_arg;
++		dmu_sync_waiter_t *dsw;
++
+ 		/*
+-		 * We have already issued a sync write for this buffer,
+-		 * or this buffer has already been synced.  It could not
+-		 * have been dirtied since, or we would have cleared the state.
++		 * Another sync write of this buffer is in progress.  Its copy
++		 * holds our data: the buffer could not have been dirtied
++		 * since, or we would have cleared the state.  dmu_sync_done()
++		 * will give us its blkptr.  Until then, hold our log block
++		 * with a child of pio, as our own write would.
+ 		 */
++		dsw = kmem_alloc(sizeof (*dsw), KM_SLEEP);
++		dsw->dsw_done = done;
++		dsw->dsw_zgd = zgd;
++		dsw->dsw_zio = zio_null(pio, os->os_spa, NULL, NULL, NULL,
++		    ZIO_FLAG_CANFAIL);
++		list_insert_tail(&wdsa->dsa_waiters, dsw);
+ 		mutex_exit(&db->db_mtx);
+-		return (SET_ERROR(EALREADY));
++		return (0);
++	}
++	if (dr->dt.dl.dr_brtwrite) {
++		/*
++		 * A block clone replaced this buffer after our write.  Its
++		 * blkptr points to a block allocated in an earlier txg,
++		 * which the log can't claim or free, so wait for the txg to
++		 * sync instead.  Dropping the record would not do: the log
++		 * could end after a later record but before the clone's,
++		 * and replay would apply that later write without this one.
++		 */
++		mutex_exit(&db->db_mtx);
++		return (SET_ERROR(EIO));
++	}
++	if (dr->dt.dl.dr_override_state == DR_OVERRIDDEN) {
++		/*
++		 * This buffer has already been written by a sync write, and
++		 * not dirtied since.  Log that write's blkptr.  The same
++		 * blkptr may be in other log records; claim and free skip
++		 * duplicates.  (zfs_get_data() logs a Direct I/O write's
++		 * blkptr itself, without calling dmu_sync().)
++		 */
++		*zgd->zgd_bp = dr->dt.dl.dr_overridden_by;
++		mutex_exit(&db->db_mtx);
++		zil_lwb_add_block(zgd->zgd_lwb, zgd->zgd_bp);
++		done(zgd, 0);
++		return (0);
+ 	}
+ 
+ 	ASSERT0(dr->dt.dl.dr_has_raw_params);
+ 	ASSERT(dr->dt.dl.dr_override_state == DR_NOT_OVERRIDDEN);
+-	dr->dt.dl.dr_override_state = DR_IN_DMU_SYNC;
+-	mutex_exit(&db->db_mtx);
+ 
+ 	dsa = kmem_alloc(sizeof (dmu_sync_arg_t), KM_SLEEP);
+ 	dsa->dsa_dr = dr;
+ 	dsa->dsa_done = done;
+ 	dsa->dsa_zgd = zgd;
+ 	dsa->dsa_tx = NULL;
++	list_create(&dsa->dsa_waiters, sizeof (dmu_sync_waiter_t),
++	    offsetof(dmu_sync_waiter_t, dsw_node));
++
++	dr->dt.dl.dr_override_state = DR_IN_DMU_SYNC;
++	dr->dt.dl.dr_sync_arg = dsa;
++	mutex_exit(&db->db_mtx);
+ 
+ 	zio_nowait(arc_write(pio, os->os_spa, txg, zgd->zgd_bp,
+ 	    dr->dt.dl.dr_data, !DBUF_IS_CACHEABLE(db),
+diff --git a/module/zfs/dmu_direct.c b/module/zfs/dmu_direct.c
+index 5b00698da..5d275865c 100644
+--- a/module/zfs/dmu_direct.c
++++ b/module/zfs/dmu_direct.c
+@@ -189,16 +189,20 @@ dmu_write_direct(zio_t *pio, dmu_buf_impl_t *db, abd_t *data, dmu_tx_t *tx)
+ 
+ 	ASSERT0(dr_head->dt.dl.dr_has_raw_params);
+ 	ASSERT3S(dr_head->dt.dl.dr_override_state, ==, DR_NOT_OVERRIDDEN);
++
++	dmu_sync_arg_t *dsa = kmem_zalloc(sizeof (dmu_sync_arg_t), KM_SLEEP);
++	dsa->dsa_dr = dr_head;
++	dsa->dsa_tx = tx;
++	list_create(&dsa->dsa_waiters, sizeof (dmu_sync_waiter_t),
++	    offsetof(dmu_sync_waiter_t, dsw_node));
++
+ 	dr_head->dt.dl.dr_override_state = DR_IN_DMU_SYNC;
++	dr_head->dt.dl.dr_sync_arg = dsa;
+ 
+ 	mutex_exit(&db->db_mtx);
+ 
+ 	dmu_objset_willuse_space(os, dr_head->dr_accounted, tx);
+ 
+-	dmu_sync_arg_t *dsa = kmem_zalloc(sizeof (dmu_sync_arg_t), KM_SLEEP);
+-	dsa->dsa_dr = dr_head;
+-	dsa->dsa_tx = tx;
+-
+ 	zio_t *zio = zio_write(pio, os->os_spa, txg, bp, data,
+ 	    db->db.db_size, db->db.db_size, &zp,
+ 	    dmu_write_direct_ready, NULL, dmu_write_direct_done, dsa,
+diff --git a/module/zfs/dmu_traverse.c b/module/zfs/dmu_traverse.c
+index dd1df1705..26fd8238a 100644
+--- a/module/zfs/dmu_traverse.c
++++ b/module/zfs/dmu_traverse.c
+@@ -22,6 +22,7 @@
+ /*
+  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
+  * Copyright (c) 2012, 2018 by Delphix. All rights reserved.
++ * Copyright 2026 Oxide Computer Company
+  */
+ 
+ #include <sys/zfs_context.h>
+@@ -122,6 +123,10 @@ traverse_zil_record(zilog_t *zilog, const lr_t *lrc, void *arg,
+ 		if (claim_txg == 0 || get_birth_time(td, bp) < claim_txg)
+ 			return (0);
+ 
++		/* Several records can share a dmu_sync() block. */
++		if (zil_bp_tree_add(zilog, bp) != 0)
++			return (0);
++
+ 		ASSERT3U(BP_GET_LSIZE(bp), !=, 0);
+ 		SET_BOOKMARK(&zb, td->td_objset, lr->lr_foid,
+ 		    ZB_ZIL_LEVEL, lr->lr_offset / BP_GET_LSIZE(bp));
+diff --git a/module/zfs/dsl_scan.c b/module/zfs/dsl_scan.c
+index 6a8eb3963..751e0a39d 100644
+--- a/module/zfs/dsl_scan.c
++++ b/module/zfs/dsl_scan.c
+@@ -26,6 +26,7 @@
+  * Copyright (c) 2017, 2019, Datto Inc. All rights reserved.
+  * Copyright (c) 2015, Nexenta Systems, Inc. All rights reserved.
+  * Copyright 2019 Joyent, Inc.
++ * Copyright 2026 Oxide Computer Company
+  */
+ 
+ #include <sys/dsl_scan.h>
+@@ -1797,7 +1798,6 @@ static int
+ dsl_scan_zil_record(zilog_t *zilog, const lr_t *lrc, void *arg,
+     uint64_t claim_txg)
+ {
+-	(void) zilog;
+ 	if (lrc->lrc_txtype == TX_WRITE) {
+ 		zil_scan_arg_t *zsa = arg;
+ 		dsl_pool_t *dp = zsa->zsa_dp;
+@@ -1820,6 +1820,10 @@ dsl_scan_zil_record(zilog_t *zilog, const lr_t *lrc, void *arg,
+ 		if (claim_txg == 0 || BP_GET_BIRTH(bp) < claim_txg)
+ 			return (0);
+ 
++		/* Several records can share a dmu_sync() block. */
++		if (zil_bp_tree_add(zilog, bp) != 0)
++			return (0);
++
+ 		ASSERT3U(BP_GET_LSIZE(bp), !=, 0);
+ 		SET_BOOKMARK(&zb, zh->zh_log.blk_cksum.zc_word[ZIL_ZC_OBJSET],
+ 		    lr->lr_foid, ZB_ZIL_LEVEL,
+diff --git a/module/zfs/zfs_replay.c b/module/zfs/zfs_replay.c
+index 78be046f2..0d4fc89a6 100644
+--- a/module/zfs/zfs_replay.c
++++ b/module/zfs/zfs_replay.c
+@@ -24,6 +24,7 @@
+  * Copyright (c) 2012 Cyril Plisko. All rights reserved.
+  * Copyright (c) 2013, 2017 by Delphix. All rights reserved.
+  * Copyright (c) 2021, 2022 by Pawel Jakub Dawidek
++ * Copyright 2026 Oxide Computer Company
+  */
+ 
+ #include <sys/types.h>
+@@ -818,7 +819,7 @@ zfs_replay_write(void *arg1, void *arg2, boolean_t byteswap)
+ 	char *data = &lr->lr_data[0];	/* data follows lr_write_t */
+ 	znode_t	*zp;
+ 	int error;
+-	uint64_t eod, offset, length;
++	uint64_t offset, length;
+ 
+ 	ASSERT3U(lr->lr_common.lrc_reclen, >=, sizeof (*lr));
+ 
+@@ -838,30 +839,49 @@ zfs_replay_write(void *arg1, void *arg2, boolean_t byteswap)
+ 
+ 	offset = lr->lr_offset;
+ 	length = lr->lr_length;
+-	eod = offset + length;	/* end of data for this write */
+-
+-	/*
+-	 * This may be a write from a dmu_sync() for a whole block,
+-	 * and may extend beyond the current end of the file.
+-	 * We can't just replay what was written for this TX_WRITE as
+-	 * a future TX_WRITE2 may extend the eof and the data for that
+-	 * write needs to be there. So we write the whole block and
+-	 * reduce the eof. This needs to be done within the single dmu
+-	 * transaction created within vn_rdwr -> zfs_write. So a possible
+-	 * new end of file is passed through in zfsvfs->z_replay_eof
+-	 */
+ 
+ 	zfsvfs->z_replay_eof = 0; /* 0 means don't change end of file */
+ 
+-	/* If it's a dmu_sync() block, write the whole block */
+-	if (lr->lr_common.lrc_reclen == sizeof (lr_write_t)) {
++	/*
++	 * If no data follows the record, it's a dmu_sync() block, which
++	 * holds the whole block.  We write only this record's range of it.
++	 * The rest of the block can hold later writes whose own records
++	 * aren't in the log, and the block can extend past the end of the
++	 * file.  A hole reads as zeros (zil_read_log_data()), and an old-style
++	 * hole's blkptr is all zeros, without the block size.
++	 *
++	 * In a log with TX_WRITE2s, from older software, write the whole
++	 * block instead, as that software did, because a TX_WRITE2's data is
++	 * only in the block of a TX_WRITE.  A later TX_WRITE2 may extend the
++	 * eof over data in the block, so reduce the eof to this write's end,
++	 * within the zfs_write() transaction, through z_replay_eof.
++	 */
++	if (lr->lr_common.lrc_reclen == sizeof (lr_write_t) &&
++	    zil_replay_whole_blocks(zfsvfs->z_log)) {
++		uint64_t eod = offset + length;
+ 		uint64_t blocksize = BP_GET_LSIZE(&lr->lr_blkptr);
++
+ 		if (length < blocksize) {
+ 			offset -= offset % blocksize;
+ 			length = blocksize;
+ 		}
+ 		if (zp->z_size < eod)
+ 			zfsvfs->z_replay_eof = eod;
++	} else if (lr->lr_common.lrc_reclen == sizeof (lr_write_t) &&
++	    !BP_IS_HOLE(&lr->lr_blkptr)) {
++		uint64_t blocksize = BP_GET_LSIZE(&lr->lr_blkptr);
++		uint64_t blkoff = offset % blocksize;
++
++		/*
++		 * zfs_log_write() splits indirect records at block
++		 * boundaries, so only a damaged record or one from old (2017
++		 * or earlier) software can extend past the block.
++		 */
++		if (length > blocksize - blkoff) {
++			zrele(zp);
++			return (SET_ERROR(EINVAL));
++		}
++		data += blkoff;
+ 	}
+ 	error = zfs_write_simple(zp, data, length, offset, NULL);
+ 	zrele(zp);
+@@ -871,10 +891,11 @@ zfs_replay_write(void *arg1, void *arg2, boolean_t byteswap)
+ }
+ 
+ /*
+- * TX_WRITE2 are only generated when dmu_sync() returns EALREADY
+- * meaning the pool block is already being synced. So now that we always write
+- * out full blocks, all we have to do is expand the eof if
+- * the file is grown.
++ * TX_WRITE2 are only generated by older software, when dmu_sync() returned
++ * EALREADY, meaning the block was already being, or had been, written for
++ * an indirect TX_WRITE of the same block in the same txg.  Their logs are
++ * replayed writing whole blocks (zil_replay_whole_blocks()), so all we have
++ * to do is expand the eof if the file is grown.
+  */
+ static int
+ zfs_replay_write2(void *arg1, void *arg2, boolean_t byteswap)
+diff --git a/module/zfs/zfs_vnops.c b/module/zfs/zfs_vnops.c
+index abe9d50e0..cb5d6ef53 100644
+--- a/module/zfs/zfs_vnops.c
++++ b/module/zfs/zfs_vnops.c
+@@ -1478,19 +1478,6 @@ zfs_get_data(void *arg, uint64_t gen, lr_write_t *lr, char *buf,
+ 			 */
+ 			if (error == 0)
+ 				return (0);
+-
+-			if (error == EALREADY) {
+-				lr->lr_common.lrc_txtype = TX_WRITE2;
+-				/*
+-				 * TX_WRITE2 relies on the data previously
+-				 * written by the TX_WRITE that caused
+-				 * EALREADY.  We zero out the BP because
+-				 * it is the old, currently-on-disk BP.
+-				 */
+-				zgd->zgd_bp = NULL;
+-				BP_ZERO(bp);
+-				error = 0;
+-			}
+ 		}
+ 	}
+ 
+diff --git a/module/zfs/zil.c b/module/zfs/zil.c
+index 433d27dd2..ee55d5a15 100644
+--- a/module/zfs/zil.c
++++ b/module/zfs/zil.c
+@@ -2479,8 +2479,8 @@ zil_lwb_commit(zilog_t *zilog, lwb_t *lwb, itx_t *itx)
+ 
+ 			/*
+ 			 * Typically, the only return values we should see from
+-			 * ->zl_get_data() are 0, EIO, ENOENT, EEXIST or
+-			 *  EALREADY. However, it is also possible to see other
++			 * ->zl_get_data() are 0, EIO, ENOENT or EEXIST.
++			 *  However, it is also possible to see other
+ 			 *  error values such as ENOSPC or EINVAL from
+ 			 *  dmu_read() -> dnode_hold() -> dnode_hold_impl() or
+ 			 *  ENXIO as well as a multitude of others from the
+@@ -2528,8 +2528,6 @@ zil_lwb_commit(zilog_t *zilog, lwb_t *lwb, itx_t *itx)
+ 			case ENOENT:
+ 				zfs_fallthrough;
+ 			case EEXIST:
+-				zfs_fallthrough;
+-			case EALREADY:
+ 				return (0);
+ 			}
+ 		}
+@@ -4693,6 +4691,54 @@ zil_replay_error(zilog_t *zilog, const lr_t *lr, int error)
+ 	return (error);
+ }
+ 
++static int
++zil_replay_scan_blk(zilog_t *zilog, const blkptr_t *bp, void *arg,
++    uint64_t claim_txg)
++{
++	(void) zilog, (void) bp, (void) arg, (void) claim_txg;
++
++	return (0);
++}
++
++/*
++ * Before replay, look for a TX_WRITE2, which only older software logged.
++ * Stop at the first one.  Unlike zil_replay_log_record(), this doesn't skip
++ * records already replayed (lrc_seq <= zh_replay_seq): any TX_WRITE2 shows
++ * that the log was written by that software, and the records left to replay
++ * were too.
++ */
++static int
++zil_replay_scan_record(zilog_t *zilog, const lr_t *lr, void *arg,
++    uint64_t claim_txg)
++{
++	(void) arg;
++
++	if ((lr->lrc_txtype & ~TX_CI) == TX_WRITE2 &&
++	    lr->lrc_txg >= claim_txg) {
++		zilog->zl_replay_write2 = B_TRUE;
++		return (SET_ERROR(EEXIST));
++	}
++	return (0);
++}
++
++/*
++ * Return whether the log being replayed has a TX_WRITE2 (or couldn't be
++ * scanned), and therefore needs to be replayed as whole blocks, rather than
++ * just each record's range.
++ * Old software logged a TX_WRITE2, with no data or blkptr, when its data was
++ * in the block written for another WR_INDIRECT TX_WRITE in the same txg.
++ * Replaying that TX_WRITE's whole block restores the TX_WRITE2's data.
++ * (Since lwbs are filled outside zl_issuer_lock, that TX_WRITE can come
++ * later in the log, or be missing from it.)  Newer software logs every
++ * WR_INDIRECT as a TX_WRITE with a blkptr, and each record replays its own
++ * range.
++ */
++boolean_t
++zil_replay_whole_blocks(zilog_t *zilog)
++{
++	return (zilog->zl_replay_write2);
++}
++
+ static int
+ zil_replay_log_record(zilog_t *zilog, const lr_t *lr, void *zra,
+     uint64_t claim_txg)
+@@ -4797,6 +4843,7 @@ zil_replay(objset_t *os, void *arg,
+ 	zilog_t *zilog = dmu_objset_zil(os);
+ 	const zil_header_t *zh = zilog->zl_header;
+ 	zil_replay_arg_t zr;
++	int err;
+ 
+ 	if ((zh->zh_flags & ZIL_REPLAY_NEEDED) == 0) {
+ 		return (zil_destroy(zilog, B_TRUE));
+@@ -4812,12 +4859,26 @@ zil_replay(objset_t *os, void *arg,
+ 	 */
+ 	txg_wait_synced(zilog->zl_dmu_pool, 0);
+ 
++	/*
++	 * If the scan stops early on an error, such as a read error, we can't
++	 * tell whether the rest of the log has a TX_WRITE2, so replay whole
++	 * blocks, as older software did.  That replays any log correctly,
++	 * though without keeping write order within a block.  The scan reads
++	 * only record headers, which aren't encrypted, so it doesn't decrypt.
++	 */
++	zilog->zl_replay_write2 = B_FALSE;
++	err = zil_parse(zilog, zil_replay_scan_blk, zil_replay_scan_record,
++	    NULL, zh->zh_claim_txg, B_FALSE);
++	if (err != 0)
++		zilog->zl_replay_write2 = B_TRUE;
++
+ 	zilog->zl_replay = B_TRUE;
+ 	zilog->zl_replay_time = ddi_get_lbolt();
+ 	ASSERT0(zilog->zl_replay_blks);
+ 	(void) zil_parse(zilog, zil_incr_blks, zil_replay_log_record, &zr,
+ 	    zh->zh_claim_txg, B_TRUE);
+ 	vmem_free(zr.zr_lr, 2 * SPA_MAXBLOCKSIZE);
++	zilog->zl_replay_write2 = B_FALSE;
+ 
+ 	zil_destroy(zilog, B_FALSE);
+ 	txg_wait_synced(zilog->zl_dmu_pool, zilog->zl_destroy_txg);
+@@ -4862,6 +4923,7 @@ EXPORT_SYMBOL(zil_open);
+ EXPORT_SYMBOL(zil_close);
+ EXPORT_SYMBOL(zil_replay);
+ EXPORT_SYMBOL(zil_replaying);
++EXPORT_SYMBOL(zil_replay_whole_blocks);
+ EXPORT_SYMBOL(zil_destroy);
+ EXPORT_SYMBOL(zil_destroy_sync);
+ EXPORT_SYMBOL(zil_itx_create);
+diff --git a/module/zfs/zvol.c b/module/zfs/zvol.c
+index fbc3c34ea..6c893b33b 100644
+--- a/module/zfs/zvol.c
++++ b/module/zfs/zvol.c
+@@ -39,6 +39,7 @@
+  * Copyright (c) 2016 Actifio, Inc. All rights reserved.
+  * Copyright (c) 2012, 2019 by Delphix. All rights reserved.
+  * Copyright (c) 2024, 2025, Klara, Inc.
++ * Copyright 2026 Oxide Computer Company
+  */
+ 
+ /*
+@@ -532,7 +533,13 @@ zvol_replay_write(void *arg1, void *arg2, boolean_t byteswap)
+ 	offset = lr->lr_offset;
+ 	length = lr->lr_length;
+ 
+-	/* If it's a dmu_sync() block, write the whole block */
++	/*
++	 * If it's a dmu_sync() block, write the whole block.  Older software
++	 * dropped the record when dmu_sync() returned EALREADY, leaving that
++	 * write's data only in the block of the TX_WRITE that caused it.  So
++	 * later writes in the block can be replayed even if their own records
++	 * are lost, which a block device allows.
++	 */
+ 	if (lr->lr_common.lrc_reclen == sizeof (lr_write_t)) {
+ 		uint64_t blocksize = BP_GET_LSIZE(&lr->lr_blkptr);
+ 		if (length < blocksize) {
+diff --git a/tests/runfiles/common.run b/tests/runfiles/common.run
+index 663420e57..128bda33f 100644
+--- a/tests/runfiles/common.run
++++ b/tests/runfiles/common.run
+@@ -81,6 +81,7 @@ tests = ['block_cloning_clone_mmap_cached',
+     'block_cloning_cross_enc_dataset',
+     'block_cloning_copyfilerange_fallback_same_txg',
+     'block_cloning_replay', 'block_cloning_replay_encrypted',
++    'block_cloning_replay_indirect',
+     'block_cloning_lwb_buffer_overflow', 'block_cloning_clone_mmap_write',
+     'block_cloning_rlimit_fsize', 'block_cloning_large_offset',
+     'block_cloning_after_device_removal',
+@@ -1016,7 +1017,9 @@ tests = ['slog_001_pos', 'slog_002_pos', 'slog_003_pos', 'slog_004_pos',
+     'slog_005_pos', 'slog_006_pos', 'slog_007_pos', 'slog_008_neg',
+     'slog_009_neg', 'slog_010_neg', 'slog_011_neg', 'slog_012_neg',
+     'slog_013_pos', 'slog_014_pos', 'slog_015_neg', 'slog_replay_fs_001',
+-    'slog_replay_fs_002', 'slog_replay_volume', 'slog_016_pos']
++    'slog_replay_fs_002', 'slog_replay_indirect_eof',
++    'slog_replay_indirect_order', 'slog_replay_volume', 'slog_016_pos',
++    'slog_indirect_shared_error']
+ tags = ['functional', 'slog']
+ 
+ [tests/functional/snapshot]
+diff --git a/tests/zfs-tests/tests/Makefile.am b/tests/zfs-tests/tests/Makefile.am
+index 71cefc1d1..c2b1a2373 100644
+--- a/tests/zfs-tests/tests/Makefile.am
++++ b/tests/zfs-tests/tests/Makefile.am
+@@ -503,6 +503,7 @@ nobase_dist_datadir_zfs_tests_tests_SCRIPTS += \
+ 	functional/block_cloning/block_cloning_cross_enc_dataset.ksh \
+ 	functional/block_cloning/block_cloning_replay.ksh \
+ 	functional/block_cloning/block_cloning_replay_encrypted.ksh \
++	functional/block_cloning/block_cloning_replay_indirect.ksh \
+ 	functional/block_cloning/block_cloning_lwb_buffer_overflow.ksh \
+ 	functional/block_cloning/block_cloning_rlimit_fsize.ksh \
+ 	functional/block_cloning/block_cloning_large_offset.ksh \
+@@ -2140,8 +2141,11 @@ nobase_dist_datadir_zfs_tests_tests_SCRIPTS += \
+ 	functional/slog/slog_014_pos.ksh \
+ 	functional/slog/slog_015_neg.ksh \
+ 	functional/slog/slog_016_pos.ksh \
++	functional/slog/slog_indirect_shared_error.ksh \
+ 	functional/slog/slog_replay_fs_001.ksh \
+ 	functional/slog/slog_replay_fs_002.ksh \
++	functional/slog/slog_replay_indirect_eof.ksh \
++	functional/slog/slog_replay_indirect_order.ksh \
+ 	functional/slog/slog_replay_volume.ksh \
+ 	functional/snapshot/cleanup.ksh \
+ 	functional/snapshot/clone_001_pos.ksh \
+diff --git a/tests/zfs-tests/tests/functional/block_cloning/block_cloning_replay_indirect.ksh b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_replay_indirect.ksh
+new file mode 100755
+index 000000000..10a81de0c
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/block_cloning/block_cloning_replay_indirect.ksh
+@@ -0,0 +1,121 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# This file and its contents are supplied under the terms of the
++# Common Development and Distribution License ("CDDL"), version 1.0.
++# You may only use this file in accordance with the terms of version
++# 1.0 of the CDDL.
++#
++# A full copy of the text of the CDDL should have accompanied this
++# source.  A copy of the CDDL is also available via the Internet at
++# https://opensource.org/license/CDDL-1.0.
++#
++
++#
++# Copyright 2026 Oxide Computer Company
++#
++
++. $STF_SUITE/include/libtest.shlib
++. $STF_SUITE/tests/functional/block_cloning/block_cloning.kshlib
++
++#
++# DESCRIPTION:
++#	A write that is logged indirect, to a block that a clone then
++#	replaces in the same txg, must not cut the log short.
++#
++#	When the log block is written, the indirect write's dmu_sync() finds
++#	the block overridden by the clone.  The clone's blkptr points to a
++#	block allocated in an earlier txg, which the log can't claim, so
++#	logging it would end the log at that record when the pool is
++#	imported, losing later records.
++#
++# STRATEGY:
++#	1. Stop txgs from syncing on their own
++#	2. Write block 0 of a file, logged indirect, without fsync; clone
++#	   another file's block over it; then write block 8 and fsync
++#	3. Save the vdev, which then holds the log but not the writes, as
++#	   after a crash
++#	4. Restore the saved vdev and import the pool to replay the log
++#	5. Check that block 8 has its write and block 0 has the clone
++#
++
++verify_runnable "global"
++
++export VDIR=$TEST_BASE_DIR/disk-bclone-ri
++
++claim="A clone over an indirect write keeps later log records."
++
++log_assert $claim
++
++function cleanup
++{
++	restore_tunable TXG_TIMEOUT
++	datasetexists $TESTPOOL && destroy_pool $TESTPOOL
++	rm -rf $VDIR
++}
++
++log_onexit cleanup
++
++log_must rm -rf $VDIR
++log_must mkdir -p $VDIR
++log_must truncate -s $MINVDEVSIZE $VDIR/a
++log_must save_tunable TXG_TIMEOUT
++
++log_must zpool create -o feature@block_cloning=enabled $TESTPOOL $VDIR/a
++log_must zfs create -o compression=off -o recordsize=128k \
++    -o logbias=throughput $TESTPOOL/$TESTFS
++
++typeset dir=/$TESTPOOL/$TESTFS
++log_must dd if=/dev/urandom of=$dir/src bs=128k count=1
++log_must dd if=/dev/zero of=$dir/dst bs=128k count=16
++log_must dd if=/dev/urandom of=$VDIR/w bs=128k count=1
++log_must dd if=/dev/urandom of=$VDIR/w2 bs=128k count=1
++
++# Create the ZIL header now, so that the fsync below doesn't sync a txg.
++log_must dd if=/dev/zero of=$dir/sync oflag=sync bs=1 count=1
++log_must sync_pool $TESTPOOL
++
++#
++# 1. Stop txgs from syncing on their own.  The sync thread picks up the new
++#    timeout after the next txg.
++#
++log_must set_tunable32 TXG_TIMEOUT 3600
++log_must sync_pool $TESTPOOL
++
++#
++# 2. Write block 0, clone over it, then write block 8 and fsync.
++#
++log_must dd if=$VDIR/w of=$dir/dst bs=128k count=1 conv=notrunc
++log_must clonefile -f $dir/src $dir/dst 0 0 131072
++log_must dd if=$VDIR/w2 of=$dir/dst bs=128k count=1 seek=8 \
++    conv=notrunc,fsync
++
++#
++# 3. Save the vdev, then let the pool go.
++#
++log_must cp $VDIR/a $VDIR/a.save
++log_must restore_tunable TXG_TIMEOUT
++log_must zpool export $TESTPOOL
++
++#
++# 4. Restore the saved vdev and replay the log.
++#
++log_must cp $VDIR/a.save $VDIR/a
++typeset recs
++recs=$(zdb -e -p $VDIR -iv $TESTPOOL/$TESTFS) || \
++    log_fail "zdb -i failed"
++echo "$recs"
++echo "$recs" | grep -q "TX_CLONE_RANGE" || \
++    log_fail "the log has no TX_CLONE_RANGE"
++
++log_must zpool import -d $VDIR $TESTPOOL
++
++#
++# 5. Check both blocks.
++#
++log_must dd if=$dir/dst of=$VDIR/b8 bs=128k count=1 skip=8
++log_must cmp $VDIR/b8 $VDIR/w2
++log_must dd if=$dir/dst of=$VDIR/b0 bs=128k count=1
++log_must cmp $VDIR/b0 $dir/src
++
++log_pass $claim
+diff --git a/tests/zfs-tests/tests/functional/slog/slog_indirect_shared_error.ksh b/tests/zfs-tests/tests/functional/slog/slog_indirect_shared_error.ksh
+new file mode 100755
+index 000000000..220fecad0
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/slog/slog_indirect_shared_error.ksh
+@@ -0,0 +1,143 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# This file and its contents are supplied under the terms of the
++# Common Development and Distribution License ("CDDL"), version 1.0.
++# You may only use this file in accordance with the terms of version
++# 1.0 of the CDDL.
++#
++# A full copy of the text of the CDDL should have accompanied this
++# source.  A copy of the CDDL is also available via the Internet at
++# https://opensource.org/license/CDDL-1.0.
++#
++
++#
++# Copyright 2026 Oxide Computer Company
++#
++
++. $STF_SUITE/tests/functional/slog/slog.kshlib
++. $STF_SUITE/include/kstat.shlib
++
++#
++# DESCRIPTION:
++#	When an indirect write's block fails to be written, the log records
++#	that share that block pointer must fail too, and fsync must fall back
++#	to waiting for the txg to sync.
++#
++#	A second indirect write to a block whose dmu_sync() write is in
++#	progress waits for that write and shares its block pointer.  If the
++#	write fails, the waiting record's log block must fail with it.
++#
++# STRATEGY:
++#	1. Stop txgs from syncing on their own
++#	2. For each of NREC records, write its first 64K (W1); then for each
++#	   record, write 32K at 64K (W2)
++#	3. Delay writes to the data vdev, so that each W2's dmu_sync() waits
++#	   for W1's, and make them fail
++#	4. fsync, which must see the log write fail, fall back to a txg sync,
++#	   and block when the pool suspends (failmode=wait)
++#	5. Stop the errors and resume the pool; the fsync must succeed
++#	6. Check the file, after an export and import
++#
++
++verify_runnable "global"
++
++function cleanup_fs
++{
++	zinject -c all
++	zpool clear $TESTPOOL
++	restore_tunable TXG_TIMEOUT
++	cleanup
++}
++
++log_assert "A failed indirect write fails the log records that share it."
++log_onexit cleanup_fs
++log_must setup
++log_must save_tunable TXG_TIMEOUT
++
++typeset file=/$TESTPOOL/$TESTFS/file
++typeset -i NREC=16
++typeset -i i
++set -A vdevs $VDIR/big $VDIR/e
++
++log_must truncate -s 1g ${vdevs[0]}
++log_must zpool create -o failmode=wait $TESTPOOL ${vdevs[0]} log ${vdevs[1]}
++log_must zfs create -o compression=off -o recordsize=128k \
++    -o logbias=throughput $TESTPOOL/$TESTFS
++
++log_must mkdir -p $TESTDIR
++log_must dd if=/dev/urandom of=$TESTDIR/w1 bs=64k count=1
++log_must dd if=/dev/urandom of=$TESTDIR/w2 bs=32k count=1
++log_must dd if=/dev/zero of=$file bs=128k count=$NREC
++
++# Create the ZIL header now, so that the fsync below doesn't sync a txg.
++log_must dd if=/dev/zero of=/$TESTPOOL/$TESTFS/sync \
++    oflag=sync bs=1 count=1
++log_must sync_pool $TESTPOOL
++
++#
++# 1. Stop txgs from syncing on their own.  The sync thread picks up the new
++#    timeout after the next txg.
++#
++log_must set_tunable32 TXG_TIMEOUT 3600
++log_must sync_pool $TESTPOOL
++
++#
++# 2. The writes.
++#
++for ((i = 0; i < NREC; i++)); do
++	dd if=$TESTDIR/w1 of=$file bs=64k count=1 seek=$((2 * i)) \
++	    conv=notrunc 2>/dev/null || log_fail "W1[$i] failed"
++done
++for ((i = 0; i < NREC; i++)); do
++	dd if=$TESTDIR/w2 of=$file bs=32k count=1 seek=$((4 * i + 2)) \
++	    conv=notrunc 2>/dev/null || log_fail "W2[$i] failed"
++done
++
++#
++# 3. Delay, then fail, writes to the data vdev, and fail its probes, so that
++#    the txg sync suspends the pool.
++#
++log_must zinject -d ${vdevs[0]} -D 500:64 -T write $TESTPOOL
++log_must zinject -d ${vdevs[0]} -e io -T write $TESTPOOL
++log_must zinject -d ${vdevs[0]} -e nxio -T probe $TESTPOOL
++
++#
++# 4. fsync, which blocks when the pool suspends.
++#
++typeset -i zilerr=$(kstat zil.zil_commit_error_count)
++dd if=/dev/null of=$file conv=notrunc,fsync &
++typeset -i pid=$!
++
++typeset -i tries=60
++until [[ $(kstat_pool $TESTPOOL state) == "SUSPENDED" ]]; do
++	((tries-- > 0)) || log_fail "pool didn't suspend"
++	sleep 1
++done
++typeset -i zilerr2=$(kstat zil.zil_commit_error_count)
++log_note "zil_commit_error_count $zilerr -> $zilerr2"
++((zilerr2 > zilerr)) || log_fail "the log write didn't fail"
++kill -0 $pid || log_fail "fsync returned while the pool was suspended"
++
++#
++# 5. Resume the pool.
++#
++log_must zinject -c all
++log_must zpool clear $TESTPOOL
++wait $pid || log_fail "fsync failed"
++log_must restore_tunable TXG_TIMEOUT
++
++#
++# 6. Check the file.
++#
++log_must zpool export $TESTPOOL
++log_must zpool import -d $VDIR $TESTPOOL
++for ((i = 0; i < NREC; i++)); do
++	dd if=$file of=$TESTDIR/r1 bs=64k count=1 skip=$((2 * i)) 2>/dev/null
++	cmp -s $TESTDIR/r1 $TESTDIR/w1 || log_fail "W1[$i] is wrong"
++	dd if=$file of=$TESTDIR/r2 bs=32k count=1 skip=$((4 * i + 2)) \
++	    2>/dev/null
++	cmp -s $TESTDIR/r2 $TESTDIR/w2 || log_fail "W2[$i] is wrong"
++done
++
++log_pass "A failed indirect write fails the log records that share it."
+diff --git a/tests/zfs-tests/tests/functional/slog/slog_replay_indirect_eof.ksh b/tests/zfs-tests/tests/functional/slog/slog_replay_indirect_eof.ksh
+new file mode 100755
+index 000000000..0c528b56f
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/slog/slog_replay_indirect_eof.ksh
+@@ -0,0 +1,118 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# This file and its contents are supplied under the terms of the
++# Common Development and Distribution License ("CDDL"), version 1.0.
++# You may only use this file in accordance with the terms of version
++# 1.0 of the CDDL.
++#
++# A full copy of the text of the CDDL should have accompanied this
++# source.  A copy of the CDDL is also available via the Internet at
++# https://opensource.org/license/CDDL-1.0.
++#
++
++#
++# Copyright 2026 Oxide Computer Company
++#
++
++. $STF_SUITE/tests/functional/slog/slog.kshlib
++
++#
++# DESCRIPTION:
++#	Replay of an indirect write into the last, partial block of a file
++#	must not change the file's size.
++#
++#	An indirect (WR_INDIRECT) TX_WRITE points to a copy of the whole
++#	block.  Replay used to write the whole block, which grew the file
++#	to the block boundary when the write ended before EOF.
++#
++# STRATEGY:
++#	1. Create a file whose last 128K block is partial
++#	2. Stop txgs from syncing on their own
++#	3. Write 4K inside the last block, ending before EOF, with
++#	   logbias=throughput so the write is logged indirect, and fsync
++#	4. Copy the file, and save the vdevs, which then hold the log but
++#	   not the write, as after a crash
++#	5. Restore the saved vdevs and import the pool to replay the log
++#	6. Compare the file against the copy
++#
++
++verify_runnable "global"
++
++function cleanup_fs
++{
++	restore_tunable TXG_TIMEOUT
++	cleanup
++	rm -f $VDIR2/a.save $VDIR2/e.save
++}
++
++log_assert "Replay of an indirect write keeps the file size."
++log_onexit cleanup_fs
++log_must setup
++log_must save_tunable TXG_TIMEOUT
++
++typeset file=/$TESTPOOL/$TESTFS/file
++typeset -i size=1000000
++set -A vdevs $VDIR/a $VDIR/e
++
++log_must zpool create $TESTPOOL ${vdevs[0]} log ${vdevs[1]}
++log_must zfs create -o compression=off -o recordsize=128k \
++    -o logbias=throughput $TESTPOOL/$TESTFS
++
++#
++# 1. The last 128K block (at 917504) holds 82496 bytes.
++#
++log_must dd if=/dev/urandom of=$file bs=1000 count=$((size / 1000))
++
++# Create the ZIL header now, so that the fsync below doesn't sync a txg.
++log_must dd if=/dev/zero of=/$TESTPOOL/$TESTFS/sync \
++    oflag=sync bs=1 count=1
++log_must sync_pool $TESTPOOL
++
++#
++# 2. Stop txgs from syncing on their own.  The sync thread picks up the new
++#    timeout after the next txg.
++#
++log_must set_tunable32 TXG_TIMEOUT 3600
++log_must sync_pool $TESTPOOL
++
++#
++# 3. 4K at 942080 (block 230 of 4K), within the last block and before EOF.
++#
++log_must dd if=/dev/urandom of=$file bs=4k count=1 seek=230 \
++    conv=notrunc,fsync
++
++#
++# 4. Copy the file and save the vdevs, then let the pool go.
++#
++log_must mkdir -p $TESTDIR/copy
++log_must cp $file $TESTDIR/copy/file
++log_must cp ${vdevs[0]} $VDIR2/a.save
++log_must cp ${vdevs[1]} $VDIR2/e.save
++log_must restore_tunable TXG_TIMEOUT
++log_must zpool export $TESTPOOL
++
++#
++# 5. Restore the saved vdevs and replay the log.
++#
++log_must cp $VDIR2/a.save ${vdevs[0]}
++log_must cp $VDIR2/e.save ${vdevs[1]}
++
++log_note "Verify an indirect TX_WRITE to replay:"
++typeset recs
++recs=$(zdb -e -p $VDIR -ivvvvv $TESTPOOL/$TESTFS) || \
++    log_fail "zdb -i failed"
++echo "$recs"
++echo "$recs" | grep -q "has blkptr" || \
++    log_fail "the log has no indirect TX_WRITE"
++
++log_must zpool import -d $VDIR $TESTPOOL
++
++#
++# 6. Compare.
++#
++typeset -i newsize=$(stat_size $file)
++(( newsize == size )) || log_fail "file size $newsize, expected $size"
++log_must cmp $file $TESTDIR/copy/file
++
++log_pass "Replay of an indirect write keeps the file size."
+diff --git a/tests/zfs-tests/tests/functional/slog/slog_replay_indirect_order.ksh b/tests/zfs-tests/tests/functional/slog/slog_replay_indirect_order.ksh
+new file mode 100755
+index 000000000..47a34f60b
+--- /dev/null
++++ b/tests/zfs-tests/tests/functional/slog/slog_replay_indirect_order.ksh
+@@ -0,0 +1,252 @@
++#!/bin/ksh -p
++# SPDX-License-Identifier: CDDL-1.0
++#
++# This file and its contents are supplied under the terms of the
++# Common Development and Distribution License ("CDDL"), version 1.0.
++# You may only use this file in accordance with the terms of version
++# 1.0 of the CDDL.
++#
++# A full copy of the text of the CDDL should have accompanied this
++# source.  A copy of the CDDL is also available via the Internet at
++# https://opensource.org/license/CDDL-1.0.
++#
++
++#
++# Copyright 2026 Oxide Computer Company
++#
++
++. $STF_SUITE/tests/functional/slog/slog.kshlib
++
++#
++# DESCRIPTION:
++#	Replay of a log that ends early must apply a prefix of the logged
++#	writes, even when an indirect write's block also holds later writes,
++#	and replay of the whole log must restore every write, including those
++#	whose records share another record's block.
++#
++#	An indirect (WR_INDIRECT) TX_WRITE points to a copy of the whole
++#	block, taken when the log block is written, which also holds later
++#	writes to other parts of the block.  Replay used to write the whole
++#	block, which brought back those later writes even when their own
++#	log records were lost.  Such a later write's record holds the same
++#	block pointer as the earlier record, because dmu_sync() finds its
++#	block already written for that record.  (Older software logged it as
++#	a TX_WRITE2, with no block pointer.)
++#
++# STRATEGY:
++#	1. Stop txgs from syncing on their own
++#	2. For each of NREC records, write its first 64K (W1); then for each
++#	   record, write 32K at 64K (W2); then fsync, with writes to the data
++#	   vdev delayed.  logbias=throughput logs every write indirect, and
++#	   each W2 finds its block still being written for W1, so it waits
++#	   for that write and its record shares W1's block pointer.
++#	3. Save the vdevs, which then hold the log but not the writes, as
++#	   after a crash
++#	4. Import without mounting, which claims the log but doesn't replay
++#	   it, and check that zdb -b counts each shared block once.  Then
++#	   destroy the filesystem, which frees the log; the pool doesn't
++#	   have async_destroy, so this frees each shared block from the
++#	   records.  Check that zdb -b finds no leaks.
++#	5. For the whole log, and for each log block after the first:
++#	   restore the saved vdevs, zero that log block, import (replaying
++#	   the log up to it), and check that the writes present are a prefix
++#	   of W1[0..NREC-1], W2[0..NREC-1].  The whole log must restore every
++#	   write.  The first log block ends among the W1 records, so with
++#	   whole-block replay the cut at the second block brings back W2
++#	   writes whose records are lost.
++#
++
++verify_runnable "global"
++
++function cleanup_fs
++{
++	zinject -c all
++	restore_tunable TXG_TIMEOUT
++	cleanup
++	rm -f $VDIR2/big.save $VDIR2/e.save
++}
++
++# Print new, old or torn for the range bs * [skip, skip + 1) of the file.
++function range_state # bs skip pattern zeros
++{
++	typeset bs=$1 skip=$2 pat=$3 zeros=$4
++
++	dd if=$file bs=$bs skip=$skip count=1 2>/dev/null > $TESTDIR/range
++	if cmp -s $TESTDIR/range $pat; then
++		echo new
++	elif cmp -s $TESTDIR/range $zeros; then
++		echo old
++	else
++		echo torn
++	fi
++}
++
++# Check that the writes present are a prefix of W1[], W2[]; set replayed to
++# how many there are.
++function check_prefix # name
++{
++	typeset name=$1
++	typeset -i i n=0 bad=0
++	typeset st op old=""
++
++	for ((i = 0; i < 2 * NREC; i++)); do
++		if ((i < NREC)); then
++			st=$(range_state 64k $((2 * i)) $TESTDIR/w1 $TESTDIR/z1)
++			op="W1[$i]"
++		else
++			st=$(range_state 32k $((4 * (i - NREC) + 2)) \
++			    $TESTDIR/w2 $TESTDIR/z2)
++			op="W2[$((i - NREC))]"
++		fi
++		case $st in
++		new)
++			if [[ -n $old ]]; then
++				log_note "$name: $op present, $old missing"
++				((bad++))
++			else
++				((n++))
++			fi
++			;;
++		old)
++			[[ -z $old ]] && old=$op
++			;;
++		*)
++			log_note "$name: $op neither old nor new"
++			((bad++))
++			;;
++		esac
++	done
++	log_note "$name: $n of $((2 * NREC)) writes replayed"
++	((bad == 0)) || log_fail "$name: replay did not apply a prefix"
++	replayed=$n
++}
++
++log_assert "Replay of a truncated log applies a prefix of the indirect writes."
++log_onexit cleanup_fs
++log_must setup
++log_must save_tunable TXG_TIMEOUT
++
++typeset file=/$TESTPOOL/$TESTFS/file
++typeset -i NREC=64
++typeset -i replayed
++set -A vdevs $VDIR/big $VDIR/e
++
++# A small pool makes the writes' space reservations wait for txgs to sync.
++# Without async_destroy, destroying a filesystem frees its log from the
++# records (step 4).
++log_must truncate -s 1g ${vdevs[0]}
++log_must zpool create -o feature@async_destroy=disabled $TESTPOOL \
++    ${vdevs[0]} log ${vdevs[1]}
++log_must zfs create -o compression=off -o recordsize=128k \
++    -o logbias=throughput $TESTPOOL/$TESTFS
++
++log_must mkdir -p $TESTDIR
++log_must dd if=/dev/urandom of=$TESTDIR/w1 bs=64k count=1
++log_must dd if=/dev/urandom of=$TESTDIR/w2 bs=32k count=1
++log_must dd if=/dev/zero of=$TESTDIR/z1 bs=64k count=1
++log_must dd if=/dev/zero of=$TESTDIR/z2 bs=32k count=1
++log_must dd if=/dev/zero of=$file bs=128k count=$NREC
++
++# Create the ZIL header now, so that the fsync below doesn't sync a txg.
++log_must dd if=/dev/zero of=/$TESTPOOL/$TESTFS/sync \
++    oflag=sync bs=1 count=1
++log_must sync_pool $TESTPOOL
++
++#
++# 1. Stop txgs from syncing on their own.  The sync thread picks up the new
++#    timeout after the next txg.
++#
++log_must set_tunable32 TXG_TIMEOUT 3600
++log_must sync_pool $TESTPOOL
++
++#
++# 2. The writes, then an fsync, which writes the log.  Delay writes to the
++#    data vdev, so that W1's block is still being written when W2's
++#    dmu_sync() runs.
++#
++for ((i = 0; i < NREC; i++)); do
++	dd if=$TESTDIR/w1 of=$file bs=64k count=1 seek=$((2 * i)) \
++	    conv=notrunc 2>/dev/null || log_fail "W1[$i] failed"
++done
++for ((i = 0; i < NREC; i++)); do
++	dd if=$TESTDIR/w2 of=$file bs=32k count=1 seek=$((4 * i + 2)) \
++	    conv=notrunc 2>/dev/null || log_fail "W2[$i] failed"
++done
++log_must zinject -d ${vdevs[0]} -D 500:64 -T write $TESTPOOL
++log_must dd if=/dev/null of=$file conv=notrunc,fsync
++log_must zinject -c all
++
++#
++# 3. Save the vdevs, then let the pool go.
++#
++log_must cp ${vdevs[0]} $VDIR2/big.save
++log_must cp ${vdevs[1]} $VDIR2/e.save
++log_must restore_tunable TXG_TIMEOUT
++log_must zpool export $TESTPOOL
++log_must cp $VDIR2/big.save ${vdevs[0]}
++log_must cp $VDIR2/e.save ${vdevs[1]}
++
++typeset recs
++recs=$(zdb -e -p $VDIR -ivvvvv $TESTPOOL/$TESTFS) || \
++    log_fail "zdb -i failed"
++echo "$recs" | grep -E "Block seqno|TX_WRITE2? +len"
++set -A blks $(echo "$recs" | awk '/Block seqno/ {
++	if (match($0, /DVA\[0\]=<[0-9]+:[0-9a-f]+:[0-9a-f]+>/))
++		print substr($0, RSTART + 8, RLENGTH - 9) }')
++typeset -i nw=$(echo "$recs" | grep -c "has blkptr")
++typeset -i nw2=$(echo "$recs" | grep -cE "TX_WRITE2 +len")
++typeset -i nshared=$(echo "$recs" | grep "ZFS plain file" | \
++    grep -oE "DVA\[0\]=<[0-9]+:[0-9a-f]+:[0-9a-f]+>" | sort | uniq -d | wc -l)
++log_note "log: ${#blks[@]} blocks, $nw indirect TX_WRITEs," \
++    "$nshared shared blocks, $nw2 TX_WRITE2s"
++((nw == 2 * NREC)) || log_fail "expected $((2 * NREC)) indirect TX_WRITEs"
++((nshared == NREC)) || log_fail "expected $NREC shared blocks"
++((nw2 == 0)) || log_fail "expected no TX_WRITE2s"
++((${#blks[@]} >= 2)) || log_fail "expected a log of several blocks"
++
++#
++# 4. zdb -b with the log claimed but not replayed, then after destroying the
++#    filesystem, which frees the log.
++#
++log_must zpool import -N -d $VDIR $TESTPOOL
++typeset zdbout
++zdbout=$(zdb -b $TESTPOOL 2>&1) || log_fail "zdb -b failed: $zdbout"
++# zdb -b doesn't fail on a leak, so check for one.
++[[ $zdbout == *"No leaks"* ]] || log_fail "zdb -b: $zdbout"
++log_must zfs destroy $TESTPOOL/$TESTFS
++log_must sync_pool $TESTPOOL
++zdbout=$(zdb -b $TESTPOOL 2>&1) || log_fail "zdb -b failed: $zdbout"
++[[ $zdbout == *"No leaks"* ]] || log_fail "zdb -b after destroy: $zdbout"
++log_must zpool export $TESTPOOL
++
++#
++# 5. Replay the whole log, then the log cut at each block after the first.
++#
++typeset -i k
++for ((k = 0; k < ${#blks[@]}; k++)); do
++	log_must cp $VDIR2/big.save ${vdevs[0]}
++	log_must cp $VDIR2/e.save ${vdevs[1]}
++	if ((k == 0)); then
++		name="whole log"
++	else
++		# DVA vdev:offset:asize; the data starts after the 4M of labels.
++		typeset vd=${blks[$k]%%:*}
++		typeset rest=${blks[$k]#*:}
++		typeset -i off=$((16#${rest%%:*} + 4194304))
++		typeset -i asize=$((16#${rest#*:}))
++		name="log cut at block $((k + 1)) of ${#blks[@]}"
++		log_must dd if=/dev/zero of=${vdevs[$vd]} bs=512 \
++		    seek=$((off / 512)) count=$((asize / 512)) conv=notrunc
++	fi
++	log_must zpool import -d $VDIR $TESTPOOL
++	check_prefix "$name"
++	if ((k == 0)); then
++		((replayed == 2 * NREC)) || \
++		    log_fail "whole log: $replayed writes replayed"
++	elif ((k == 1 && replayed >= NREC)); then
++		log_fail "$name: the first log block holds every W1"
++	fi
++	log_must zpool export $TESTPOOL
++done
++
++log_pass "Replay of a truncated log applies a prefix of the indirect writes."
+-- 
+2.43.0
+

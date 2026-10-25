@@ -13,6 +13,12 @@
 #   one file.
 # - 0004: a5b536566, the commit's ZTS cases. It changes only tests/, which
 #   generic.nix does not install, so hosts do not apply it.
+# - 0005: c0688a275, the fix for ZIL replay of indirect writes. Without it,
+#   a write logged WR_INDIRECT and then deduped in the same txg is logged
+#   by fsync() as a TX_WRITE2 with no data, and is lost if the txg does not
+#   sync before a crash. With it, fsync() waits for that txg to sync. It
+#   also changes zdb, so the userspace tools take it too. Its ZTS cases are
+#   in tests/, and it applies with or without 0004.
 #
 # A ZFS bump must re-check them: master may have changed, or the release may
 # already include them.
@@ -22,6 +28,7 @@ let
     ./0001-Implement-FIDEDUPERANGE-via-block-cloning.patch
     ./0002-Fix-double-free-when-cloning-a-block-with-a-pending-.patch
     ./0003-Fix-self-deadlock-when-cloning-a-range-within-the-sa.patch
+    ./0005-ZIL-replay-of-an-indirect-write-leaks-later-writes-i.patch
   ];
   testsPatch = ./0004-ZTS-Add-FIDEDUPERANGE-tests.patch;
   patch =
