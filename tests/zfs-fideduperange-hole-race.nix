@@ -14,9 +14,10 @@
 # how many reads hit the window (dbuf_read_hole_races: a hole bp and no free
 # range after the sleep).
 #
-# with0006 = false expects the bug: reads fail with EINVAL, with a data
-# ereport of zio_err 0x16 at level 0, blkid 0. with0006 = true expects the
-# window to be hit and every read to return zeros.
+# with0006 = false expects the bug: reads fail with EINVAL, and every data
+# ereport has #19185's signature on a read that may fail (zio_err 0x16,
+# flags CANFAIL and RAW_COMPRESS, level 0, blkid 0). with0006 = true expects
+# the window to be hit, every read to return zeros, and no data ereport.
 {
   lib,
   pkgs,
@@ -95,13 +96,33 @@ pkgs.testers.runNixOSTest {
     events = machine.succeed("zpool events -v tank")
     blocks = re.split(r"\n(?=\S)", events)
     data = [b for b in blocks if "ereport.fs.zfs.data" in b.splitlines()[0]]
-    fields = ("zio_err", "zio_flags", "zio_pipeline", "zio_delay", "zio_level", "zio_blkid")
+    fields = ("zio_err", "zio_flags", "zio_pipeline", "zio_delay", "zio_level", "zio_blkid",
+              "zio_objset", "zio_object")
     sig = []
     for b in data:
         kv = dict(re.findall(r"^\s+(\w+) = (.*)$", b, re.M))
         sig.append({k: kv.get(k) for k in fields})
+
+    # #19185's signature, on a read that may fail: EINVAL, CANFAIL and
+    # RAW_COMPRESS only, level 0, blkid 0. Checked on every data ereport.
+    def flag_names(s):
+        m = re.search(r"\[(.*)\]", s.get("zio_flags") or "")
+        return sorted(m.group(1).split()) if m else []
+
+    def matches(s):
+        return (s["zio_err"] == "0x16" and flag_names(s) == ["CANFAIL", "RAW_COMPRESS"]
+                and s["zio_level"] == "0x0" and s["zio_blkid"] == "0x0")
+
+    kinds: dict[str, int] = {}
+    for s in sig:
+        key = json.dumps({k: s[k] for k in fields[:6]}, sort_keys=True)
+        kinds[key] = kinds.get(key, 0) + 1
     result["data_ereports"] = len(data)
     result["data_ereports_einval"] = sum(s["zio_err"] == "0x16" for s in sig)
+    result["data_ereports_signature"] = sum(matches(s) for s in sig)
+    result["data_ereports_off_signature"] = [s for s in sig if not matches(s)][:10]
+    result["data_ereport_kinds"] = [[json.loads(k), n] for k, n in kinds.items()]
+    result["data_ereport_objects"] = len({(s["zio_objset"], s["zio_object"]) for s in sig})
     result["data_ereport_sample"] = sig[:3]
     totals = result["totals"]
     print("HOLE_RACE " + json.dumps(result, sort_keys=True))
@@ -121,7 +142,8 @@ pkgs.testers.runNixOSTest {
     else
       ''
         assert totals.get("errno_22", 0) > 0, totals
-        assert result["data_ereports_einval"] > 0, result["data_ereport_sample"]
+        assert result["data_ereports"] > 0, totals
+        assert result["data_ereports_signature"] == result["data_ereports"], result["data_ereports_off_signature"]
       ''
   );
 }

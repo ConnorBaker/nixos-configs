@@ -57,7 +57,7 @@
 # regardless: it also changes dmu_write_direct() and dmu_sync_done(), which
 # every Direct I/O write runs, whatever the sync setting. 0006 is the one
 # new patch active on these hosts: it is not a ZIL fix, and dbuf_read_hole()
-# runs on every read.
+# runs on every dbuf cache miss.
 #
 # A ZFS bump must re-check them: master may have changed, or the release may
 # already include them.
