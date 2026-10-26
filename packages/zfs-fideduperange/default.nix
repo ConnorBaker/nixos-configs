@@ -24,6 +24,11 @@
 #   2.3) dropped the recheck. A read that waits in dnode_block_freed() while
 #   dnode_sync() frees a block held in the dnode hands a hole to arc_read(),
 #   which suspends the pool (openzfs/zfs#19185). Applies without conflict.
+#   Failing first: checks zfs-fideduperange-hole-race(-without-0006) widen
+#   the window with a test-only delay, as openzfs/zfs#19234's reproducer did
+#   (test-only-dbuf-read-hole-delay.patch, never in hostPatches). Without
+#   0006, reads fail with EINVAL and data ereports match #19185's; with it,
+#   every read returns zeros.
 # - 0007: e9e24ce2c, which stops zfs_xattr_owner_unlinked() from releasing
 #   znodes inline under an assigned transaction. On Linux that can run inode
 #   cleanup during writeback and deadlock the txg (openzfs/zfs#19253).
@@ -60,19 +65,35 @@ let
     ./0008-ZIL-replay-can-apply-part-of-a-split-WR_NEED_COPY-wr.patch
   ];
   testsPatch = ./0004-ZTS-Add-FIDEDUPERANGE-tests.patch;
-  patch =
-    extra: zfs:
+  # Test only, never in hostPatches: see withHoleReadDelay.
+  holeReadDelayPatch = ./test-only-dbuf-read-hole-delay.patch;
+  patchWith =
+    patches: zfs:
     lib.throwIfNot (zfs.version == "2.4.4")
       "zfs-fideduperange: the backport targets zfs 2.4.4, but this ZFS is ${zfs.version}"
       (
         zfs.overrideAttrs (old: {
-          patches = (old.patches or [ ]) ++ hostPatches ++ extra;
+          patches = (old.patches or [ ]) ++ patches;
         })
       );
 in
 {
   # For boot.zfs.package and boot.zfs.modulePackage.
-  withFideduperange = patch [ ];
+  withFideduperange = patchWith hostPatches;
   # For the ZTS VM test only.
-  withFideduperangeTests = patch [ testsPatch ];
+  withFideduperangeTests = patchWith (hostPatches ++ [ testsPatch ]);
+  # For the 0006 race check only (tests/zfs-fideduperange-hole-race.nix):
+  # the hosts' patches, with or without 0006, plus a test-only module
+  # parameter that sleeps in dbuf_read_hole() to widen the race 0006 closes.
+  withHoleReadDelay =
+    with0006:
+    patchWith (
+      (
+        if with0006 then
+          hostPatches
+        else
+          lib.remove ./0006-dbuf-restore-BP_IS_HOLE-recheck-after-dnode_block_fr.patch hostPatches
+      )
+      ++ [ holeReadDelayPatch ]
+    );
 }

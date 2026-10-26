@@ -232,6 +232,18 @@
               zfs-fideduperange-zil = pkgs.callPackage ./tests/zfs-fideduperange-zil.nix {
                 hostConfig = inputs.self.nixosConfigurations.nixos-ext.config;
               };
+              # 0006's race (openzfs/zfs#19185), widened by a test-only delay:
+              # the bug without 0006, and none with it.
+              zfs-fideduperange-hole-race = pkgs.callPackage ./tests/zfs-fideduperange-hole-race.nix {
+                hostConfig = inputs.self.nixosConfigurations.nixos-ext.config;
+                with0006 = true;
+              };
+              zfs-fideduperange-hole-race-without-0006 =
+                pkgs.callPackage ./tests/zfs-fideduperange-hole-race.nix
+                  {
+                    hostConfig = inputs.self.nixosConfigurations.nixos-ext.config;
+                    with0006 = false;
+                  };
             }
             // (
               let

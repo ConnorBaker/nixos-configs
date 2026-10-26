@@ -1,0 +1,69 @@
+From e3e2d65b6d6340c99794ce31af2c4e7e132a1a8c Mon Sep 17 00:00:00 2001
+From: Connor Baker <ConnorBaker01@gmail.com>
+Date: Sun, 25 Oct 2026 16:54:05 -0700
+Subject: [PATCH] TEST ONLY: delay dbuf_read_hole() to expose the f1f96f5e7
+ race
+
+Never for a production build.  Adds dbuf_read_hole_delay, a module
+parameter that sleeps that many ticks in dbuf_read_hole() between the
+first BP_IS_HOLE() check and dnode_block_freed(), as the reproducer in
+openzfs/zfs#19234 did ("a test-only module parameter that sleeps one tick
+in dbuf_read_hole() between the first BP_IS_HOLE() check and
+dnode_block_freed()").  Two counters, also module parameters, show that
+the sleep ran (dbuf_read_hole_delays) and how often a read found, after
+it, a hole bp whose free range was already gone (dbuf_read_hole_races):
+the state in which dnode_block_freed() answers "not freed" for a hole.
+They change no decision.  The hunk in dbuf_read_hole() applies with or
+without f1f96f5e7.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ module/zfs/dbuf.c | 31 +++++++++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
+
+diff --git a/module/zfs/dbuf.c b/module/zfs/dbuf.c
+index 3e3cd9d64..b1596d236 100644
+--- a/module/zfs/dbuf.c
++++ b/module/zfs/dbuf.c
+@@ -288,2 +288,15 @@ static uint_t dbuf_cache_lowater_pct = 10;
+ 
++/*
++ * TEST ONLY, never for a production build.  dbuf_read_hole_delay > 0 sleeps
++ * that many ticks in dbuf_read_hole() between the first BP_IS_HOLE() check
++ * and dnode_block_freed(), to widen the window that f1f96f5e7 closes, as in
++ * openzfs/zfs#19234's reproducer.  dbuf_read_hole_delays counts the sleeps.
++ * dbuf_read_hole_races counts reads that, after the sleep, find the bp a
++ * hole and the free range gone: the state in which dnode_block_freed()
++ * answers "not freed" for a hole.  Neither changes a decision.
++ */
++static uint_t dbuf_read_hole_delay = 0;
++static uint64_t dbuf_read_hole_delays = 0;
++static uint64_t dbuf_read_hole_races = 0;
++
+ static int
+@@ -1495,2 +1508,9 @@ dbuf_read_hole(dmu_buf_impl_t *db, dnode_t *dn, blkptr_t *bp)
+ 	if (!is_hole && db->db_level == 0) {
++		if (dbuf_read_hole_delay != 0) {
++			delay(dbuf_read_hole_delay);
++			atomic_inc_64(&dbuf_read_hole_delays);
++			if (BP_IS_HOLE(bp) &&
++			    !dnode_block_freed(dn, db->db_blkid))
++				atomic_inc_64(&dbuf_read_hole_races);
++		}
+ 		dbuf_dirty_record_t *dr = list_head(&db->db_dirty_records);
+@@ -5578 +5598,12 @@ ZFS_MODULE_PARAM(zfs_dbuf, dbuf_, mutex_cache_shift, UINT, ZMOD_RD,
+ 	"Set size of dbuf cache mutex array as log2 shift.");
++
++ZFS_MODULE_PARAM(zfs_dbuf, dbuf_, read_hole_delay, UINT, ZMOD_RW,
++	"TEST ONLY: ticks to sleep in dbuf_read_hole() before "
++	"dnode_block_freed().");
++
++ZFS_MODULE_PARAM(zfs_dbuf, dbuf_, read_hole_delays, U64, ZMOD_RW,
++	"TEST ONLY: number of dbuf_read_hole_delay sleeps.");
++
++ZFS_MODULE_PARAM(zfs_dbuf, dbuf_, read_hole_races, U64, ZMOD_RW,
++	"TEST ONLY: reads that found a hole bp and no free range after "
++	"the sleep.");
+-- 
+2.43.0
+
