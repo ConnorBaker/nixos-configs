@@ -32,7 +32,9 @@
 # - 0007: e9e24ce2c, which stops zfs_xattr_owner_unlinked() from releasing
 #   znodes inline under an assigned transaction. On Linux that can run inode
 #   cleanup during writeback and deadlock the txg (openzfs/zfs#19253).
-#   Applies without conflict.
+#   Applies without conflict. No failing-first test: not attempted; it
+#   needs fault injection to make a final zrele() under an assigned
+#   transaction wait on the caller's own writeback.
 # - 0008: 7c3d85aaf, which keeps ZIL replay from applying part of a
 #   WR_NEED_COPY write that was split across log blocks. Upstream it comes
 #   before c0688a275 (0005), so it conflicts with 0005 in zil_replay() only;
@@ -43,13 +45,19 @@
 # Each patch's message has its backport notes.
 #
 # sync=disabled: every dataset on nixos-ext and nixos-desktop is
-# sync=disabled (zfs get, 2026-10-25), so nothing is logged, and the ZIL
-# fixes (0005, 0007, 0008) are not reached through the ZIL there today. The
-# set does not depend on that: it is carried so that a dataset or zvol that
-# leaves sync=disabled is covered too. 0005 is not inert regardless: it also
-# changes dmu_write_direct() and dmu_sync_done(), which every Direct I/O
-# write runs, whatever the sync setting. 0006 is not a ZIL fix; it covers
-# every read.
+# sync=disabled and xattr=sa, and neither has a zvol (zfs get, 2026-10-25),
+# so nothing is logged, and 0007 and 0008 are not reached on these hosts:
+# - zil_replaying() returns B_TRUE for sync=disabled (zil.c:5163 on the
+#   fork tip), and every zfs_log_* caller, including all four of e9e24ce2c's
+#   zfs_xattr_owner_unlinked() sites, checks it first;
+# - zil_commit() returns early (zil.c:4022), and replay runs only when
+#   ZIL_REPLAY_NEEDED is set (zil.c:5112).
+# They are carried as a defence, so that the set does not depend on that: a
+# dataset or zvol that leaves sync=disabled is covered too. 0005 is not inert
+# regardless: it also changes dmu_write_direct() and dmu_sync_done(), which
+# every Direct I/O write runs, whatever the sync setting. 0006 is the one
+# new patch active on these hosts: it is not a ZIL fix, and dbuf_read_hole()
+# runs on every read.
 #
 # A ZFS bump must re-check them: master may have changed, or the release may
 # already include them.
