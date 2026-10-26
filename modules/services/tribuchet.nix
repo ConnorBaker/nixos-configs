@@ -98,6 +98,11 @@ in
   # socket puts its start job in the same transaction, ordered first.
   systemd.services.tribuchet-hub = lib.mkIf isHub {
     requires = [ "tribuchet-hub.socket" ];
+    # Keep the hub's anonymous memory in RAM: at both watchdog kills on
+    # 2026-10-25 it was 88-94% swapped out, and a runtime worker stalled
+    # 14 s in a swap-in. This limits only this unit's cgroup, where no
+    # build runs (builds run under nix-daemon and the Tribuchet agents).
+    serviceConfig.MemorySwapMax = "0";
   };
 
   # At the top of each UTC hour in the window, write that hour's arm:
