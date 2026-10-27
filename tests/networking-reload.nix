@@ -87,6 +87,11 @@ pkgs.testers.runNixOSTest {
   nodes.router = { lib, ... }: {
     imports = [ common ];
     virtualisation.diskImage = lib.mkForce "./router-network-reload.qcow2";
+    # Forward IPv6 like a real router. Without forwarding, the kernel answers
+    # neighbor solicitations with the router flag cleared while radvd still
+    # advertises a default route, and networkd drops that route on each such
+    # advertisement (RFC 4861) until the next RA restores it.
+    boot.kernel.sysctl."net.ipv6.conf.all.forwarding" = 1;
     # Provider services need their static listen addresses ready at boot.
     systemd.network = {
       wait-online.enable = lib.mkForce true;
@@ -280,8 +285,10 @@ pkgs.testers.runNixOSTest {
     assert client.succeed("systemctl show systemd-networkd -p MainPID --value").strip() == before_pid
 
     router.wait_until_succeeds("grep -q '200 packets transmitted' /tmp/continuous-ping.log")
-    ping_output = router.succeed("cat /tmp/continuous-ping.log")
-    assert re.search(r"\b0% packet loss", ping_output), ping_output
+    # Read only ping's summary: the driver can return a 200-line output with
+    # lines missing, the summary among them, though ping received every reply.
+    ping_summary = router.succeed("grep -F 'packets transmitted' /tmp/continuous-ping.log")
+    assert re.search(r"\b0% packet loss", ping_summary), ping_summary
     client.succeed("journalctl -u systemd-networkd --no-pager")
     router.succeed("journalctl -u kea-dhcp6-server --no-pager")
   '';
