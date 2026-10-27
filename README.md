@@ -73,10 +73,12 @@ instance:
 
 - The name is written at install time to `/persist/etc/hostname`, which
   `/etc/hostname` links to (`networking.hostName = ""`).
-- The disk is `/dev/nvme0n1`, the root EBS volume on Nitro types; `create`
-  checks that in the installer before formatting.
-- Instance-store NVMe disks (m8id) get a ZFS pool at boot for the agents'
-  build trees (`instance-store.nix`).
+- Everything lives on the instance-store NVMe (m8id): a zram writeback
+  partition and `rpool`. The EBS volume the firmware boots from holds only
+  the ESP. disko names both disks by PCI path, since NVMe numbering changes
+  between boots, and nix-brev's `create` checks their models before
+  formatting. The instance store does not survive a stop and start, so these
+  instances are never stopped.
 - The instances share one SSH host key, whose private half nix-brev keeps in
   `~/.brev/nixos-ssh-host-key`; `secrets.yaml` is encrypted to it.
 

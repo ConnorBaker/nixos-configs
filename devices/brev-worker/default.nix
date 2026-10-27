@@ -5,7 +5,7 @@
 
     # Disks and formatting
     ./disko.nix
-    ./instance-store.nix
+    ./zram-writeback.nix
 
     # Secrets
     ./secrets.nix
@@ -15,14 +15,19 @@
 
   # Every NixOS Brev (AWS) instance runs this one configuration, installed by
   # nix-brev's `brev-worker create --nixos` with nixos-anywhere over the
-  # Ubuntu image Brev created. A Tribuchet worker like the Ubuntu Brev
-  # workers: as many agents, and their slice capped below RAM. What differs
-  # between instances is written at install: the name to /persist/etc/hostname
-  # and the disk to the disko script (disko.nix).
-  boot.extraModprobeConfig = ''
-    # The ARC sits outside the agents' memory limit below; bound it.
-    options zfs zfs_arc_max=${toString (16 * 1024 * 1024 * 1024)}
-  '';
+  # Ubuntu image Brev created: a Tribuchet worker, on the instance-store NVMe
+  # (disko.nix). What differs between instances is written at install: the
+  # name, to /persist/etc/hostname.
+
+  # The builder profile's workstation parts, which a worker never runs; they
+  # made up about 1 of the system's 4.9 GiB.
+  documentation.enable = false;
+  nixpkgs.flake = {
+    setFlakeRegistry = false;
+    setNixPath = false;
+  };
+  users.users.connorbaker.packages = lib.mkForce [ ];
+  virtualisation.docker.enable = lib.mkForce false;
 
   # brev-worker's scripts on the host (stop-worker, health --builds).
   environment.systemPackages = [ pkgs.jq ];
@@ -51,8 +56,9 @@
     settings.max-jobs = lib.mkForce 8;
   };
 
-  # 123.5 GiB of RAM on m8a.8xlarge and m8id.8xlarge: 80% leaves the 16 GiB
-  # ARC and 8 GiB for the rest.
+  # 123.5 GiB of RAM on m8id.8xlarge: 80% for the builds. The ARC, which is
+  # not charged to the slice, keeps ZFS's default limit and shrinks under
+  # memory pressure, as on nixos-configs' other hosts.
   systemd.slices."system-tribuchet\\x2dagent".sliceConfig.MemoryMax = "80%";
 
   # brev-worker reaches every instance, Ubuntu or NixOS, as Brev's SSH user
