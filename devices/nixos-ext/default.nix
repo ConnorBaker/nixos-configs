@@ -10,6 +10,7 @@
 
     ../../profiles/builder.nix
     ../../modules/services/prometheus-exporters.nix
+    ../../modules/watchdog.nix
   ];
 
   environment.etc = {
