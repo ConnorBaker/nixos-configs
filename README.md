@@ -63,6 +63,23 @@ nix run "github:nix-community/nixos-anywhere/242444d228636b1f0e89d3681f04a75254c
   --extra-files "$extra_files"
 ```
 
+## `brev-worker`
+
+One configuration for every NixOS Brev (AWS) instance, a Tribuchet worker.
+[nix-brev](https://github.com/ConnorBaker/nix-brev)'s `brev-worker` installs
+it over Brev's Ubuntu (`create NAME --nixos`) and switches an instance to
+the current one (`setup NAME`); see its README. Nothing in it is per
+instance:
+
+- The name is written at install time to `/persist/etc/hostname`, which
+  `/etc/hostname` links to (`networking.hostName = ""`).
+- The disk is `/dev/nvme0n1`, the root EBS volume on Nitro types; `create`
+  checks that in the installer before formatting.
+- Instance-store NVMe disks (m8id) get a ZFS pool at boot for the agents'
+  build trees (`instance-store.nix`).
+- The instances share one SSH host key, whose private half nix-brev keeps in
+  `~/.brev/nixos-ssh-host-key`; `secrets.yaml` is encrypted to it.
+
 ## `nixos-orin`
 
 TODO:

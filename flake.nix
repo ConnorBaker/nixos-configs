@@ -423,6 +423,12 @@
             };
         in
         {
+          # Every NixOS Brev instance (nix-brev's brev-worker create --nixos).
+          brev-worker = mkSystem [
+            { nixpkgs.hostPlatform.system = "x86_64-linux"; }
+            ./devices/brev-worker
+          ];
+
           nixos-build01 = mkSystem [
             { nixpkgs.hostPlatform.system = "x86_64-linux"; }
             ./devices/nixos-build01
