@@ -14,6 +14,16 @@
         echo "zram0 has no backing device"
         exit 0
       fi
+      # Each of the three steps walks every slot of the device, about 1.8 s
+      # of CPU each on a 400%-of-RAM device even when nothing is swapped, so
+      # skip the round while zram holds no pages in memory (mm_stat's
+      # mem_used_total; orig_data_size keeps counting the swap header's
+      # page after it is written back).
+      read -r _ _ used _ <mm_stat
+      if [ "$used" -eq 0 ]; then
+        echo "zram0 holds no pages in memory"
+        exit 0
+      fi
       echo huge > writeback
       echo idle > writeback
       echo all > idle
