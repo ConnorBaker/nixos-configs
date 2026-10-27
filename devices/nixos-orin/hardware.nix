@@ -25,6 +25,16 @@
           USB_MASS_STORAGE = module;
         };
       }
+      # Nixpkgs dropped kernels older than 6.1 (NixOS/nixpkgs@3fe146e66071)
+      # and now patches every kernel's scripts/gen-randstruct-seed.sh, added in
+      # 5.19, after these patches. Add the script as 5.19 has it so that patch
+      # applies to L4T's 5.15. Nothing runs it: 5.15 generates the seed with
+      # scripts/gcc-plugins/gen-random-seed.sh, and only for
+      # GCC_PLUGIN_RANDSTRUCT, which neither L4T nor NixOS enables here.
+      {
+        name = "add-gen-randstruct-seed";
+        patch = ./add-gen-randstruct-seed.patch;
+      }
     ];
 
     loader = {
