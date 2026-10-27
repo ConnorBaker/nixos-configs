@@ -39,39 +39,48 @@ in
   };
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = [ 50051 ];
 
-  # Leave a running daemon alone on switch. Upstream's reload is a drain, which
-  # assumes other builders take the new builds; each host here is its own
-  # scheduler's only builder, so the drain refused every new build until the
-  # slowest running one finished (nixos-ext, 2026-10-25 05:37-05:54Z). The new
-  # generation starts after --idle-timeout or a deliberate restart.
-  systemd.services.nix-grpc-daemon = {
-    reloadIfChanged = lib.mkForce false;
-    restartIfChanged = false;
-  };
+  systemd = {
+    services = {
+      # Leave a running daemon alone on switch. Upstream's reload is a drain,
+      # which assumes other builders take the new builds; each host here is
+      # its own scheduler's only builder, so the drain refused every new build
+      # until the slowest running one finished (nixos-ext, 2026-10-25
+      # 05:37-05:54Z). The new generation starts after --idle-timeout or a
+      # deliberate restart.
+      nix-grpc-daemon = {
+        reloadIfChanged = lib.mkForce false;
+        restartIfChanged = false;
+      };
 
-  # A switch that changes nix.conf.
-  systemd.services.nix-grpc-daemon-nix-conf = {
-    description = "Have nix-grpc-daemon read nix.conf's max-jobs again";
-    after = [ "nix-grpc-daemon.service" ];
-    wantedBy = [ "multi-user.target" ];
-    restartTriggers = [ config.environment.etc."nix/nix.conf".source ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      ExecStart = reread;
+      # A switch that changes nix.conf.
+      nix-grpc-daemon-nix-conf = {
+        description = "Have nix-grpc-daemon read nix.conf's max-jobs again";
+        after = [ "nix-grpc-daemon.service" ];
+        wantedBy = [ "multi-user.target" ];
+        restartTriggers = [ config.environment.etc."nix/nix.conf".source ];
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+          ExecStart = reread;
+        };
+      };
+
+      nix-grpc-daemon-reread = {
+        description = "Have nix-grpc-daemon read nix's max-jobs again";
+        serviceConfig = {
+          Type = "oneshot";
+          ExecStart = reread;
+        };
+      };
     };
-  };
-  # On the hub, each rewrite of the max-jobs fragment nix.conf includes, as
-  # Tribuchet's own tribuchet-nix-reload does for nix-daemon.
-  systemd.paths.nix-grpc-daemon-reread = lib.mkIf (hub.enable && hub.externalBuilders.enable && hub.externalBuilders.dynamic) {
-    wantedBy = [ "multi-user.target" ];
-    pathConfig.PathModified = toString hub.externalBuilders.nixConfigPath;
-  };
-  systemd.services.nix-grpc-daemon-reread = {
-    description = "Have nix-grpc-daemon read nix's max-jobs again";
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = reread;
-    };
+
+    # On the hub, each rewrite of the max-jobs fragment nix.conf includes, as
+    # Tribuchet's own tribuchet-nix-reload does for nix-daemon.
+    paths.nix-grpc-daemon-reread =
+      lib.mkIf (hub.enable && hub.externalBuilders.enable && hub.externalBuilders.dynamic)
+        {
+          wantedBy = [ "multi-user.target" ];
+          pathConfig.PathModified = toString hub.externalBuilders.nixConfigPath;
+        };
   };
 }

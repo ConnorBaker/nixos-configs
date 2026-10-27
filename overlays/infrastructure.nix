@@ -1,5 +1,4 @@
-inputs: final: prev:
-{
+inputs: final: prev: {
   histodu = final.callPackage ../packages/histodu.nix { source = inputs.histodu; };
   zfs-dedup = final.callPackage (inputs.zfs-dedup + "/nix/package.nix") { };
   tribuchet = final.callPackage (inputs.tribuchet + "/nix/package.nix") {

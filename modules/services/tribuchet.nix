@@ -91,64 +91,69 @@ in
 
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = lib.mkIf isHub [ 7437 ];
 
-  # The hub service is WantedBy=multi-user.target but only ordered After= its
-  # socket. A switch that starts multi-user.target can then start the service
-  # without the socket; the service binds the listeners itself and the socket
-  # refuses to start ("already active"), failing the switch. Requiring the
-  # socket puts its start job in the same transaction, ordered first.
-  systemd.services.tribuchet-hub = lib.mkIf isHub {
-    requires = [ "tribuchet-hub.socket" ];
-    # Keep the hub's anonymous memory in RAM: at both watchdog kills on
-    # 2026-10-25 it was 88-94% swapped out, and a runtime worker stalled
-    # 14 s in a swap-in. This limits only this unit's cgroup, where no
-    # build runs (builds run under nix-daemon and the Tribuchet agents).
-    serviceConfig.MemorySwapMax = "0";
-  };
+  systemd = {
+    services = {
+      # The hub service is WantedBy=multi-user.target but only ordered After= its
+      # socket. A switch that starts multi-user.target can then start the service
+      # without the socket; the service binds the listeners itself and the socket
+      # refuses to start ("already active"), failing the switch. Requiring the
+      # socket puts its start job in the same transaction, ordered first.
+      tribuchet-hub = lib.mkIf isHub {
+        requires = [ "tribuchet-hub.socket" ];
+        # Keep the hub's anonymous memory in RAM: at both watchdog kills on
+        # 2026-10-25 it was 88-94% swapped out, and a runtime worker stalled
+        # 14 s in a swap-in. This limits only this unit's cgroup, where no
+        # build runs (builds run under nix-daemon and the Tribuchet agents).
+        serviceConfig.MemorySwapMax = "0";
+      };
 
-  # At the top of each UTC hour in the window, write that hour's arm:
-  # three hours per cycle, cycles taking the six orders of fcfs (F),
-  # speed-only (S) and speed-demand (D) in turn. Outside the window the
-  # file is removed, so hub.toml's fcfs applies. The hub reads the file
-  # at every placement decision; nothing restarts.
-  systemd.services.tribuchet-placement-arm = lib.mkIf rotating {
-    description = "Write this hour's Tribuchet placement A/B arm";
-    after = [ "tribuchet-hub.service" ];
-    path = [ pkgs.coreutils ];
-    serviceConfig.Type = "oneshot";
-    script = ''
-      file=/run/tribuchet/placement-arm
-      now=$(date -u +%s)
-      start=$(date -u -d ${placementAB.start} +%s)
-      end=$(date -u -d ${placementAB.end} +%s)
-      if [ "$now" -lt "$start" ] || [ "$now" -ge "$end" ]; then
-        rm -f "$file"
-        exit 0
-      fi
-      k=$((now / 3600 - start / 3600))
-      orders=(FSD SDF DFS DSF FDS SFD)
-      order=''${orders[$((k / 3 % 6))]}
-      case ''${order:$((k % 3)):1} in
-        F) arm=fcfs ;;
-        S) arm=speed-only ;;
-        D) arm=speed-demand ;;
-      esac
-      printf '%s\n' "$arm" > "$file.new"
-      mv "$file.new" "$file"
-      echo "hour $k of the window: $arm"
-    '';
-  };
-  systemd.timers.tribuchet-placement-arm = lib.mkIf rotating {
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnCalendar = "*-*-* *:00:00 UTC";
-      AccuracySec = "1s";
-      # /run is empty after a reboot.
-      OnBootSec = "1min";
+      # At the top of each UTC hour in the window, write that hour's arm:
+      # three hours per cycle, cycles taking the six orders of fcfs (F),
+      # speed-only (S) and speed-demand (D) in turn. Outside the window the
+      # file is removed, so hub.toml's fcfs applies. The hub reads the file
+      # at every placement decision; nothing restarts.
+      tribuchet-placement-arm = lib.mkIf rotating {
+        description = "Write this hour's Tribuchet placement A/B arm";
+        after = [ "tribuchet-hub.service" ];
+        path = [ pkgs.coreutils ];
+        serviceConfig.Type = "oneshot";
+        script = ''
+          file=/run/tribuchet/placement-arm
+          now=$(date -u +%s)
+          start=$(date -u -d ${placementAB.start} +%s)
+          end=$(date -u -d ${placementAB.end} +%s)
+          if [ "$now" -lt "$start" ] || [ "$now" -ge "$end" ]; then
+            rm -f "$file"
+            exit 0
+          fi
+          k=$((now / 3600 - start / 3600))
+          orders=(FSD SDF DFS DSF FDS SFD)
+          order=''${orders[$((k / 3 % 6))]}
+          case ''${order:$((k % 3)):1} in
+            F) arm=fcfs ;;
+            S) arm=speed-only ;;
+            D) arm=speed-demand ;;
+          esac
+          printf '%s\n' "$arm" > "$file.new"
+          mv "$file.new" "$file"
+          echo "hour $k of the window: $arm"
+        '';
+      };
+
+      tribuchet-worker = {
+        after = [ "tailscaled-autoconnect.service" ];
+        wants = [ "tailscaled-autoconnect.service" ];
+      };
     };
-  };
 
-  systemd.services.tribuchet-worker = {
-    after = [ "tailscaled-autoconnect.service" ];
-    wants = [ "tailscaled-autoconnect.service" ];
+    timers.tribuchet-placement-arm = lib.mkIf rotating {
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnCalendar = "*-*-* *:00:00 UTC";
+        AccuracySec = "1s";
+        # /run is empty after a reboot.
+        OnBootSec = "1min";
+      };
+    };
   };
 }
