@@ -2,9 +2,12 @@
 
 `0001-mm-memcontrol-let-memcg-OOM-scans-see-exiting-OOM-vi.patch` makes
 `mem_cgroup_scan_tasks()` pass `CSS_TASK_ITER_WITH_DEAD` along with
-`CSS_TASK_ITER_PROCS`. A memcg OOM scan then still sees an OOM victim while it
-exits, and aborts on it as `oom_evaluate_task()` intends, instead of killing a
-second task while the first victim's memory is being freed.
+`CSS_TASK_ITER_PROCS`. The memcg OOM scan then shows tasks as it did before
+`a72f73c4dd9b`. For a single-threaded OOM victim that means the scan still sees
+the victim while it exits, and aborts on it as `oom_evaluate_task()` intends,
+instead of killing a second task while the victim's memory is being freed. A
+multi-threaded victim can still be missed, as on 6.18; see
+[Multi-threaded victims](#multi-threaded-victims).
 
 `modules/zfs.nix` applies it, through `boot.kernelPatches`, to every host that
 takes `linuxKernel.packages.linux_7_2` there: everything but `nixos-orin`.
@@ -95,9 +98,44 @@ tasks:
   it exit through `task_will_free_mem()` and kills nothing (1020-1027).
 - `dump_task()` skips a task with no mm (391-397).
 - `memory.oom.group`: `oom_kill_memcg_member()` (998-1006) calls
-  `__oom_kill_process()`, which for a task with no mm logs "OOM victim ... is
-  already exiting. Skip killing the task" and returns (918-923). A dead zombie
-  leader is not killed again; at most that line is logged.
+  `__oom_kill_process()` on each member it is given:
+  - A member with no mm left, such as a dead zombie leader, is not killed again:
+    `__oom_kill_process()` logs "OOM victim ... is already exiting. Skip killing
+    the task" and returns (918-923).
+  - A member that is exiting but still holds its mm, between its
+    `signal->live` decrement (`kernel/exit.c:934`) and `exit_mm()` clearing
+    `->mm` (586), is now walked too. It is sent `SIGKILL` again, counted in
+    `OOM_KILL` and the memcg's `oom_kill` event (`mm/oom_kill.c:935-936`), and
+    logged as "Killed process" (945). That only inflates the counters and the
+    log; 6.18 and 6.19.0-6.19.8 did the same.
+
+## Multi-threaded victims
+
+The patch does not keep every multi-threaded victim visible:
+
+- `CSS_TASK_ITER_PROCS` returns only thread-group leaders (5159-5160), so the
+  scan sees a victim only through its leader.
+- `MMF_OOM_SKIP` is set by whichever thread drops the mm's last user reference:
+  `exit_mm()` calls `mmput()` (`kernel/exit.c:593`), and the last one runs
+  `exit_mmap()`.
+- If the leader makes its final context switch while other threads still live,
+  `do_cgroup_task_dead()` moves it to `dying_tasks` (7102-7104). If no thread
+  lives by then, it unlinks the leader altogether. Either way, once the group's
+  last `signal->live` decrement (`kernel/exit.c:934`) has happened, the PROCS
+  branch hides the leader (5162-5165), and `CSS_TASK_ITER_WITH_DEAD` does not
+  change that branch.
+- So when the leader is gone and a non-leader does the last `mmput()`, the
+  victim is hidden from that decrement until `exit_mmap()` sets `MMF_OOM_SKIP`,
+  and a charge meanwhile can still kill a second task.
+
+This is not a regression: 6.18 has the same gap. Its `cgroup_exit()`, run from
+the leader's own `do_exit()` (v6.18.59 `kernel/exit.c:986`), puts the leader on
+`dying_tasks` the same way (v6.18.59 `kernel/cgroup/cgroup.c:7021-7025`), and
+its PROCS branch hides it the same way (5149-5152). The patch restores the
+pre-`a72f73c4dd9b` behaviour, which closes the window for single-threaded
+victims, the case the evidence below tests. Closing it for multi-threaded ones
+would need a walk over all threads, with `CSS_TASK_ITER_WITH_DEAD`, that counts
+each thread group once.
 
 ## Affected kernels
 
@@ -118,42 +156,95 @@ tasks:
 
 ## Evidence
 
-Unpatched, from Tribuchet's agent-memory repeat test, build B1 at Tribuchet
-`4ad5351` (output `ixphcz0g…-vm-test-run-tribuchet-agent-memory-repeat`,
-2026-10-28): `~/Packages/fork-harness/runs/tribuchet-memory-guard/v2/b1-analysis.txt`,
-its traces in `v2/b1-traces/`, and the VM consoles in `v2/b1-tip/build.log`.
+Both tests below are NixOS VM tests built from Tribuchet's agent-memory repeat
+test (`nix/agent-memory-repeat-test.nix`, `nix/oom-probes.bt` and
+`nix/agent-memory-oom-trace.py` in the Tribuchet repository). Their run records
+were kept as scratch outside this repository; what follows describes the tests
+well enough to rerun them.
 
-- A shell's child pipeline buffers 1792 MiB of random bytes in a memcg until
-  the kernel OOM-kills it. Runs with two OOM kills, by the cgroup's
-  `memory.events`: 7.2.9 3 of 10, 6.18.55 0 of 10 (`b1-analysis.txt` lines
-  9-12).
-- The same in a memcg of its own (`memory.max` 768M, `memory.swap.max` 256M,
-  zswap writeback off, so zswap's rejects stay in swap cache) with a `dd` loop
-  beside it: 7.2.9 6 of 29, 6.18.55 0 of 39 (lines 17-18).
-- bpftrace on `out_of_memory()`, `oom_evaluate_task()`, `__oom_kill_process()`,
-  and the victim's `do_exit()` and `exit_mmap()`, summarised by Tribuchet's
-  `nix/agent-memory-oom-trace.py` at `6496516`: on 7.2.9, 11 scans passed the
-  victim's place in the task list after its `do_exit()`, 7 of them during its
-  `exit_mmap()`. None evaluated the victim; each selected another task, which
-  was killed in 9 and already exiting in 2 (`build.log` lines 21332 and 22979).
-  On 6.18.55, all 17 such scans evaluated the victim, with `PF_EXITING` set and
-  `signal->live` 0, and aborted.
+Each VM has 3 GiB of memory, 2 vCPUs and zram swap as on `nixos-ext`, and runs
+Tribuchet's worker module (its agent slice, zswap and swap guard) without
+starting the worker itself. The test runs two cases:
 
-The patched kernel had not been built or booted when this was committed.
+- **Hog:** in a cgroup under the agent slice, a shell at OOM score 0 runs
+  `tr -d '\n' </dev/urandom | head -c 1792M | tail -n 1` until the guard clamps
+  the slice's swap and the kernel OOM-kills the pipeline. A run passes if the
+  shell survives and the cgroup's `memory.events` counts one `oom_kill`.
+- **Second allocator:** the same pipeline in a cgroup of its own
+  (`memory.max` 768M, `memory.swap.max` 256M, `memory.zswap.writeback` 0, so
+  zswap's rejects stay in swap cache), beside a loop of
+  `dd if=/dev/zero of=/dev/null bs=8M count=4`, repeated for a fixed time. A
+  run passes if `memory.events` counts one `oom_kill`.
+
+bpftrace on every VM traces `out_of_memory()`, `oom_evaluate_task()`,
+`__oom_kill_process()`, and each victim's `do_exit()` and `exit_mmap()`. An
+over-kill scan is one that, after a kill, passes the victim's place in the task
+list before the victim's `exit_mmap()` returns, does not evaluate the victim,
+and selects another task.
+
+### Patched against unpatched 7.2.12
+
+Run on 2026-10-28 with Tribuchet's test files at `6496516`, cut to the two cases
+above:
+
+- **Kernels:** this repository's `linux_7_2` package set as `nixos-ext`
+  evaluates it, both with the patch (`6826e2b`) and without it (`f7f0e9a`),
+  plus Tribuchet's own `linux_7_2` (7.2.9). The two 7.2.12 kernels have
+  byte-identical `.config` files; their derivations differ only by the patch.
+- **Layout:**
+  - each 7.2.12 kernel: two VMs with 10 hog runs each, and one VM with a 300 s
+    second-allocator loop;
+  - 7.2.9: one second-allocator VM.
+
+Runs with two or more OOM kills:
+
+| Case | Patched 7.2.12 | Unpatched 7.2.12 | 7.2.9 |
+| --- | --- | --- | --- |
+| Hog | 0 of 20 | 4 of 20 | not run |
+| Second allocator | 0 of 86 | 29 of 90 | 34 of 78 |
+| Over-kill scans, all runs | 0 | 36 | 35 |
+
+- **Patched kernel:** every hog shell survived, and every run had exactly one
+  kill. Its scans evaluated an exiting victim (`PF_EXITING` set,
+  `signal->live` 0) 57 times, and aborted every time, as 6.18.55 does below.
+- **Unpatched 7.2.12:** its 36 over-kill scans killed 34 more tasks; the other
+  2 picked a task that was already exiting. Unpatched scans evaluated an
+  exiting victim with `signal->live` 0 only 3 times on each kernel, consistent
+  with `signal->live` dropping between the iterator's check and the evaluation.
+- **Significance:** one-sided Fisher exact tests, patched against unpatched
+  7.2.12, give p = 2.6e-10 for the second-allocator runs and p = 0.053 for the
+  hog runs. Each second-allocator arm is a single VM, so its runs are not
+  independent replicates.
+
+### Before the patch: 7.2.9 against 6.18.55
+
+Tribuchet's test at `4ad5351` (build B1, 2026-10-28) ran both cases on 7.2.9
+and 6.18.55: 5 hog runs on each of two VMs per kernel, and a 150 s
+second-allocator loop on one VM per kernel.
+
+- Hog runs with two kills: 7.2.9 3 of 10, 6.18.55 0 of 10.
+- Second-allocator runs with two kills: 7.2.9 6 of 29, 6.18.55 0 of 39.
+- Traces, summarised with Tribuchet `6496516`'s `agent-memory-oom-trace.py`:
+  - On 7.2.9, 11 scans passed the victim's place in the task list after its
+    `do_exit()`, 7 of them during its `exit_mmap()`. None evaluated the victim.
+    Each selected another task, which was killed in 9 cases and already exiting
+    in 2.
+  - On 6.18.55, all 17 such scans evaluated the victim, with `PF_EXITING` set
+    and `signal->live` 0, and aborted.
+
+The patched kernel has been built and booted only in the VM test above; no
+host has booted it yet.
 
 ## Provenance
 
-- Base: linux-stable tag v7.2.12 (`cc9de5d4b5ab`), fetched shallow into
-  `~/Packages/fork-harness/runs/kernel-overkill-check/trees.git`. The change is commit
-  `729b86c59a4c` on it (`refs/archive/2026-10-27/memcg-oom-with-dead-7.2.12`),
-  and the patch is its `git format-patch -1`.
+- The patch is `git format-patch -1` of a commit (`729b86c59a4c`) on
+  linux-stable tag v7.2.12 (`cc9de5d4b5ab`).
 - nixpkgs' `linux-7.2.12.tar.xz`, the hosts' kernel `src`, has the same
   `mm/memcontrol.c`, `kernel/cgroup/cgroup.c`, `include/linux/cgroup.h` and
-  `mm/oom_kill.c` as the tag, and `patch -p1 --dry-run` applies the patch to
-  it cleanly. nixpkgs' own kernel patches (`bridge-stp-helper`,
-  `request-key-helper`) touch other files.
-- Analysis and scratch files: `~/Packages/fork-harness/runs/kernel-overkill-check/`
-  (`vendor/`, `draft2/`).
+  `mm/oom_kill.c` as the tag. `patch -p1 --dry-run` applies the patch to it
+  cleanly, and the kernel build applies it with no offset or fuzz.
+- nixpkgs' other kernel patches (`bridge-stp-helper`, `request-key-helper`,
+  `randstruct-provide-seed-5.19`) touch other files.
 
 ## When to drop it
 
