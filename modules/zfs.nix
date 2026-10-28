@@ -53,16 +53,19 @@ in
     # "cgroup: Don't expose dead tasks in cgroup"), so a scan that runs while
     # the victim frees its memory kills a second task. The patch passes
     # CSS_TASK_ITER_WITH_DEAD in mem_cgroup_scan_tasks(), which restores the
-    # scan's pre-a72f73c4dd9b behaviour: a single-threaded victim stays
-    # visible until its mm is MMF_OOM_SKIP. A multi-threaded victim whose
-    # leader has exited, with a non-leader doing the last mmput(), can still
-    # be missed; 6.18 has the same gap, so that is not a regression. The patch
-    # is ours, not upstream's: `git format-patch` of a commit on linux-stable
-    # v7.2.12 (cc9de5d4b5ab), checked with `patch -p1 --dry-run` against
-    # nixpkgs' linux-7.2.12.tar.xz, and tested against the unpatched kernel in
-    # a VM test. Same condition as kernelPackages: nixos-orin runs L4T's 5.15,
-    # and a72f73c4dd9b went to stable 6.19 and later only. The README has the
-    # mechanism, the evidence, the affected kernels and when to drop it.
+    # scan's pre-a72f73c4dd9b behaviour: a victim whose own exit drops the
+    # last reference to its mm, as a single-threaded one usually does, stays
+    # visible until the mm is MMF_OOM_SKIP. A victim can still be missed when
+    # another task drops that reference after it: a non-leader thread of a
+    # multi-threaded victim, a /proc reader, or a CLONE_VM process (the
+    # README's "Where the window stays open"). 6.18 has the same gaps, so they
+    # are not a regression. The patch is ours, not upstream's: `git
+    # format-patch` of a commit on linux-stable v7.2.12 (cc9de5d4b5ab), checked
+    # with `patch -p1 --dry-run` against nixpkgs' linux-7.2.12.tar.xz, and
+    # tested against the unpatched kernel in a VM test. Same condition as
+    # kernelPackages: nixos-orin runs L4T's 5.15, and a72f73c4dd9b went to
+    # stable 6.19 and later only. The README has the mechanism, the evidence,
+    # the affected kernels and when to drop it.
     kernelPatches = lib.mkIf (!config.hardware.nvidia-jetpack.enable or false) [
       {
         name = "memcg-oom-scan-with-dead";
