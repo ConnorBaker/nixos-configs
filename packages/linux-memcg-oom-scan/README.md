@@ -251,15 +251,18 @@ Runs with two or more OOM kills:
 - **Patched kernel:** every hog shell survived, and every run had exactly one
   kill. Its scans evaluated an exiting victim (`PF_EXITING` set,
   `signal->live` 0) 57 times, and aborted every time, as 6.18.55 does below.
+
 - **Unpatched 7.2.12:** `agent-memory-oom-trace.py` reports 37 (victim, scan)
   pairs; one scan on a hog VM is placed after two victims, so there are 36
   over-kill scans. They killed 34 more tasks; the other 2 picked a task that
   was already exiting. Unpatched scans evaluated an exiting victim with
   `signal->live` 0 only 3 times on each kernel, consistent with
   `signal->live` dropping between the iterator's check and the evaluation.
+
 - **Significance:** each arm pools runs from few VMs, two per kernel for the
   hog case and one for the second allocator, so its runs are not independent
   replicates. One-sided tests, patched against unpatched 7.2.12:
+
   - second allocator: Fisher exact p = 2.6e-10;
   - hog: Fisher exact p = 0.053, Boschloo p = 0.030, and an exact test
     stratified by VM pair p = 0.053.
