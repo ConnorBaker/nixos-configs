@@ -49,6 +49,22 @@ in
     kernelPackages = lib.mkIf (
       !config.hardware.nvidia-jetpack.enable or false
     ) pkgs.linuxKernel.packages.linux_7_2;
+    # linux_7_2 hides an exiting OOM victim from memcg OOM scans (a72f73c4dd9b,
+    # "cgroup: Don't expose dead tasks in cgroup"), so a scan that runs while
+    # the victim frees its memory kills a second task. The patch passes
+    # CSS_TASK_ITER_WITH_DEAD in mem_cgroup_scan_tasks(); it is ours, not
+    # upstream's: `git format-patch` of a commit on linux-stable v7.2.12
+    # (cc9de5d4b5ab), checked with `patch -p1 --dry-run` against nixpkgs'
+    # linux-7.2.12.tar.xz. Same condition as kernelPackages: nixos-orin runs
+    # L4T's 5.15, and a72f73c4dd9b went to stable 6.19 and later only. The
+    # README has the mechanism, the evidence, the affected kernels and when to
+    # drop it.
+    kernelPatches = lib.mkIf (!config.hardware.nvidia-jetpack.enable or false) [
+      {
+        name = "memcg-oom-scan-with-dead";
+        patch = ../packages/linux-memcg-oom-scan/0001-mm-memcontrol-let-memcg-OOM-scans-see-exiting-OOM-vi.patch;
+      }
+    ];
     kernelParams = [
       # Nixpkgs already adds nohibernate for ZFS and asserts networking.hostId.
       # https://github.com/openzfs/zfs/issues/9910

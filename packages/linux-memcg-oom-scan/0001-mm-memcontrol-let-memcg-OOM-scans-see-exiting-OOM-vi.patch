@@ -1,0 +1,73 @@
+From 729b86c59a4cd91484a65c7c835c4cbf919ed64b Mon Sep 17 00:00:00 2001
+From: Connor Baker <ConnorBaker01@gmail.com>
+Date: Tue, 27 Oct 2026 19:42:13 -0700
+Subject: [PATCH] mm: memcontrol: let memcg OOM scans see exiting OOM victims
+
+Since a72f73c4dd9b ("cgroup: Don't expose dead tasks in cgroup"),
+css_task_iter_advance() skips a task with PF_EXITING once its
+signal->live is 0, unless the caller passes CSS_TASK_ITER_WITH_DEAD,
+which 60f21a264930 ("cgroup, sched_ext: Include exiting tasks in cgroup
+iter") added for sched_ext. mem_cgroup_scan_tasks() passes only
+CSS_TASK_ITER_PROCS, so a memcg OOM scan stops returning an OOM victim
+once its last thread has dropped signal->live in do_exit(). That is
+before exit_mm(), and so before exit_mmap() sets MMF_OOM_SKIP on the
+victim's mm.
+
+oom_evaluate_task() depends on seeing the victim until then: it aborts
+the scan on an OOM victim whose mm is not yet MMF_OOM_SKIP. With the
+victim hidden, a charge that reaches the memcg OOM killer while the
+victim is still freeing its memory selects and kills another task.
+
+Pass CSS_TASK_ITER_WITH_DEAD. css_task_iter_advance() then filters as
+it did before a72f73c4dd9b: CSS_TASK_ITER_PROCS still skips threads
+that are not group leaders, and leaders on dying_tasks without live
+threads. A leader whose whole group has exited is never put on
+dying_tasks (do_cgroup_task_dead() adds a leader there only while
+signal->live is non-zero), so it is returned only until its final
+context switch unlinks it, as before a72f73c4dd9b. The callers already
+handle exiting tasks: oom_badness() and dump_task() skip a task none of
+whose threads has an mm, oom_kill_process() lets an exiting victim go
+through task_will_free_mem(), and __oom_kill_process(), for
+memory.oom.group, skips a victim with no mm.
+
+Seen in NixOS VM tests on 7.2.9, where a memcg OOM-killed a shell's
+child that buffered random bytes (zswap's rejects held in swap cache):
+a second task was killed in 3 of 10 runs, and in 6 of 29 runs with a dd
+loop in the same memcg. 6.18.55, which has neither the deferred cgroup
+unlink nor a72f73c4dd9b, killed once in all 10 and all 39 runs. With
+bpftrace on out_of_memory(), oom_evaluate_task(), __oom_kill_process()
+and the victim's do_exit() and exit_mmap(), 7.2.9 showed 11 scans that
+passed the victim's place in the task list after its do_exit(), 7 of
+them during its exit_mmap(). None evaluated the victim; each selected
+another task, which was killed in 9 and already exiting in 2. On
+6.18.55 all 17 such scans evaluated the victim, with PF_EXITING set and
+signal->live 0, and aborted.
+
+Fixes: a72f73c4dd9b ("cgroup: Don't expose dead tasks in cgroup")
+Assisted-by: Claude:claude-opus-5-5 bpftrace
+---
+ mm/memcontrol.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/mm/memcontrol.c b/mm/memcontrol.c
+index 7138ebc6ef..36d6f8b737 100644
+--- a/mm/memcontrol.c
++++ b/mm/memcontrol.c
+@@ -1371,7 +1371,13 @@ void mem_cgroup_scan_tasks(struct mem_cgroup *memcg,
+ 		struct css_task_iter it;
+ 		struct task_struct *task;
+ 
+-		css_task_iter_start(&iter->css, CSS_TASK_ITER_PROCS, &it);
++		/*
++		 * Include exiting tasks: oom_evaluate_task() must see an OOM
++		 * victim until its mm is MMF_OOM_SKIP, or another task is
++		 * killed while the victim's memory is still being freed.
++		 */
++		css_task_iter_start(&iter->css, CSS_TASK_ITER_PROCS |
++				    CSS_TASK_ITER_WITH_DEAD, &it);
+ 		while (!ret && (task = css_task_iter_next(&it))) {
+ 			ret = fn(task, arg);
+ 			/* Avoid potential softlockup warning */
+-- 
+2.43.0
+
