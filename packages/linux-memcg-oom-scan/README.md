@@ -268,10 +268,11 @@ Runs with two or more OOM kills:
   - hog: Fisher exact p = 0.053, Boschloo p = 0.030, and an exact test
     stratified by VM pair p = 0.053.
 
-  Fisher's and Boschloo's tests both treat the runs as independent, so neither
-  answers the pooling; the VM-stratified test does, for the hog case. The trace
-  evidence is the stronger result: 0 over-kill scans patched against 36
-  unpatched, and 57 aborts on an exiting victim against 3.
+  Fisher's and Boschloo's tests both treat the runs as independent. The
+  VM-stratified test addresses differences between VMs, not dependence between
+  runs within a VM. The trace evidence is the stronger result: 0 over-kill
+  scans patched against 36 unpatched, and 57 aborts on an exiting victim
+  against 3.
 
 ### Before the patch: 7.2.9 against 6.18.55
 
@@ -306,7 +307,8 @@ two VMs per kernel, and a 150 s second-allocator loop on one VM per kernel.
     overrides it. So a boot that fails and reboots comes back on the same
     kernel, and picking an older entry takes the boot menu (5 s timeout) and a
     console.
-  - Stage 1 never reboots by itself on these two hosts. The initrd applies no
+  - Stage 1 never reboots by itself on these two hosts, unless the firmware has
+    a watchdog of its own; nobody has checked for one. The initrd applies no
     `kernel.panic`, the kernel's `CONFIG_PANIC_TIMEOUT` is 0, and the command
     line has no `panic=`, so a panic there halts the host. The initrd has no
     watchdog, and `boot.initrd.systemd.emergencyAccess` is off, so a hang there,
@@ -326,6 +328,11 @@ two VMs per kernel, and a 150 s second-allocator loop on one VM per kernel.
     `/run/current-system/bin/switch-to-configuration boot`), then clear it.
     `bootCounting` is the alternative, with the same stage-2 limit. Neither has
     been tried on these hosts.
+  - The one-shot fallback fires only on a failure that reboots. A boot that
+    completes but leaves the host unreachable stays on the new generation.
+    Since the persistent default still names the old generation, any reboot
+    then returns to it, but causing that reboot takes console or remote-hands
+    access.
   - `panic=10` in `boot.kernelParams` would also reboot after a stage-1 panic,
     as `brev-worker`'s `panic=30` does. It changes the toplevels, not the
     kernel, and does not help a hang without a panic. That is the deployer's
