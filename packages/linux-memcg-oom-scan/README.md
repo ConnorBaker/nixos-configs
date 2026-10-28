@@ -136,10 +136,11 @@ that reference after the victim has left the scan:
     not change that branch.
   - If no thread is live at the leader's final switch, `do_cgroup_task_dead()`
     unlinks the leader (7100), and it disappears at that switch, which can come
-    after the last decrement.
-  - Either way, when a non-leader does the last `mmput()`, the victim is hidden
-    until `exit_mmap()` sets `MMF_OOM_SKIP`, and a charge meanwhile can still
-    kill a second task.
+    after the last decrement. The victim is then hidden early only if that
+    switch comes before the last `mmput()` has run `exit_mmap()`.
+  - In either case, while the leader is hidden and a non-leader has yet to do
+    the last `mmput()`, the victim stays hidden until `exit_mmap()` sets
+    `MMF_OOM_SKIP`, and a charge meanwhile can still kill a second task.
 - **Other holders of the mm.** A `/proc` reader (`get_task_mm()`,
   `fs/proc/array.c:441` and `494`), or a process sharing the mm through
   `CLONE_VM`, can hold a reference past the victim's final switch, which
@@ -267,8 +268,10 @@ Runs with two or more OOM kills:
   - hog: Fisher exact p = 0.053, Boschloo p = 0.030, and an exact test
     stratified by VM pair p = 0.053.
 
-  The trace evidence is the stronger result: 0 over-kill scans patched against
-  36 unpatched, and 57 aborts on an exiting victim against 3.
+  Fisher's and Boschloo's tests both treat the runs as independent, so neither
+  answers the pooling; the VM-stratified test does, for the hog case. The trace
+  evidence is the stronger result: 0 over-kill scans patched against 36
+  unpatched, and 57 aborts on an exiting victim against 3.
 
 ### Before the patch: 7.2.9 against 6.18.55
 
@@ -291,29 +294,44 @@ two VMs per kernel, and a 150 s second-allocator loop on one VM per kernel.
 - **Tested:** the patched kernel has booted in the VM test above and in this
   flake's 33 `zfs-fideduperange` checks, which use `nixos-ext`'s kernel package
   set; all passed. No host has booted it.
-- **Not built yet:** the four host toplevels, and what they rebuild against the
-  patched kernel: the module trees and initrds of all four, `zfs-kernel` for
-  `brev-worker` and `nixos-build01` (the `zfs-kernel` of `nixos-ext` and
-  `nixos-desktop` was built for the checks), and `nvidia-open` for
-  `nixos-desktop`.
+- **Before switching:** build the four host toplevels. What is still unbuilt
+  changes as other builds land; to see it for a host, run
+  `nix build --dry-run .#nixosConfigurations.<host>.config.system.build.toplevel`.
 - **Rollback:** keep the previous generation selectable.
   - `nixos-ext` and `nixos-desktop` are remote, with no KVM access, and boot
     with systemd-boot. Neither enables
-    `boot.loader.systemd-boot.bootCounting`, so the default entry is always
-    the newest generation: a boot that fails and reboots comes back on the same
-    kernel. Picking an older entry takes the boot menu (5 s timeout) and a
+    `boot.loader.systemd-boot.bootCounting`. The default entry is the
+    generation last installed by `nixos-rebuild switch` or `boot`, unless an
+    EFI default set earlier (`bootctl set-default`, or `d` in the boot menu)
+    overrides it. So a boot that fails and reboots comes back on the same
+    kernel, and picking an older entry takes the boot menu (5 s timeout) and a
     console.
-  - Whether a failed boot reboots at all depends on when it fails. A panic
-    before `systemd-sysctl` applies `kernel.panic = 10`
-    (`modules/watchdog.nix`) halts the host: the kernel's `CONFIG_PANIC_TIMEOUT`
-    is 0, and the command line has no `panic=`. A panic after that, or a hang of
-    PID 1 once systemd has armed the 60 s hardware watchdog, reboots it.
-  - So without a console, arrange the fallback before rebooting. For example,
-    from the running system, `bootctl set-default` its own entry and
-    `bootctl set-oneshot` the new generation's entry, then make the new entry
-    the default once it has booted. Or enable `bootCounting` first. Neither has
+  - Stage 1 never reboots by itself on these two hosts. The initrd applies no
+    `kernel.panic`, the kernel's `CONFIG_PANIC_TIMEOUT` is 0, and the command
+    line has no `panic=`, so a panic there halts the host. The initrd has no
+    watchdog, and `boot.initrd.systemd.emergencyAccess` is off, so a hang there,
+    such as a root pool that fails to import, stays hung.
+  - From stage 2 on, `kernel.panic = 10` (`modules/watchdog.nix`, applied by
+    `systemd-sysctl`) reboots after a panic, and the 60 s hardware watchdog
+    that PID 1 arms reboots after a hang of PID 1, if the board's watchdog
+    driver binds (not checked on the hosts).
+  - Without a console, arrange a fallback before rebooting; it covers only
+    failures from stage 2 on. For example, after `nixos-rebuild boot`, on the
+    running system: `bootctl set-default @current`, then `bootctl set-oneshot`
+    the new generation's entry. Entry IDs are content hashes
+    (`nixos-<sha256>.conf`); find them with `bootctl list`. Once the new
+    generation is accepted, clear the persistent default with
+    `bootctl set-default ""`, which hands the choice back to NixOS. After a
+    fallback, first make the old generation the installed default again (e.g.
+    `/run/current-system/bin/switch-to-configuration boot`), then clear it.
+    `bootCounting` is the alternative, with the same stage-2 limit. Neither has
     been tried on these hosts.
-  - `nixos-build01` uses systemd-boot the same way, without the watchdog.
+  - `panic=10` in `boot.kernelParams` would also reboot after a stage-1 panic,
+    as `brev-worker`'s `panic=30` does. It changes the toplevels, not the
+    kernel, and does not help a hang without a panic. That is the deployer's
+    choice; this repository does not set it.
+  - `nixos-build01` uses systemd-boot the same way, but sets neither
+    `kernel.panic` nor the watchdog, so any panic, at any stage, halts it.
     `brev-worker` uses GRUB, whose saved entry falls back to its rescue
     installer (`devices/brev-worker/hardware.nix`).
 - **Checking the running kernel:** `uname -r` reads 7.2.12 with or without the
