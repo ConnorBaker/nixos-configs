@@ -216,6 +216,20 @@
                   '';
             }
             // lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 {
+              # Every host's NixOS assertions, which otherwise fail only at
+              # deploy.
+              nixos-assertions =
+                let
+                  failed = lib.filterAttrs (_: messages: messages != [ ]) (
+                    builtins.mapAttrs (
+                      _: host: map (a: a.message) (builtins.filter (a: !a.assertion) host.config.assertions)
+                    ) inputs.self.nixosConfigurations
+                  );
+                in
+                if failed == { } then
+                  pkgs.runCommand "nixos-assertions" { } "touch $out"
+                else
+                  throw "failed NixOS assertions: ${builtins.toJSON failed}";
               networking-reload = pkgs.callPackage ./tests/networking-reload.nix {
                 networkFiles = builtins.mapAttrs (
                   _: unit: unit.text
