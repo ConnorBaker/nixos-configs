@@ -217,12 +217,19 @@
             }
             // lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 {
               # Every host's NixOS assertions, which otherwise fail only at
-              # deploy.
+              # deploy. Among them, modules/nix/fixed-output-gate.nix's: the
+              # configuration under which a host's daemon builds no
+              # fixed-output derivation for an untrusted client in its own
+              # network.
               nixos-assertions =
                 let
                   failed = lib.filterAttrs (_: messages: messages != [ ]) (
                     builtins.mapAttrs (
-                      _: host: map (a: a.message) (builtins.filter (a: !a.assertion) host.config.assertions)
+                      _: host:
+                      map (a: a.message) (builtins.filter (a: !a.assertion) host.config.assertions)
+                      ++ lib.optional (
+                        !host.config.system.build ? fixedOutputGateProblems
+                      ) "modules/nix/fixed-output-gate.nix is not imported."
                     ) inputs.self.nixosConfigurations
                   );
                 in
@@ -230,6 +237,10 @@
                   pkgs.runCommand "nixos-assertions" { } "touch $out"
                 else
                   throw "failed NixOS assertions: ${builtins.toJSON failed}";
+              # nix-daemon refuses the fixed-output derivations it would build
+              # itself; the control builds them without the gate.
+              fixed-output-gate = pkgs.callPackage ./tests/fixed-output-gate.nix { gate = true; };
+              fixed-output-gate-without = pkgs.callPackage ./tests/fixed-output-gate.nix { gate = false; };
               networking-reload = pkgs.callPackage ./tests/networking-reload.nix {
                 networkFiles = builtins.mapAttrs (
                   _: unit: unit.text
@@ -433,6 +444,8 @@
                 inputs.tribuchet.nixosModules.default
                 inputs.nix-grpc-store.nixosModules.client
                 inputs.nix-grpc-store.nixosModules.server
+                # Every host, whatever else it imports.
+                ./modules/nix/fixed-output-gate.nix
                 {
                   nixpkgs = { inherit config overlays; };
                 }

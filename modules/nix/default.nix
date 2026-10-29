@@ -13,6 +13,7 @@ let
   inherit (lib.strings) concatMapStringsSep;
 
   inventory = import ../../inventory.nix;
+  isHub = config.networking.hostName == inventory.hub;
   nixPrivateKey = "ssh/id_nix_ed25519";
 
   # Common configuration for all machines.
@@ -108,7 +109,14 @@ in
       fsync-metadata = false;
       http-connections = 32;
       log-lines = 100;
-      max-jobs = 2;
+      # Off the hub, every build goes to a build machine: fixed-output ones
+      # to the hub, whose Tribuchet builds them in its FOD sandbox, since this
+      # host's daemon refuses them. nixpkgs' fetchers prefer local builds, so
+      # a local slot would have them refused here. GPU jobs still build here,
+      # through nix-grpc-daemon, which sets max-jobs for its own connections.
+      # On the hub, Tribuchet's fragment sets max-jobs; this value holds only
+      # until the hub writes it.
+      max-jobs = if isHub then 2 else 0;
       max-substitution-jobs = 32;
       require-drop-supplementary-groups = true;
       # NixOS contributes benchmark/big-parallel/kvm/nixos-test and gccarch.

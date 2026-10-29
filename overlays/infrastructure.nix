@@ -1,5 +1,6 @@
 inputs: final: prev: {
   histodu = final.callPackage ../packages/histodu.nix { source = inputs.histodu; };
+  refuse-local-fixed-output = final.callPackage ../packages/refuse-local-fixed-output.nix { };
   zfs-dedup = final.callPackage (inputs.zfs-dedup + "/nix/package.nix") { };
   tribuchet = final.callPackage (inputs.tribuchet + "/nix/package.nix") {
     craneLib = inputs.tribuchet.inputs.crane.mkLib final;

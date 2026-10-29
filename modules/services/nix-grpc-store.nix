@@ -36,6 +36,11 @@ in
     # One local gRPC endpoint per host; the ext Nix daemon schedules CPU jobs
     # through Tribuchet. No shared gRPC farm, balancer, or S3 service is needed.
     workerName = config.networking.hostName;
+    # Builds taken at once, the GPU jobs other hosts' build hooks send. Unset,
+    # it follows nix's max-jobs, which is 0 off the hub (one build at a time);
+    # 2 is what that gave it before. On the hub it follows Tribuchet's
+    # max-jobs.
+    maxJobs = lib.mkIf (!hub.enable) 2;
   };
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = [ 50051 ];
 

@@ -52,12 +52,13 @@
       nixos = true;
       sshHostKey = ./devices/nixos-orin/keys/ssh_host_ed25519_key.pub;
     };
-    # Ubuntu DGX Spark also serves CPU jobs, so CUDA is not mandatory.
+    # Ubuntu DGX Spark. Its CPU jobs, fixed-output ones among them, reach
+    # it through its Tribuchet worker; its nix-grpc-daemon takes GPU jobs.
     spark-ee4c = {
       systems = [ "aarch64-linux" ];
       features = [ "cuda" ];
       maxJobs = 3;
-      mandatoryFeatures = [ ];
+      mandatoryFeatures = [ "cuda" ];
       nixos = false;
     };
   };
