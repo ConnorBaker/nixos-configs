@@ -346,11 +346,11 @@
         "nixpkgs-regression": "nixpkgs-regression"
       },
       "locked": {
-        "lastModified": 1793112210,
-        "narHash": "sha256-Pp7lGbnu3awds0jh7rHGhj8J4XiBV1dEkYzPqXtfonQ=",
+        "lastModified": 1793305763,
+        "narHash": "sha256-SRGxxfIvXX0mSJn2/SfECh+FM+qcVmlC90CtKkNWG/g=",
         "owner": "ConnorBaker",
         "repo": "nix",
-        "rev": "087382c469722a1c45d5a550048544be96d1fcfa",
+        "rev": "cd794b674fc7082090818673cc81eb2bfe35a993",
         "type": "github"
       },
       "original": {
@@ -742,11 +742,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792924300,
-        "narHash": "sha256-05n9kS66M5J3TUS0YP7/lXvI8NxzA21+nVs/OR7KrjA=",
+        "lastModified": 1793361600,
+        "narHash": "sha256-Bi4ReuS0GdjTY3hG8D89QlxZeqZJaCO/V4Rhb27lZuE=",
         "owner": "ConnorBaker",
         "repo": "tribuchet",
-        "rev": "1d645e51a10ca15370e36dac6d9d69312ef44007",
+        "rev": "f9c35e3bc5d0d339192bc76fd977acc2f0887b18",
         "type": "github"
       },
       "original": {

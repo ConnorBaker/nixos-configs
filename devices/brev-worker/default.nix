@@ -54,12 +54,13 @@
   services.tribuchet-worker = {
     agents = lib.mkForce 8;
     settings.max-jobs = lib.mkForce 8;
+    # The agents' slice is capped at MemTotal less this, less MemTotal/16
+    # for its zswap (Tribuchet's agent-memory.nix). On m8id.8xlarge
+    # (MemTotal 123.78 GiB) that is 99.02 GiB, the 80 % these hosts had.
+    # The ARC, which is not charged to the slice, keeps ZFS's default limit
+    # and shrinks under memory pressure, as on nixos-configs' other hosts.
+    agentMemoryReserve = builtins.floor (17.02 * 1024 * 1024 * 1024);
   };
-
-  # 123.5 GiB of RAM on m8id.8xlarge: 80% for the builds. The ARC, which is
-  # not charged to the slice, keeps ZFS's default limit and shrinks under
-  # memory pressure, as on nixos-configs' other hosts.
-  systemd.slices."system-tribuchet\\x2dagent".sliceConfig.MemoryMax = "80%";
 
   # brev-worker reaches every instance, Ubuntu or NixOS, as Brev's SSH user
   # (the API's hostSshUser, "ubuntu") with Brev's key, ~/.brev/brev.pem.
