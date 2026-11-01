@@ -45,7 +45,11 @@
     };
 
     nix-grpc-store = {
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        # Its lease checks' Tribuchet: the one the hosts run.
+        tribuchet.follows = "tribuchet";
+      };
       # Upstream main plus the PRs and patches we run; see its merge history.
       url = "github:ConnorBaker/nix-grpc-store/integration";
     };
