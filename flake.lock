@@ -303,11 +303,11 @@
         "treefmt-nix": "treefmt-nix_2"
       },
       "locked": {
-        "lastModified": 1793555647,
-        "narHash": "sha256-tTcoDWiraSB1FlnYlhdBv9ZylcGhGTiU1lbi5OZN5Gw=",
+        "lastModified": 1793693699,
+        "narHash": "sha256-rJLLSdzk33iyKVIhG0UuCKjI6RGWMSTZD6qhuVIbbqg=",
         "owner": "Mic92",
         "repo": "niks3",
-        "rev": "b8ab8359e51e7f6b70a879a5aae2f778f2e4137d",
+        "rev": "2ae7fce37ce1c8d9029ba0a180bb67606baf151e",
         "type": "github"
       },
       "original": {
@@ -432,11 +432,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793562207,
-        "narHash": "sha256-cCvQw0OCHHaI0CFXrneydgKhfkaBg0I3KkYln8OHeoM=",
+        "lastModified": 1793834204,
+        "narHash": "sha256-T8dioR8afrAHHw5O0PnING6GtpsjR6nnhPrmE7VVGeY=",
         "owner": "ConnorBaker",
         "repo": "nix-grpc-store",
-        "rev": "639ac8a2aed6f76df8446416b4f32dd726ab2f7c",
+        "rev": "a7583d0f007510099ea078a451dc04dbecbacb5d",
         "type": "github"
       },
       "original": {
@@ -464,11 +464,11 @@
         "treefmt-nix": "treefmt-nix_3"
       },
       "locked": {
-        "lastModified": 1793117854,
-        "narHash": "sha256-8KaQ0Oc4bHQU3oex60SOPb8Bmxso5YHZmntFtmLNWSI=",
+        "lastModified": 1793834473,
+        "narHash": "sha256-Nh6WR5WZUxKEztd4A6uCC6IQvP5h+BP7Mv9H5+v5o8E=",
         "owner": "ConnorBaker",
         "repo": "nix-optimization",
-        "rev": "ba705a5b45e8a98f5c35418770c656e5c08ad40a",
+        "rev": "bc43f673e46bc5bd709d98daa6f95637aff55f5c",
         "type": "github"
       },
       "original": {
@@ -486,11 +486,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793097812,
-        "narHash": "sha256-W1/aGFesNZM7UolkhEodUAfu5hhqKUxlTCnbCJv3vVY=",
+        "lastModified": 1793593319,
+        "narHash": "sha256-utI4K5HnL8X8waAVX7aYiqALTmLK8AEBRRKF5oaeDOE=",
         "owner": "Mic92",
         "repo": "nix-tarmac",
-        "rev": "ede458c513457951a44ff75cd7ba2f2efbfe0ce6",
+        "rev": "80ea9f4a69e0ff6f210c61c976f13adb2eccc0de",
         "type": "github"
       },
       "original": {
@@ -742,11 +742,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793361600,
-        "narHash": "sha256-Bi4ReuS0GdjTY3hG8D89QlxZeqZJaCO/V4Rhb27lZuE=",
+        "lastModified": 1793729466,
+        "narHash": "sha256-XS0Zs9YywVJ2gkB2OcjehsC4OOAEjA+8CCYQsIsHbT4=",
         "owner": "ConnorBaker",
         "repo": "tribuchet",
-        "rev": "f9c35e3bc5d0d339192bc76fd977acc2f0887b18",
+        "rev": "823dc2edd7b738feb4e9a69148c8842553c31769",
         "type": "github"
       },
       "original": {
