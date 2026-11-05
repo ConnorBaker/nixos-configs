@@ -52,8 +52,8 @@
   services.nix-grpc-daemon.workerName = lib.mkForce null;
 
   services.tribuchet-worker = {
-    agents = lib.mkForce 8;
-    settings.max-jobs = lib.mkForce 8;
+    # One agent, and one build, per CPU (modules/services/tribuchet.nix).
+    agents = "auto";
     # The agents' slice is capped at MemTotal less this, less MemTotal/16
     # for its zswap (Tribuchet's agent-memory.nix). On m8id.8xlarge
     # (MemTotal 123.78 GiB) that is 99.02 GiB, the 80 % these hosts had.
