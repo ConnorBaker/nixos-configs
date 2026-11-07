@@ -742,11 +742,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793909101,
-        "narHash": "sha256-5pR4+yqyPbaBannrhZGwbfBBhssFSgmuNMZ0pRewQ3c=",
+        "lastModified": 1794027759,
+        "narHash": "sha256-rEWxDxbRz9KiNxxTr9lIO771YbEdNgHUyAu+AtKST30=",
         "owner": "ConnorBaker",
         "repo": "tribuchet",
-        "rev": "399993780c5e31dfa64f8b90062d03ccf53d28b3",
+        "rev": "8bd4959c8d04dd4c57292d9a6071e6d2b0fb3769",
         "type": "github"
       },
       "original": {
