@@ -55,8 +55,9 @@
     # One agent, and one build, per CPU (modules/services/tribuchet.nix).
     agents = "auto";
     # The agents' slice is capped at MemTotal less this, less MemTotal/16
-    # for its zswap (Tribuchet's agent-memory.nix). On m8id.8xlarge
-    # (MemTotal 123.78 GiB) that is 99.02 GiB, the 80 % these hosts had.
+    # for its zswap (modules/services/tribuchet-agent-memory.nix). On
+    # m8id.8xlarge (MemTotal 123.78 GiB) that is 99.02 GiB, the 80 % these
+    # hosts had.
     # The ARC, which is not charged to the slice, keeps ZFS's default limit
     # and shrinks under memory pressure, as on nixos-configs' other hosts.
     agentMemoryReserve = builtins.floor (17.02 * 1024 * 1024 * 1024);

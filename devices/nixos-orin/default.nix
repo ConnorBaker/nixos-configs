@@ -20,10 +20,11 @@
     hostName = "nixos-orin";
   };
 
-  # Tribuchet's agent slice swaps through zswap only with memory.zswap.max
-  # and memory.zswap.writeback, which this 5.15 kernel lacks (Linux 5.19
-  # and 6.8). Without them the slice's pages could go on to zram. So no
-  # swap for the slice here: its cap is MemTotal less the reserve.
+  # The Tribuchet agents' slice (modules/services/tribuchet-agent-memory.nix)
+  # swaps through zswap only with memory.zswap.max and
+  # memory.zswap.writeback, which this 5.15 kernel lacks (Linux 5.19 and
+  # 6.8). Without them the slice's pages could go on to zram. So no swap
+  # for the slice here: its cap is MemTotal less the reserve.
   services.tribuchet-worker.agentSwapPercent = 0;
 
   # Need to add our user to the i2c and video groups to access the GPU.

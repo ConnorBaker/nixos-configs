@@ -138,6 +138,18 @@
 
       # Memoization through lambda lifting.
       nixpkgsInstances = genAttrs systems mkNixpkgs;
+
+      # Tribuchet's module with the agents' memory policy, which is ours
+      # (modules/services/tribuchet-agent-memory.nix). It replaces
+      # Tribuchet's nix/agent-memory.nix while the pinned Tribuchet still
+      # has one; once no pin has, the disabledModules line goes.
+      tribuchetModule = {
+        imports = [
+          inputs.tribuchet.nixosModules.default
+          ./modules/services/tribuchet-agent-memory.nix
+        ];
+        disabledModules = [ "${inputs.tribuchet}/nix/agent-memory.nix" ];
+      };
     in
     mkFlake { inherit inputs; } {
       inherit systems;
@@ -215,6 +227,9 @@
                     touch "$out"
                   '';
             }
+            // lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 (
+              import ./tests/tribuchet-agent-memory { inherit inputs system tribuchetModule; }
+            )
             // lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 {
               # Every host's NixOS assertions, which otherwise fail only at
               # deploy. Among them, modules/nix/fixed-output-gate.nix's: the
@@ -441,7 +456,7 @@
                 inputs.sops-nix.nixosModules.sops
                 inputs.disko.nixosModules.disko
                 inputs.impermanence.nixosModules.impermanence
-                inputs.tribuchet.nixosModules.default
+                tribuchetModule
                 inputs.nix-grpc-store.nixosModules.client
                 inputs.nix-grpc-store.nixosModules.server
                 # Every host, whatever else it imports.
