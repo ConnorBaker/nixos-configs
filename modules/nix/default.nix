@@ -117,6 +117,13 @@ in
       # On the hub, Tribuchet's fragment sets max-jobs; this value holds only
       # until the hub writes it.
       max-jobs = if isHub then 2 else 0;
+      # Every build the hub forwards to Tribuchet holds one auto-allocated
+      # uid slot (id-count / 65536) for its whole wait, and Tribuchet's
+      # max-jobs cap derives from this (modules/services/tribuchet.nix).
+      # Nix's default of 128 slots capped the hub below twice the workers'
+      # summed capacity; 256 is Tribuchet's own default cap. The range ends
+      # far below the Tribuchet agents' uid blocks (agentUidBase).
+      id-count = lib.mkIf isHub (256 * 65536);
       max-substitution-jobs = 32;
       require-drop-supplementary-groups = true;
       # NixOS contributes benchmark/big-parallel/kvm/nixos-test and gccarch.
