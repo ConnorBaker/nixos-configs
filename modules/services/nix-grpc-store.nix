@@ -41,6 +41,13 @@ in
     # 2 is what that gave it before. On the hub it follows Tribuchet's
     # max-jobs.
     maxJobs = lib.mkIf (!hub.enable) 2;
+    # U51 stage 1: the before-measurement of ngs's own queue and pool
+    # (nix_grpc_sched{kind="queued"}, nix_grpc_queue_seconds,
+    # nix_grpc_build_slots, nix_grpc_inflight) ahead of the W33 uncap; see
+    # fork-harness runs/w55-scheduling-comparison/REPORT.md. Loopback only.
+    # Read once at process start: it takes effect at the next generation
+    # (takeover or idle exit), not on switch or SIGHUP.
+    metricsListen = lib.mkIf hub.enable "127.0.0.1:9464";
   };
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = [ 50051 ];
 
