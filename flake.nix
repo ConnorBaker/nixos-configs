@@ -39,8 +39,12 @@
     nix.url = "github:ConnorBaker/nix/integration";
 
     nix-optimization = {
-      inputs.nix.follows = "nix";
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs = {
+        nix.follows = "nix";
+        # Upstream main plus the PRs we run; see its merge history.
+        nix-tarmac.url = "github:ConnorBaker/nix-tarmac/integration";
+        nixpkgs.follows = "nixpkgs";
+      };
       url = "github:ConnorBaker/nix-optimization/nixos-nix-tarmac";
     };
 
