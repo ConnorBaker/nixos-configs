@@ -486,11 +486,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795060909,
-        "narHash": "sha256-989lHZoN7uwTe1QROut5AaTNCApNPDqGkm08mOVGGBU=",
+        "lastModified": 1795127921,
+        "narHash": "sha256-Om+ltzclIM0UkqMD1y6VzVwMl1HSP6ioWEjYOyH2yYQ=",
         "owner": "ConnorBaker",
         "repo": "nix-tarmac",
-        "rev": "6a33c7bdd9909b7d248bea399dff54b6c27cf57a",
+        "rev": "3f2a75d5aaec25803b82b0846877b31091b0e204",
         "type": "github"
       },
       "original": {
