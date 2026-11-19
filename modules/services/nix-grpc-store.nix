@@ -7,6 +7,7 @@
 let
   # Use exactly the optimized Nix libraries selected for the running daemon.
   grpc = config.programs.nix-grpc-store.packageSet.default;
+  inventory = import ../../inventory.nix;
   hub = config.services.tribuchet-hub;
   systemctl = "${config.systemd.package}/bin/systemctl";
   # The daemon takes nix's max-jobs at start and again on SIGHUP, never by
@@ -48,6 +49,16 @@ in
     # Read once at process start: it takes effect at the next generation
     # (takeover or idle exit), not on switch or SIGHUP.
     metricsListen = lib.mkIf hub.enable "127.0.0.1:9464";
+    # On the hub, nix-daemon hands each system a connected Tribuchet worker
+    # serves to external-builders, including farm systems that are neither
+    # its own nor in extra-platforms (the Spark's and the Orin's
+    # aarch64-linux). Offer those too; otherwise the scheduler refuses their
+    # builds with "no connected, non-draining worker for system ...".
+    extraSystems = lib.mkIf hub.enable (
+      lib.subtractLists [ pkgs.stdenv.hostPlatform.system ] (
+        lib.unique (lib.concatMap (host: host.systems) (lib.attrValues inventory.hosts))
+      )
+    );
   };
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = [ 50051 ];
 

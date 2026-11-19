@@ -432,11 +432,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794616504,
-        "narHash": "sha256-iMjPS1Y0hNK498zeDOfPU1k9+kMGFKrnvKvY7g/GutM=",
+        "lastModified": 1795121255,
+        "narHash": "sha256-XQPpii8LklEp/i1ZtCpyJtez41HDsTZ6/GRJbRmbKWw=",
         "owner": "ConnorBaker",
         "repo": "nix-grpc-store",
-        "rev": "a96a709606b5f4d1e12aff49449385baaa250b87",
+        "rev": "5155f1dbac42d94024ded21a38b399c85e7e73f0",
         "type": "github"
       },
       "original": {
