@@ -9,15 +9,6 @@ let
   grpc = config.programs.nix-grpc-store.packageSet.default;
   inventory = import ../../inventory.nix;
   hub = config.services.tribuchet-hub;
-  systemctl = "${config.systemd.package}/bin/systemctl";
-  # The daemon takes nix's max-jobs at start and again on SIGHUP, never by
-  # itself. Only a daemon running this configuration's package handles the
-  # signal; an older one still draining after a switch would die of it.
-  reread = pkgs.writeShellScript "nix-grpc-daemon-reread" ''
-    pid=$(${systemctl} show --property MainPID --value nix-grpc-daemon.service)
-    [ "$pid" -gt 0 ] && [ "$(readlink /proc/"$pid"/exe)" = ${lib.getExe' grpc "nix-grpc-daemon"} ] || exit 0
-    exec ${systemctl} kill --kill-whom=main --signal=SIGHUP nix-grpc-daemon.service
-  '';
 in
 {
   programs.nix-grpc-store = {
@@ -39,9 +30,13 @@ in
     workerName = config.networking.hostName;
     # Builds taken at once, the GPU jobs other hosts' build hooks send. Unset,
     # it follows nix's max-jobs, which is 0 off the hub (one build at a time);
-    # 2 is what that gave it before. On the hub it follows Tribuchet's
-    # max-jobs.
-    maxJobs = lib.mkIf (!hub.enable) 2;
+    # 2 is what that gave it before. On the hub, every build this daemon takes
+    # waits in Tribuchet's own admission, so take as many as nix-daemon has
+    # uid slots (servable() clamps to them anyway). Following Tribuchet's
+    # max-jobs, the sum of connected agents, let builds queued for one system
+    # hold every slot while workers of another sat idle. Always passed as
+    # --max-jobs, so nix.conf rewrites and SIGHUP leave it alone.
+    maxJobs = if hub.enable then hub.externalBuilders.maxJobsCap else 2;
     # U51 stage 1: the before-measurement of ngs's own queue and pool
     # (nix_grpc_sched{kind="queued"}, nix_grpc_queue_seconds,
     # nix_grpc_build_slots, nix_grpc_inflight) ahead of the W33 uncap; see
@@ -74,36 +69,6 @@ in
         reloadIfChanged = lib.mkForce false;
         restartIfChanged = false;
       };
-
-      # A switch that changes nix.conf.
-      nix-grpc-daemon-nix-conf = {
-        description = "Have nix-grpc-daemon read nix.conf's max-jobs again";
-        after = [ "nix-grpc-daemon.service" ];
-        wantedBy = [ "multi-user.target" ];
-        restartTriggers = [ config.environment.etc."nix/nix.conf".source ];
-        serviceConfig = {
-          Type = "oneshot";
-          RemainAfterExit = true;
-          ExecStart = reread;
-        };
-      };
-
-      nix-grpc-daemon-reread = {
-        description = "Have nix-grpc-daemon read nix's max-jobs again";
-        serviceConfig = {
-          Type = "oneshot";
-          ExecStart = reread;
-        };
-      };
     };
-
-    # On the hub, each rewrite of the max-jobs fragment nix.conf includes, as
-    # Tribuchet's own tribuchet-nix-reload does for nix-daemon.
-    paths.nix-grpc-daemon-reread =
-      lib.mkIf (hub.enable && hub.externalBuilders.enable && hub.externalBuilders.dynamic)
-        {
-          wantedBy = [ "multi-user.target" ];
-          pathConfig.PathModified = toString hub.externalBuilders.nixConfigPath;
-        };
   };
 }
