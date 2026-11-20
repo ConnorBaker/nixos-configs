@@ -52,8 +52,17 @@
   services.nix-grpc-daemon.workerName = lib.mkForce null;
 
   services.tribuchet-worker = {
-    # One agent, and one build, per CPU (modules/services/tribuchet.nix).
+    # One agent per CPU (modules/services/tribuchet.nix).
     agents = "auto";
+    # Temporary: at most 16 builds at once, not one per agent, until the
+    # arbiter freezes builds out of a whole-host oversubscription. With 32
+    # builds the hosts ran at load 400-650 on 32 CPUs and CPU PSI some
+    # avg10 ~79% with no build frozen, slowing the per-file observations
+    # that have a running-time budget. Sixteen builds that each use the
+    # 1-2 cores measured for the serial ones still fill the 32 CPUs. The
+    # setting changes only worker.toml: the worker restarts, re-adopts
+    # every running build, and leases new ones while fewer than 16 run.
+    settings.max-jobs = 16;
     # The agents' slice is capped at MemTotal less this, less MemTotal/16
     # for its zswap (modules/services/tribuchet-agent-memory.nix). On
     # m8id.8xlarge (MemTotal 123.78 GiB) that is 99.02 GiB, the 80 % these
