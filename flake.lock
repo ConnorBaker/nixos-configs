@@ -303,16 +303,17 @@
         "treefmt-nix": "treefmt-nix_2"
       },
       "locked": {
-        "lastModified": 1793555647,
-        "narHash": "sha256-tTcoDWiraSB1FlnYlhdBv9ZylcGhGTiU1lbi5OZN5Gw=",
-        "owner": "Mic92",
+        "lastModified": 1795157976,
+        "narHash": "sha256-9u7msoTDsXixWNytFSJE+GRsvO5XGK1J8o0MNRD9L6k=",
+        "owner": "ConnorBaker",
         "repo": "niks3",
-        "rev": "b8ab8359e51e7f6b70a879a5aae2f778f2e4137d",
+        "rev": "4d2fd84ced4e25476fcf310e751f82159897eeee",
         "type": "github"
       },
       "original": {
-        "owner": "Mic92",
+        "owner": "ConnorBaker",
         "repo": "niks3",
+        "rev": "4d2fd84ced4e25476fcf310e751f82159897eeee",
         "type": "github"
       }
     },
@@ -432,11 +433,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795121255,
-        "narHash": "sha256-XQPpii8LklEp/i1ZtCpyJtez41HDsTZ6/GRJbRmbKWw=",
+        "lastModified": 1795185344,
+        "narHash": "sha256-W+TlkjIf7Uc/EZ/KR8mLkpDjqh78FeqnkEr0vo5vVbI=",
         "owner": "ConnorBaker",
         "repo": "nix-grpc-store",
-        "rev": "5155f1dbac42d94024ded21a38b399c85e7e73f0",
+        "rev": "4d87197bb298e25ad4305f08fdc0d9b01dd93959",
         "type": "github"
       },
       "original": {
