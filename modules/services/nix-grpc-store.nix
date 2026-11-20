@@ -46,8 +46,8 @@ in
     metricsListen = lib.mkIf hub.enable "127.0.0.1:9464";
     # On the hub, nix-daemon hands each system a connected Tribuchet worker
     # serves to external-builders, including farm systems that are neither
-    # its own nor in extra-platforms (the Spark's and the Orin's
-    # aarch64-linux). Offer those too; otherwise the scheduler refuses their
+    # its own nor in extra-platforms (the Spark's aarch64-linux). Offer
+    # those too; otherwise the scheduler refuses their
     # builds with "no connected, non-draining worker for system ...".
     extraSystems = lib.mkIf hub.enable (
       lib.subtractLists [ pkgs.stdenv.hostPlatform.system ] (

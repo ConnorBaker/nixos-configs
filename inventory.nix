@@ -44,14 +44,6 @@
         secondaryMAC = "08:bf:b8:13:a2:61";
       };
     };
-    nixos-orin = {
-      systems = [ "aarch64-linux" ];
-      features = [ "cuda" ];
-      maxJobs = 3;
-      mandatoryFeatures = [ "cuda" ];
-      nixos = true;
-      sshHostKey = ./devices/nixos-orin/keys/ssh_host_ed25519_key.pub;
-    };
     # Ubuntu DGX Spark. Its CPU jobs, fixed-output ones among them, reach
     # it through its Tribuchet worker; its nix-grpc-daemon takes GPU jobs.
     spark-ee4c = {
