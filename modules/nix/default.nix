@@ -118,12 +118,16 @@ in
       # until the hub writes it.
       max-jobs = if isHub then 2 else 0;
       # Every build the hub forwards to Tribuchet holds one auto-allocated
-      # uid slot (id-count / 65536) for its whole wait, and Tribuchet's
-      # max-jobs cap derives from this (modules/services/tribuchet.nix).
-      # Nix's default of 128 slots capped the hub below twice the workers'
-      # summed capacity; 256 is Tribuchet's own default cap. The range ends
-      # far below the Tribuchet agents' uid blocks (agentUidBase).
-      id-count = lib.mkIf isHub (256 * 65536);
+      # uid slot (id-count / 65536) for its whole wait, and the hub's
+      # nix-grpc-daemon takes as many builds at once as there are slots
+      # (modules/services/nix-grpc-store.nix).
+      # 1024 slots: the hub's nix-grpc-daemon takes this many builds at once
+      # (its --max-jobs), above the farm's queued backlog, so builds for one
+      # system no longer hold every slot while another system's workers sit
+      # idle; Tribuchet still places each against real worker capacity. The
+      # range (1024 * 65536 uids past the base) ends far below the Tribuchet
+      # agents' uid blocks (agentUidBase).
+      id-count = lib.mkIf isHub (1024 * 65536);
       max-substitution-jobs = 32;
       # Workaround: before building, `nix build` prints what is missing, and
       # that topo-sorts every derivation against the build store. With a

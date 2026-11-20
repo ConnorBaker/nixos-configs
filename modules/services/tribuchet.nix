@@ -28,9 +28,11 @@ in
       # workers currently connected, rewriting a nix.conf fragment that
       # nix-daemon is restarted on; systems no worker serves stay local.
       dynamic = true;
-      # Bound the hub-emitted max-jobs by this host's uid slots: every
-      # offloaded build still holds one locally (id-count / 65536).
-      maxJobsCap = (config.nix.settings.id-count or (128 * 65536)) / 65536;
+      # Bounds only the max-jobs line the hub writes into the nix.conf
+      # fragment (the connected agents' capacity, oversubscribed); the
+      # builds the hub holds at once are bounded by nix's uid slots
+      # (id-count), not by this.
+      maxJobsCap = 256;
       nixPackage = pkgs.nix;
       patchNix = false;
     };

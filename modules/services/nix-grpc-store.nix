@@ -36,7 +36,7 @@ in
     # max-jobs, the sum of connected agents, let builds queued for one system
     # hold every slot while workers of another sat idle. Always passed as
     # --max-jobs, so nix.conf rewrites and SIGHUP leave it alone.
-    maxJobs = if hub.enable then hub.externalBuilders.maxJobsCap else 2;
+    maxJobs = if hub.enable then config.nix.settings.id-count / 65536 else 2;
     # U51 stage 1: the before-measurement of ngs's own queue and pool
     # (nix_grpc_sched{kind="queued"}, nix_grpc_queue_seconds,
     # nix_grpc_build_slots, nix_grpc_inflight) ahead of the W33 uncap; see
