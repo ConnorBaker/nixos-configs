@@ -260,6 +260,28 @@
               # itself; the control builds them without the gate.
               fixed-output-gate = pkgs.callPackage ./tests/fixed-output-gate.nix { gate = true; };
               fixed-output-gate-without = pkgs.callPackage ./tests/fixed-output-gate.nix { gate = false; };
+              # The next generation's Nix, under the previous generation's
+              # nix.conf, loads its own generation's plugins: on a host, and
+              # on the hub, whose nix.package Tribuchet's module sets. Built
+              # with the host's packages: it runs the host's Nix.
+              generation-plugins =
+                let
+                  host = inputs.self.nixosConfigurations.nixos-desktop;
+                in
+                host.pkgs.callPackage ./tests/generation-plugins.nix { hostConfig = host.config; };
+              generation-plugins-hub =
+                let
+                  host = inputs.self.nixosConfigurations.nixos-ext;
+                in
+                host.pkgs.callPackage ./tests/generation-plugins.nix { hostConfig = host.config; };
+              # A generation without plugins loads none of the previous one's.
+              generation-plugins-empty =
+                let
+                  host = inputs.self.nixosConfigurations.nixos-desktop.extendModules {
+                    modules = [ { nix.settings.plugin-files = lib.mkForce [ ]; } ];
+                  };
+                in
+                host.pkgs.callPackage ./tests/generation-plugins.nix { hostConfig = host.config; };
               networking-reload = pkgs.callPackage ./tests/networking-reload.nix {
                 networkFiles = builtins.mapAttrs (
                   _: unit: unit.text

@@ -33,7 +33,8 @@ in
       # builds the hub holds at once are bounded by nix's uid slots
       # (id-count), not by this.
       maxJobsCap = 256;
-      nixPackage = pkgs.nix;
+      # It is the hub's nix.package (modules/nix/generation-plugins.nix).
+      nixPackage = config.system.build.nixWithGenerationPlugins;
       patchNix = false;
     };
     settings = {

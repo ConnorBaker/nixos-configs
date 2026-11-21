@@ -62,7 +62,10 @@ let
   );
 in
 {
-  imports = [ ../services/tribuchet.nix ];
+  imports = [
+    ../services/tribuchet.nix
+    ./generation-plugins.nix
+  ];
   networking.hosts = lib.mapAttrs' (hostName: machine: {
     name = machine.lan.ipv4;
     value = [ hostName ];
