@@ -28,7 +28,7 @@
   ...
 }:
 let
-  nix = pkgs.nix;
+  inherit (pkgs) nix;
   pluginFiles = config.nix.settings.plugin-files or [ ];
 in
 {
