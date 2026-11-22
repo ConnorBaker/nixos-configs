@@ -28,6 +28,9 @@ in
       # workers currently connected, rewriting a nix.conf fragment that
       # nix-daemon is restarted on; systems no worker serves stay local.
       dynamic = true;
+      # The known workers as a farm, for the hub's nix-grpc-daemon to admit
+      # builds by (its farmFile, modules/services/nix-grpc-store.nix).
+      farmPath = "/run/tribuchet/farm.json";
       # Bounds only the max-jobs line the hub writes into the nix.conf
       # fragment (the connected agents' capacity, oversubscribed); the
       # builds the hub holds at once are bounded by nix's uid slots

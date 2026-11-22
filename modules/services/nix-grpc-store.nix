@@ -37,6 +37,12 @@ in
     # hold every slot while workers of another sat idle. Always passed as
     # --max-jobs, so nix.conf rewrites and SIGHUP leave it alone.
     maxJobs = if hub.enable then config.nix.settings.id-count / 65536 else 2;
+    # On the hub, admit a build only while the Tribuchet workers that could
+    # build its class (system and required features) have room for it, so
+    # that builds of a class few workers serve (aarch64-linux, kvm tests)
+    # waiting there cannot hold the slots that plain x86_64-linux builds need.
+    # Tribuchet writes it on every worker change; absent, nothing is bounded.
+    farmFile = lib.mkIf hub.enable hub.externalBuilders.farmPath;
     # U51 stage 1: the before-measurement of ngs's own queue and pool
     # (nix_grpc_sched{kind="queued"}, nix_grpc_queue_seconds,
     # nix_grpc_build_slots, nix_grpc_inflight) ahead of the W33 uncap; see
