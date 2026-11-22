@@ -132,18 +132,6 @@ in
       # agents' uid blocks (agentUidBase).
       id-count = lib.mkIf isHub (1024 * 65536);
       max-substitution-jobs = 32;
-      # Workaround: before building, `nix build` prints what is missing, and
-      # that topo-sorts every derivation against the build store. With a
-      # grpc:// build store and the .drv files only in the eval store, that is
-      # one round trip per .drv. The real fix has printMissing sort in the eval
-      # store, on top of https://github.com/NixOS/nix/pull/16433 ("queryMissing:
-      # read derivations from the eval store", open). The nix-grpc-store
-      # client's ask-ahead validity batching
-      # (https://github.com/ConnorBaker/nix-grpc-store/tree/integration) covers
-      # the missing-paths walk but not the sort. Our printMissing-in-eval-store
-      # fix and the nix-grpc-store topoSort negative cache are not yet
-      # published; drop this setting once they ship.
-      print-missing = false;
       require-drop-supplementary-groups = true;
       # NixOS contributes benchmark/big-parallel/kvm/nixos-test and gccarch.
       # Keep the full baseline above for remote builder advertisements.
