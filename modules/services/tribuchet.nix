@@ -50,6 +50,16 @@ in
     enable = true;
     package = pkgs.tribuchet;
     agents = lib.mkDefault jobs;
+    # The hub runs beside the agents here, outside their slice, which is
+    # capped at MemTotal less this reserve (and less MemTotal/16 for its
+    # zswap; modules/services/tribuchet-agent-memory.nix). The option's
+    # default (8 GiB) leaves nothing for the hub. On nixos-ext on
+    # 2026-11-27, 3.8 days after a start, tribuchet-hub.service held
+    # 10.25 GB, nearly all anonymous (MemoryPeak 10.56 GB = 9.83 GiB) and
+    # unswappable (MemorySwapMax = 0 below), so the default left the slice
+    # 79.66 GiB of 93.51 GiB beside ~14 GB of other units. Keep the default
+    # for the rest of the host and add the hub's peak, rounded up to a GiB.
+    agentMemoryReserve = lib.mkIf isHub ((8 + 10) * 1024 * 1024 * 1024);
     settings = {
       auth = "tailscale";
       hub = "http://${inventory.hub}.${inventory.tailnet}:7437";
